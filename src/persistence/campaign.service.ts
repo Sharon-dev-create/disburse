@@ -18,7 +18,7 @@ export class CampaignService {
         await tx.attempt.create({data:{id:attemptId,payoutId,attemptNo:1,quoteId:r.quoteId,maxAmountIn:r.maximumInput,inputAssetId:r.inputAsset.assetId,inputChain:r.inputAsset.chain,outputAmount:r.amount,expiresAt:r.expiresAt,timeWhenInactive:r.timeWhenInactive??null,depositAddress:r.depositAddress,depositMemo:r.depositMemo??null,status:'COMMITTED',...(r.rawQuote?{providerJson:r.rawQuote}:{})}});
         await tx.payout.update({where:{id:payoutId},data:{status:'QUOTED'}});
         await tx.payoutEvent.create({data:{payoutId,fromStatus:'CREATED',toStatus:'QUOTED',note:'Provider quote validated',providerRef:r.quoteId}});
-        await tx.reservation.create({data:{id:reservationId,campaignId:input.id,payoutId,attemptId,amount:r.maximumInput,status:'ACTIVE'}});
+        await tx.reservation.create({data:{id:reservationId,campaignId:input.id,payoutId,attemptId,amount:r.maximumInput,remainingAmount:r.maximumInput,status:'ACTIVE'}});
         await tx.ledgerEntry.create({data:{campaignId:input.id,payoutId,type:'RESERVED',amount:r.maximumInput,assetId:r.inputAsset.assetId,externalRef:`reserve:${reservationId}`}});
         await tx.payout.update({where:{id:payoutId},data:{status:'RESERVED',activeExposure:r.maximumInput}});
         await tx.payoutEvent.create({data:{payoutId,fromStatus:'QUOTED',toStatus:'RESERVED',note:'Maximum input reserved for committed quote',providerRef:r.quoteId}});
@@ -28,7 +28,7 @@ export class CampaignService {
       const feeTotal=fees.reduce((sum,f)=>sum+f.atomic,0n);
       if(feeTotal>0n){
         const reservationId=`${input.id}:fees:reservation`;
-        await tx.reservation.create({data:{id:reservationId,campaignId:input.id,payoutId:null,attemptId:null,amount:feeTotal,status:'ACTIVE'}});
+        await tx.reservation.create({data:{id:reservationId,campaignId:input.id,payoutId:null,attemptId:null,amount:feeTotal,remainingAmount:feeTotal,status:'ACTIVE'}});
         await tx.ledgerEntry.create({data:{campaignId:input.id,type:'RESERVED',amount:feeTotal,assetId:input.budgetAsset.assetId,externalRef:`reserve:${reservationId}`,reason:'Separately payable fees'}});
       }
     },{isolationLevel:'Serializable'});

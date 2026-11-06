@@ -4,6 +4,7 @@ import type { IntentsProvider, QuoteRequest, ValidatedQuote, StatusResult, Provi
 const quoteSchema=z.object({correlationId:z.string().min(1),timestamp:z.string(),signature:z.string().min(1),quoteRequest:z.record(z.unknown()),quote:z.object({amountIn:z.string(),minAmountIn:z.string(),amountOut:z.string(),deadline:z.string().optional(),timeWhenInactive:z.string().optional(),depositAddress:z.string().optional(),depositMemo:z.string().nullable().optional(),refundFee:z.string().optional(),withdrawFee:z.string().optional()}).passthrough()}).passthrough();
 const statusSchema=z.object({correlationId:z.string(),status:z.enum(['PENDING_DEPOSIT','KNOWN_DEPOSIT_TX','PROCESSING','SUCCESS','INCOMPLETE_DEPOSIT','REFUNDED','FAILED']),updatedAt:z.string(),swapDetails:z.object({amountIn:z.string().optional(),amountOut:z.string().optional(),depositedAmount:z.string().optional(),refundedAmount:z.string().optional(),originChainTxHashes:z.array(z.object({hash:z.string()}).passthrough()).optional(),destinationChainTxHashes:z.array(z.object({hash:z.string()}).passthrough()).optional()}).passthrough(),quoteResponse:quoteSchema}).passthrough();
 const positive=(s:string)=>{if(!/^[1-9]\d*$/.test(s))throw new Error('Provider returned invalid atomic amount');return BigInt(s)};
+const nonnegative=(s:string)=>{if(!/^(0|[1-9]\d*)$/.test(s))throw new Error('Provider returned invalid atomic amount');return BigInt(s)};
 function sanitize(v:unknown):unknown { if(Array.isArray(v))return v.map(sanitize); if(v&&typeof v==='object'){const out:Record<string,unknown>={}; for(const [k,val] of Object.entries(v)) out[k]=/authorization|token|secret|key/i.test(k)?'[REDACTED]':sanitize(val); return out;} return v; }
 export class OneClickClient implements IntentsProvider {
   constructor(private readonly config:{baseUrl?:string;jwt?:string;timeoutMs?:number;fetchImpl?:typeof fetch}={}){}
@@ -36,7 +37,7 @@ export class OneClickClient implements IntentsProvider {
     const d=statusSchema.parse(await res.json()); const s=d.swapDetails; const optional=(x?:string)=>x===undefined?undefined:positive(x);
     if(!Number.isFinite(Date.parse(d.updatedAt))||d.quoteResponse.quote.depositAddress!==depositAddress)throw new Error('Provider status does not match the persisted quote');
     const echoedMemo=d.quoteResponse.quote.depositMemo??null;if((echoedMemo??null)!==(depositMemo??null))throw new Error('Provider status memo does not match the persisted quote');
-    const amountIn=optional(s.amountIn),amountOut=optional(s.amountOut),depositedAmount=optional(s.depositedAmount),refundedAmount=optional(s.refundedAmount);
+    const amountIn=optional(s.amountIn),amountOut=optional(s.amountOut),depositedAmount=s.depositedAmount===undefined?undefined:nonnegative(s.depositedAmount),refundedAmount=optional(s.refundedAmount);
     const refundAssetId=d.quoteResponse.quoteRequest.originAsset;
     const outputAssetId=d.quoteResponse.quoteRequest.destinationAsset,recipient=d.quoteResponse.quoteRequest.recipient;
     if(typeof refundAssetId!=='string'||!refundAssetId||typeof outputAssetId!=='string'||!outputAssetId||typeof recipient!=='string'||!recipient)throw new Error('Status response missing original quote asset or recipient');

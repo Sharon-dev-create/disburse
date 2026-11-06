@@ -1,48 +1,75 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
+import { calculateAuthorizedExposure } from './exposure.js';
 
-/** PostgreSQL serializable transaction. DB uniqueness plus locked aggregate check is the concurrency boundary. */
+export type ReleaseEvidence =
+  | {source:'PROVIDER_TERMINAL_NO_DEPOSIT';actor:string;reason:string}
+  | {source:'MANUAL_RECONCILIATION';actor:string;reason:string};
+
 export class ReservationService {
-  constructor(private readonly db:PrismaClient){}
-  async reserve(campaignId:string,payoutId:string,reservationId:string,amount:bigint):Promise<void>{
-    if(amount<=0n)throw new Error('Reservation amount must be positive');
-    await this.db.$transaction(async tx=>{
-      const rows=await tx.$queryRaw<Array<{budget:bigint;assetId:string;status:string}>>`SELECT "budget", "assetId", "status" FROM "Campaign" WHERE "id"=${campaignId} FOR UPDATE`;
-      const campaign=rows[0]; if(!campaign||campaign.status!=='APPROVED')throw new Error('Campaign is not approved');
-      const attempt=await tx.attempt.findFirst({where:{payoutId},orderBy:{attemptNo:'desc'}}); if(!attempt)throw new Error('Payout has no persisted quote attempt');
-      const existing=await tx.reservation.findFirst({where:{attemptId:attempt.id,status:'ACTIVE'}}); if(existing)throw new Error('Attempt already has an active reservation');
-      const [reservations,entries]=await Promise.all([
-        tx.reservation.findMany({where:{campaignId,status:'ACTIVE'},select:{payoutId:true,amount:true}}),
-        tx.ledgerEntry.findMany({where:{campaignId,type:{in:['DEPOSIT_OBSERVED','SETTLEMENT_CONFIRMED','REFUND_CONFIRMED']}},select:{payoutId:true,type:true,amount:true}})
-      ]);
-      const groups=new Map<string,{reserved:bigint;deposited:bigint;settled:bigint;refunded:bigint}>();
-      const group=(key:string)=>{let g=groups.get(key);if(!g){g={reserved:0n,deposited:0n,settled:0n,refunded:0n};groups.set(key,g);}return g;};
-      for(const r of reservations)group(r.payoutId??'__campaign__').reserved+=r.amount;
-      for(const e of entries){const g=group(e.payoutId??'__campaign__');if(e.type==='DEPOSIT_OBSERVED')g.deposited+=e.amount;else if(e.type==='SETTLEMENT_CONFIRMED')g.settled+=e.amount;else g.refunded+=e.amount;}
-      let committed=0n;
-      for(const g of groups.values()){
-        const gross=g.deposited>0n?g.deposited:(g.settled>g.refunded?g.settled:g.refunded);
-        if(g.refunded>gross)throw new Error('Confirmed refunds exceed recorded source outflow');
-        const net=gross-g.refunded;committed+=g.reserved>net?g.reserved:net;
-      }
-      if(committed+amount>campaign.budget)throw new Error('Reservation exceeds remaining budget after settlements and unresolved deposits');
-      await tx.reservation.create({data:{id:reservationId,campaignId,payoutId,attemptId:attempt.id,amount,status:'ACTIVE'}});
-      await tx.ledgerEntry.create({data:{campaignId,payoutId,type:'RESERVED',amount,assetId:campaign.assetId,externalRef:`reserve:${reservationId}`}});
-      await tx.payout.update({where:{id:payoutId},data:{activeExposure:{increment:amount},status:'RESERVED'}});
-      await tx.payoutEvent.create({data:{payoutId,fromStatus:'QUOTED',toStatus:'RESERVED',note:'Maximum input reserved'}});
-    },{isolationLevel:'Serializable'});
+  constructor(private readonly db:PrismaClient,private readonly now:()=>Date=()=>new Date()){}
+
+  private async serializable<T>(work:(tx:Prisma.TransactionClient)=>Promise<T>):Promise<T>{
+    let last:unknown;
+    for(let attempt=0;attempt<3;attempt++){
+      try{return await this.db.$transaction(work,{isolationLevel:'Serializable'});}
+      catch(error){last=error;if(!(error instanceof Prisma.PrismaClientKnownRequestError)||error.code!=='P2034'||attempt===2)throw error;await new Promise(resolve=>setTimeout(resolve,10*(attempt+1)));}
+    }
+    throw last;
   }
-  async release(reservationId:string,reason:string,evidence:'PROVIDER_TERMINAL_NO_DEPOSIT'|'MANUAL_RECONCILIATION'):Promise<void>{
-    await this.db.$transaction(async tx=>{
-      const r=await tx.reservation.findUnique({where:{id:reservationId}}); if(!r||r.status!=='ACTIVE')return;
-      if(!r.payoutId)throw new Error('Campaign-level fee reservations require manual reconciliation');
-      const payout=await tx.payout.findUniqueOrThrow({where:{id:r.payoutId}});
-      const deposits=await tx.ledgerEntry.count({where:{payoutId:r.payoutId,type:'DEPOSIT_OBSERVED'}});
-      if(evidence==='PROVIDER_TERMINAL_NO_DEPOSIT'&&(!['FAILED','EXPIRED'].includes(payout.status)||deposits>0))throw new Error('Provider terminal no-deposit evidence required before release');
-      if(evidence==='MANUAL_RECONCILIATION'&&reason.trim().length<12)throw new Error('Manual release requires an audited reason');
-      await tx.reservation.update({where:{id:reservationId},data:{status:'RELEASED',releasedAt:new Date()}});
+
+  async reserve(campaignId:string,payoutId:string,attemptId:string,reservationId:string,amount:bigint):Promise<void>{
+    if(amount<=0n)throw new Error('Reservation amount must be positive');
+    await this.serializable(async tx=>{
+      const rows=await tx.$queryRaw<Array<{budget:bigint;assetId:string;status:string}>>`SELECT "budget", "assetId", "status" FROM "Campaign" WHERE "id"=${campaignId} FOR UPDATE`;
+      const campaign=rows[0];if(!campaign||campaign.status!=='APPROVED')throw new Error('Campaign is not approved');
+      const payout=await tx.payout.findUnique({where:{id:payoutId}});
+      if(!payout||payout.campaignId!==campaignId)throw new Error('Payout does not belong to supplied campaign');
+      const attempt=await tx.attempt.findUnique({where:{id:attemptId}});
+      if(!attempt||attempt.payoutId!==payoutId)throw new Error('Selected attempt does not belong to payout');
+      if(!['QUOTED','COMMITTED'].includes(attempt.status)||!attempt.maxAmountIn||!attempt.inputAssetId||!attempt.depositAddress)throw new Error('Attempt is not eligible for reservation');
+      if(attempt.expiresAt&&attempt.expiresAt<=this.now()||attempt.timeWhenInactive&&attempt.timeWhenInactive<=this.now())throw new Error('Attempt quote has expired');
+      if(amount!==attempt.maxAmountIn)throw new Error('Reservation must equal persisted quote maximum input');
+      const existingById=await tx.reservation.findUnique({where:{id:reservationId}});
+      if(existingById){if(existingById.campaignId===campaignId&&existingById.payoutId===payoutId&&existingById.attemptId===attemptId&&existingById.amount===amount&&existingById.status==='ACTIVE')return;throw new Error('Reservation id already exists with different or released data');}
+      const activeForAttempt=await tx.reservation.findFirst({where:{attemptId,status:'ACTIVE'}});
+      if(activeForAttempt)throw new Error('Attempt already has an active reservation');
+      if(payout.activeExposure!==0n)throw new Error('Payout has unresolved exposure from another attempt');
+      const [reservations,entries]=await Promise.all([
+        tx.reservation.findMany({where:{campaignId,status:'ACTIVE'},select:{attemptId:true,payoutId:true,remainingAmount:true}}),
+        tx.ledgerEntry.findMany({where:{campaignId,type:{in:['DEPOSIT_OBSERVED','SETTLEMENT_CONFIRMED','REFUND_CONFIRMED']}},select:{attemptId:true,payoutId:true,type:true,amount:true}})
+      ]);
+      const committed=calculateAuthorizedExposure(reservations,entries);
+      if(committed+amount>campaign.budget)throw new Error('Reservation exceeds remaining approved campaign budget');
+      await tx.reservation.create({data:{id:reservationId,campaignId,payoutId,attemptId,amount,remainingAmount:amount,status:'ACTIVE'}});
+      await tx.ledgerEntry.create({data:{campaignId,payoutId,attemptId,type:'RESERVED',amount,assetId:campaign.assetId,externalRef:`reserve:${reservationId}`}});
+      await tx.payout.update({where:{id:payoutId},data:{activeExposure:{increment:amount},status:'RESERVED'}});
+      await tx.payoutEvent.create({data:{payoutId,fromStatus:payout.status,toStatus:'RESERVED',note:'Persisted quote maximum input reserved'}});
+    });
+  }
+
+  async release(reservationId:string,evidence:ReleaseEvidence):Promise<void>{
+    if(!evidence.actor.trim()||evidence.reason.trim().length<12)throw new Error('Release requires an auditable actor and reason');
+    await this.serializable(async tx=>{
+      const initial=await tx.reservation.findUnique({where:{id:reservationId}});if(!initial)return;
+      await tx.$queryRaw`SELECT "id" FROM "Campaign" WHERE "id"=${initial.campaignId} FOR UPDATE`;
+      await tx.$queryRaw`SELECT "id" FROM "Reservation" WHERE "id"=${reservationId} FOR UPDATE`;
+      const r=await tx.reservation.findUnique({where:{id:reservationId}});if(!r||r.status!=='ACTIVE'||r.remainingAmount===0n)return;
+      let payout=null;
+      if(r.payoutId){payout=await tx.payout.findUnique({where:{id:r.payoutId}});if(!payout||payout.campaignId!==r.campaignId)throw new Error('Reservation payout/campaign ownership mismatch');}
+      if(evidence.source==='PROVIDER_TERMINAL_NO_DEPOSIT'){
+        if(!r.attemptId||!payout)throw new Error('Provider evidence cannot release campaign-level reservations');
+        const attempt=await tx.attempt.findUnique({where:{id:r.attemptId}});
+        if(!attempt||attempt.payoutId!==payout.id||!['FAILED','INCOMPLETE_DEPOSIT'].includes(attempt.providerStatus??'')||attempt.providerDepositedAmount!==0n||!['FAILED','EXPIRED'].includes(payout.status))throw new Error('Authoritative terminal no-deposit evidence is not present');
+      }
+      const releaseAmount=r.remainingAmount;
+      const changed=await tx.reservation.updateMany({where:{id:reservationId,status:'ACTIVE',remainingAmount:releaseAmount},data:{status:'RELEASED',remainingAmount:0n,releasedAt:this.now()}});
+      if(changed.count===0)return;
       const campaign=await tx.campaign.findUniqueOrThrow({where:{id:r.campaignId}});
-      await tx.ledgerEntry.create({data:{campaignId:r.campaignId,payoutId:r.payoutId,type:'RELEASED',amount:r.amount,assetId:campaign.assetId,externalRef:`release:${reservationId}`,reason}});
-      await tx.payout.update({where:{id:r.payoutId},data:{activeExposure:{decrement:r.amount}}});
-    },{isolationLevel:'Serializable'});
+      await tx.ledgerEntry.create({data:{campaignId:r.campaignId,payoutId:r.payoutId,attemptId:r.attemptId,type:'RELEASED',amount:releaseAmount,assetId:campaign.assetId,externalRef:`release:${reservationId}`,reason:evidence.reason,metadata:{actor:evidence.actor,source:evidence.source}}});
+      if(r.payoutId){
+        const updated=await tx.payout.updateMany({where:{id:r.payoutId,activeExposure:{gte:releaseAmount}},data:{activeExposure:{decrement:releaseAmount}}});
+        if(updated.count!==1)throw new Error('Payout exposure is inconsistent with active reservation');
+      }
+    });
   }
 }

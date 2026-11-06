@@ -26,6 +26,6 @@ export class PayoutOrchestrator {
   async reserve(payoutId:string,reservationId:string):Promise<void>{
     const payout=await this.db.payout.findUniqueOrThrow({where:{id:payoutId}}); const attempt=await this.db.attempt.findFirstOrThrow({where:{payoutId},orderBy:{attemptNo:'desc'}});
     if(!attempt.maxAmountIn||!attempt.expiresAt||attempt.expiresAt<=this.now()||attempt.timeWhenInactive&&attempt.timeWhenInactive<=this.now())throw new Error('Missing or expired max input quote');
-    await this.reservations.reserve(payout.campaignId,payoutId,reservationId,attempt.maxAmountIn);
+    await this.reservations.reserve(payout.campaignId,payoutId,attempt.id,reservationId,attempt.maxAmountIn);
   }
 }

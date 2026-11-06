@@ -89,9 +89,13 @@ model Attempt {
   depositMemo     String?
   status          PayoutStatus @default(CREATED)
   providerJson    Json?
+  providerStatus  String?
+  providerStatusUpdatedAt DateTime?
+  providerDepositedAmount BigInt?
   createdAt       DateTime     @default(now())
   payout          Payout       @relation(fields: [payoutId], references: [id], onDelete: Restrict)
   reservation     Reservation?
+  ledgerEntries   LedgerEntry[]
   @@unique([payoutId, attemptNo])
 }
 
@@ -113,6 +117,7 @@ model Reservation {
   payoutId   String?
   attemptId  String?  @unique
   amount     BigInt
+  remainingAmount BigInt @default(0)
   status     String   @default("ACTIVE")
   createdAt  DateTime @default(now())
   releasedAt DateTime?
@@ -125,6 +130,7 @@ model LedgerEntry {
   id          String    @id @default(cuid())
   campaignId  String
   payoutId    String?
+  attemptId   String?
   type        LedgerType
   amount      BigInt
   direction   String    @default("IN")
@@ -135,5 +141,7 @@ model LedgerEntry {
   createdAt   DateTime  @default(now())
   campaign    Campaign  @relation(fields: [campaignId], references: [id], onDelete: Restrict)
   payout      Payout?   @relation(fields: [payoutId], references: [id], onDelete: Restrict)
+  attempt     Attempt?  @relation(fields: [attemptId], references: [id], onDelete: Restrict)
   @@index([campaignId, createdAt])
+  @@index([campaignId, attemptId, type])
 }
