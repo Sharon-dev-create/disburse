@@ -1,0 +1,97 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql"; url = env("DATABASE_URL") }
+
+enum CampaignStatus { DRAFT APPROVED REJECTED COMPLETED }
+enum PayoutStatus { CREATED QUOTED RESERVED COMMITTED AWAITING_DEPOSIT PROCESSING SUCCESS FAILED EXPIRED REFUND_PENDING REFUNDED UNKNOWN }
+enum LedgerType { BUDGET_APPROVED RESERVED RELEASED DEPOSIT_OBSERVED SETTLEMENT_CONFIRMED REFUND_INITIATED REFUND_CONFIRMED FAILED ADJUSTMENT }
+
+model Campaign {
+  id String @id
+  idempotencyKey String @unique
+  budget BigInt
+  assetId String
+  decimals Int
+  status CampaignStatus @default(DRAFT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  payouts Payout[]
+  ledger LedgerEntry[]
+  reservations Reservation[]
+}
+
+model Payout {
+  id String @id
+  campaignId String
+  recipientId String
+  recipientAddress String
+  promisedAmount BigInt
+  outputAssetId String
+  outputChain String
+  status PayoutStatus @default(CREATED)
+  activeExposure BigInt @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  attempts Attempt[]
+  events PayoutEvent[]
+  ledger LedgerEntry[]
+  @@unique([campaignId, recipientId])
+}
+
+model Attempt {
+  id String @id
+  payoutId String
+  attemptNo Int
+  quoteId String? @unique
+  maxAmountIn BigInt?
+  inputAssetId String?
+  inputChain String?
+  outputAmount BigInt?
+  expiresAt DateTime?
+  depositAddress String?
+  depositMemo String?
+  status PayoutStatus @default(CREATED)
+  providerJson Json?
+  createdAt DateTime @default(now())
+  payout Payout @relation(fields: [payoutId], references: [id], onDelete: Restrict)
+  @@unique([payoutId, attemptNo])
+}
+
+model PayoutEvent {
+  id String @id @default(cuid())
+  payoutId String
+  fromStatus PayoutStatus?
+  toStatus PayoutStatus
+  note String
+  providerRef String?
+  txHash String?
+  createdAt DateTime @default(now())
+  payout Payout @relation(fields: [payoutId], references: [id], onDelete: Restrict)
+}
+
+model Reservation {
+  id String @id
+  campaignId String
+  payoutId String @unique
+  amount BigInt
+  status String @default("ACTIVE")
+  createdAt DateTime @default(now())
+  releasedAt DateTime?
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+}
+
+model LedgerEntry {
+  id String @id @default(cuid())
+  campaignId String
+  payoutId String?
+  type LedgerType
+  amount BigInt
+  assetId String
+  externalRef String? @unique
+  reason String?
+  metadata Json?
+  createdAt DateTime @default(now())
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  payout Payout? @relation(fields: [payoutId], references: [id], onDelete: Restrict)
+  @@index([campaignId, createdAt])
+}
