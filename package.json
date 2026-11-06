@@ -10,7 +10,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "demo": "tsx src/demo.ts",
-    "test:evm": "forge build && vitest run tests/evm/evm-funding.integration.ts"
+    "test:evm": "forge build && vitest run --config vitest.evm.config.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",
