@@ -43,7 +43,6 @@ describe('Anvil EVM funding integration (disposable local chain only)',()=>{
       const service=new EvmFundingService(db,adapter,signer,cipher,{signerAddress:getAddress(source),token,gas:fundingPolicy,confirmations:2n});
       const first=await service.authorizeAndSubmit({reservationId,idempotencyKey:`evm-op-${suffix}`});expect(first.state).toBe('BROADCAST');expect(first.id).toBe(unresolved.id);expect(first.txHash).toBe(unresolved.txHash);
       const duplicate=await service.authorizeAndSubmit({reservationId,idempotencyKey:`evm-op-${suffix}`});expect(duplicate.id).toBe(first.id);expect(duplicate.txHash).toBe(first.txHash);
-      await publicClient.request({method:'anvil_mine',params:['0x1']} as never);
       const delayed=await service.reconcile(first.id);expect(delayed.state).toBe('CONFIRMING');expect((await db.reservation.findUniqueOrThrow({where:{id:reservationId}})).remainingAmount).toBe(1_000_000n);
       await publicClient.request({method:'anvil_mine',params:['0x1']} as never);
       const final=await service.reconcile(first.id);expect(final.state).toBe('CONFIRMED');

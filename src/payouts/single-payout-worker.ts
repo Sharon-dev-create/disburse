@@ -104,6 +104,8 @@ export class SinglePayoutWorker {
     if(payout.status==='RESERVED')await this.transitionToCommitted(payout.id,attempt.quoteId);
     if(funding.state==='CONFIRMED'&&payout.status==='COMMITTED')await this.transition(payout.id,'COMMITTED','AWAITING_DEPOSIT','Source-chain transfer independently confirmed; waiting for provider observation',attempt.quoteId,funding.txHash);
     if(funding.state!=='CONFIRMED'){
+      // Existing AUTHORIZED/SIGNED/UNKNOWN operations resume through their original journal key and exact signed bytes.
+      await this.funding.authorizeAndSubmit({reservationId:reservation.id,idempotencyKey:`evm:${attempt.id}`});
       const result=await this.funding.reconcile(funding.id);
       if(result.state!=='CONFIRMED')return{done:false,state:`FUNDING_${result.state}`,delayMs:1_000};
       funding=await this.db.evmFundingOperation.findUniqueOrThrow({where:{id:funding.id}});
