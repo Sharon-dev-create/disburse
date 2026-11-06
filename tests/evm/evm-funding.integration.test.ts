@@ -31,7 +31,7 @@ describe('Anvil EVM funding integration (disposable local chain only)',()=>{
     const destination='0x00000000000000000000000000000000000000d1' as Address;
     const suffix=`${Date.now()}-${Math.floor(Math.random()*1e8)}`;const campaignId=`evm-c-${suffix}`;const payoutId=`evm-p-${suffix}`;const attemptId=`evm-a-${suffix}`;const reservationId=`evm-r-${suffix}`;
     try{
-      await db.campaign.create({data:{id:campaignId,idempotencyKey:`evm-ci-${suffix}`,budget:1_000_000n,assetId:token.assetId,decimals:6,status:'APPROVED'}});
+      await db.campaign.create({data:{id:campaignId,idempotencyKey:`evm-ci-${suffix}`,budget:1_000_000n,assetId:token.assetId,sourceChain:'ANVIL',decimals:6,status:'APPROVED'}});
       await db.payout.create({data:{id:payoutId,campaignId,recipientId:`r-${suffix}`,recipientAddress:destination,promisedAmount:900_000n,outputAssetId:'DEST',outputChain:'OTHER',status:'RESERVED',activeExposure:1_000_000n}});
       await db.attempt.create({data:{id:attemptId,payoutId,attemptNo:1,quoteId:`q-${suffix}`,maxAmountIn:1_000_000n,inputAssetId:token.assetId,inputChain:token.sourceChain,outputAmount:900_000n,expiresAt:new Date(Date.now()+300_000),depositAddress:destination,status:'COMMITTED'}});
       await db.reservation.create({data:{id:reservationId,campaignId,payoutId,attemptId,amount:1_000_000n,remainingAmount:1_000_000n,status:'ACTIVE'}});

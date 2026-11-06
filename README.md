@@ -1,6 +1,6 @@
 # NEAR Intents Payout Assurance Spike
 
-An engineering proof of concept for recipient-level payout records and conservative campaign budget authorization. It is not a payroll product, does not sign transactions, and does not submit deposits. Real provider integration can request quotes and read status; the executable scenarios use clearly labeled simulated data.
+An engineering proof of concept for recipient-level payout records, conservative campaign budget authorization, and recoverable single-payout orchestration. Production funding remains disabled. The EVM adapter is hard-restricted to local Anvil; the end-to-end provider is deterministic test data.
 
 ## Architecture
 
@@ -45,7 +45,7 @@ stateDiagram-v2
 - Money is represented as positive integer atomic units (`bigint`). Token decimals are metadata and constrained to 0–30; amounts are never parsed through `number`.
 - Each campaign has exactly one budget asset denomination. Every quote `amountIn` reservation ceiling and separately payable fee must identify that same asset/chain/precision. Mixed denominations fail closed because no validated valuation or FX risk model is configured.
 - Authorization reserves exactly the persisted attempt's `amountIn` buffer (stored internally as `maxAmountIn`), not `minAmountIn`. Every reservation verifies campaign/payout/attempt ownership, denomination, quote eligibility and expiry. Budget approval rejects if the sum plus explicit separately payable fees exceeds the campaign budget.
-- `amountIn` is an internal authorization ceiling, **not a provider-enforced cap**. The current 1Click documentation does not promise that an address rejects a larger deposit or that the solver can never consume more. This spike does not submit deposits; a production funding path must independently prevent overfunding and reconcile any observed deposit above the authorization ceiling before allowing further spending.
+- `amountIn` is an internal authorization ceiling, **not a provider-enforced cap**. The local Anvil signer policy rejects source transactions above it, but no real 1Click deposit is submitted and no provider-side hard cap is claimed. Production needs an isolated signer plus independent chain reconciliation.
 - A PostgreSQL campaign row lock plus serializable transactions protect budget checks. Bounded retries handle serialization/deadlock errors. Reservations are unique per attempt; campaign idempotency keys and `(campaignId, recipientId)` prevent duplicate campaign/payout creation.
 - A settlement is accepted only when provider status is `SUCCESS`, actual output equals the promised atomic amount, and actual source spend is present. A confirmed refund is credited only if amount is present, positive, bounded by reserved input, and associated with the quote's origin asset. The status endpoint does not independently identify refund asset; association to the original quote must be preserved.
 - Pending refunds do not reduce available funds. Unknown outcomes remain exposed. Cross-chain exactly-once settlement is not claimed; local idempotency cannot control an external solver's behavior.
@@ -76,12 +76,18 @@ Requirements: Node.js 20+, pnpm, and Docker Compose.
 cp .env.example .env
 docker compose up -d postgres
 pnpm install
+pnpm exec prisma migrate deploy
 pnpm db:generate
-pnpm db:migrate
 pnpm build
 pnpm test
 pnpm demo
 ```
+
+Start the loopback API with `pnpm api`. It creates/approves campaigns, enqueues idempotent payout requests, and exposes payout, attempt, funding, and reconciliation evidence. The PostgreSQL-backed `SinglePayoutWorker` is dependency-injected so local integration can use Anvil and the deterministic provider mock; it never requires a live 1Click deposit.
+
+For the full single-payout lifecycle, threat assumptions, queue recovery, API request flow, and evidence gates, see [docs/SINGLE-PAYOUT-LIFECYCLE.md](docs/SINGLE-PAYOUT-LIFECYCLE.md).
+
+For the local-only end-to-end integration, start Anvil with `anvil --silent --port 18545` and run `pnpm run test:evm`. The test deploys disposable ERC-20 fixtures to chain ID `31337`; it does not contact or fund a live 1Click quote.
 
 `tests/concurrency/reservation.integration.test.ts` requires a reachable PostgreSQL database in `DATABASE_URL` and fails explicitly if the prerequisite is missing. It covers concurrent budget limits, campaign/payout/attempt ownership, quote bounds and expiry, idempotent release, serialization retries, settlement/deposit overlap, partial refunds and unresolved/uncertain outcomes. `pnpm demo` prints budget rejection, a 92-unit approval example, partial execution states, concurrent reservation expectations, and duplicate retry behavior; every outcome is simulated.
 
@@ -89,10 +95,10 @@ Set `NEAR_INTENTS_BASE_URL` and optionally `NEAR_INTENTS_JWT` in `.env` for real
 
 ## Known limits and next work
 
-- No production wallet, deposit observer, chain finality verification, deposit submission, signing, or funding support.
+- No production wallet, production signer, or live funding. An exact ERC-20 transfer and source receipt are tested only on local Anvil; output verification supports only configured local EVM tokens.
 - Funding-control feasibility findings and a simulated pre-sign policy-gate PoC are documented in [docs/FUNDING-CONTROL.md](docs/FUNDING-CONTROL.md); the simulation does not enable real funding.
-- Provider status remains the source of deposit, settlement and refund evidence in this spike; a production system should independently verify chain transactions and finality before reducing exposure.
-- Provider status alone is trusted as settlement evidence in the spike; a production system should independently verify destination-chain transactions/finality and refund transaction provenance.
+- Provider execution status, source funding, and recipient output are persisted separately. Provider success alone cannot mark a payout successful. Provider-reported refunds remain unverified and exposed until an origin-chain refund verifier exists.
+- The 1Click adapter can request quotes/read statuses, but the deterministic end-to-end test uses a mock and does not claim real provider behavior. A production system needs independent source and destination chain finality evidence for every supported chain.
 - Fee coverage/auth pricing must be confirmed with NEAR Intents for the partner account. External gas valuation is intentionally not invented.
 - Add durable retry orchestration with provider-status gating, campaign-level reconciliation reports, operational alerts, and audited manual adjustment approval before production.
 - No exactly-once cross-chain guarantee is possible from local database idempotency alone.

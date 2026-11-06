@@ -12,7 +12,7 @@ export class PayoutOrchestrator {
     const payout=await this.db.payout.findUniqueOrThrow({where:{id:payoutId}});
     const campaign=await this.db.campaign.findUniqueOrThrow({where:{id:payout.campaignId}});
     if(!['CREATED','FAILED','EXPIRED','REFUNDED'].includes(payout.status)||payout.activeExposure!==0n)throw new Error('Payout is not safely retryable; unresolved exposure remains');
-    if(campaign.status!=='APPROVED'||request.originAsset!==campaign.assetId||request.destinationAsset!==payout.outputAssetId||request.amount!==payout.promisedAmount.toString()||request.recipient!==payout.recipientAddress||request.swapType!=='EXACT_OUTPUT'||request.dry)throw new Error('Quote request does not match the approved campaign and payout');
+    if(campaign.status!=='APPROVED'||sourceChain&&campaign.sourceChain!==sourceChain||request.originAsset!==campaign.assetId||request.destinationAsset!==payout.outputAssetId||request.amount!==payout.promisedAmount.toString()||request.recipient!==payout.recipientAddress||request.swapType!=='EXACT_OUTPUT'||request.dry)throw new Error('Quote request does not match the approved campaign and payout');
     const quote=await this.provider.quote({...request,dry:false});
     if(!quote.deadline||quote.deadline<=this.now()||!quote.depositAddress||quote.amountIn<quote.minAmountIn||quote.maxAmountIn!==quote.amountIn)throw new Error('Committed quote omitted valid deadline, deposit instructions, or input bounds');
     if(quote.amountOut!==payout.promisedAmount)throw new Error('Quote amount differs from promise');

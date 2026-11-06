@@ -76,6 +76,7 @@ model Campaign {
   idempotencyKey String         @unique
   budget         BigInt
   assetId        String
+  sourceChain    String         @default("UNKNOWN")
   decimals       Int
   status         CampaignStatus @default(DRAFT)
   createdAt      DateTime       @default(now())

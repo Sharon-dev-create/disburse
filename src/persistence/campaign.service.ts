@@ -9,8 +9,8 @@ export class CampaignService {
   async createDraft(input:{id:string;idempotencyKey:string;budget:bigint;budgetAsset:Asset}):Promise<{id:string;status:string}>{
     if(!input.id.trim()||!input.idempotencyKey.trim()||input.budget<=0n||input.budgetAsset.decimals<0||input.budgetAsset.decimals>30)throw new Error('Campaign identity, positive budget, and valid asset precision are required');
     const existing=await this.db.campaign.findUnique({where:{idempotencyKey:input.idempotencyKey}});
-    if(existing){if(existing.id!==input.id||existing.budget!==input.budget||existing.assetId!==input.budgetAsset.assetId||existing.decimals!==input.budgetAsset.decimals)throw new Error('Campaign idempotency key conflicts with another request');return{id:existing.id,status:existing.status};}
-    const campaign=await this.db.campaign.create({data:{id:input.id,idempotencyKey:input.idempotencyKey,budget:input.budget,assetId:input.budgetAsset.assetId,decimals:input.budgetAsset.decimals,status:'DRAFT'}});
+    if(existing){if(existing.id!==input.id||existing.budget!==input.budget||existing.assetId!==input.budgetAsset.assetId||existing.sourceChain!==input.budgetAsset.chain||existing.decimals!==input.budgetAsset.decimals)throw new Error('Campaign idempotency key conflicts with another request');return{id:existing.id,status:existing.status};}
+    const campaign=await this.db.campaign.create({data:{id:input.id,idempotencyKey:input.idempotencyKey,budget:input.budget,assetId:input.budgetAsset.assetId,sourceChain:input.budgetAsset.chain,decimals:input.budgetAsset.decimals,status:'DRAFT'}});
     return{id:campaign.id,status:campaign.status};
   }
 
@@ -42,7 +42,7 @@ export class CampaignService {
     const fees=input.separatelyPayableFees??[];
     const exposure=calculateExposure({approved:input.budget,denomination:input.budgetAsset,quotes:input.recipients.map(r=>({atomic:r.maximumInput,asset:r.inputAsset})),separatelyPayableFees:fees});
     await this.db.$transaction(async tx=>{
-      await tx.campaign.create({data:{id:input.id,idempotencyKey:input.idempotencyKey,budget:input.budget,assetId:input.budgetAsset.assetId,decimals:input.budgetAsset.decimals,status:'APPROVED',payouts:{create:input.recipients.map(r=>({id:`${input.id}:${r.id}`,recipientId:r.id,recipientAddress:r.address,promisedAmount:r.amount,outputAssetId:r.outputAssetId,outputChain:r.outputChain}))}}});
+      await tx.campaign.create({data:{id:input.id,idempotencyKey:input.idempotencyKey,budget:input.budget,assetId:input.budgetAsset.assetId,sourceChain:input.budgetAsset.chain,decimals:input.budgetAsset.decimals,status:'APPROVED',payouts:{create:input.recipients.map(r=>({id:`${input.id}:${r.id}`,recipientId:r.id,recipientAddress:r.address,promisedAmount:r.amount,outputAssetId:r.outputAssetId,outputChain:r.outputChain}))}}});
       await tx.ledgerEntry.create({data:{campaignId:input.id,type:'BUDGET_APPROVED',amount:input.budget,assetId:input.budgetAsset.assetId,externalRef:`budget:${input.id}`}});
       for(const r of input.recipients){
         const payoutId=`${input.id}:${r.id}`,attemptId=`${payoutId}:attempt:1`,reservationId=`${payoutId}:reservation:1`;
