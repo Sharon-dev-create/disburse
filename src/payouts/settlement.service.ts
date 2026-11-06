@@ -11,7 +11,7 @@ export class SettlementService {
       const ownership=await tx.payout.findUniqueOrThrow({where:{id:payoutId},select:{campaignId:true}});
       await tx.$queryRaw`SELECT "id" FROM "Campaign" WHERE "id"=${ownership.campaignId} FOR UPDATE`;
       const payout=await tx.payout.findUniqueOrThrow({where:{id:payoutId},include:{attempts:{orderBy:{attemptNo:'desc'},take:1}}});
-      const attempt=payout.attempts[0];if(!attempt?.maxAmountIn||!attempt.inputAssetId)throw new Error('Attempt missing source asset or reserved maximum');
+      const attempt=payout.attempts[0];if(!attempt?.quoteId||!attempt.maxAmountIn||!attempt.inputAssetId)throw new Error('Attempt missing provider quote, source asset or reserved maximum');
       if(result.refundAssetId!==attempt.inputAssetId||result.outputAssetId!==payout.outputAssetId||result.recipient!==payout.recipientAddress)throw new Error('Provider status asset or recipient does not match persisted payout');
       if(attempt.providerStatusUpdatedAt&&result.updatedAt<attempt.providerStatusUpdatedAt)return;
       if(result.depositedAmount!==undefined){
@@ -21,6 +21,14 @@ export class SettlementService {
         if(result.depositedAmount<prior)throw new Error('Provider deposit snapshot is below persisted ledger total');
         const delta=result.depositedAmount-prior;
         if(delta>0n)await tx.ledgerEntry.create({data:{campaignId:payout.campaignId,payoutId,attemptId:attempt.id,type:'DEPOSIT_OBSERVED',amount:delta,assetId:attempt.inputAssetId,externalRef:`provider:${attempt.quoteId}:deposit-total:${result.depositedAmount}`}});
+      }
+      if(result.status==='SUCCESS'&&(result.amountOut!==payout.promisedAmount||!result.amountIn||result.amountIn>attempt.maxAmountIn)){
+        await tx.attempt.update({where:{id:attempt.id},data:{providerStatus:result.status,providerStatusUpdatedAt:result.updatedAt,...(result.depositedAmount!==undefined?{providerDepositedAmount:result.depositedAmount}:{})}});
+        if(payout.status!=='UNKNOWN'&&canTransition(payout.status as DomainStatus,'UNKNOWN')){
+          await tx.payout.update({where:{id:payoutId},data:{status:'UNKNOWN'}});
+          await tx.payoutEvent.create({data:{payoutId,fromStatus:payout.status,toStatus:'UNKNOWN',note:'Provider success response conflicts with persisted quote; exposure retained for reconciliation',providerRef:attempt.quoteId,txHash:result.destinationTxHashes[0]??null}});
+        }
+        return;
       }
       const mapped=reconcile({status:payout.status as PayoutStatus,promisedOutput:payout.promisedAmount,outputAssetId:payout.outputAssetId,inputAssetId:attempt.inputAssetId,reserved:attempt.maxAmountIn},result);
       if(mapped.status==='SUCCESS'&&(!result.amountIn||result.amountIn>attempt.maxAmountIn))throw new Error('Successful settlement input is missing or exceeds persisted quote maximum');

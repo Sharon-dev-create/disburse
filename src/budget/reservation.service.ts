@@ -34,7 +34,7 @@ export class ReservationService {
       if(payout.status!=='QUOTED')throw new Error('Payout is not in a reservable quoted state');
       const attempt=await tx.attempt.findUnique({where:{id:attemptId}});
       if(!attempt||attempt.payoutId!==payoutId)throw new Error('Selected attempt does not belong to payout');
-      if(!['QUOTED','COMMITTED'].includes(attempt.status)||!attempt.maxAmountIn||!attempt.inputAssetId||attempt.inputAssetId!==campaign.assetId||!attempt.depositAddress||attempt.outputAmount!==payout.promisedAmount)throw new Error('Attempt is not eligible for reservation or does not match campaign denomination/payout promise');
+      if(!['QUOTED','COMMITTED'].includes(attempt.status)||!attempt.quoteId||!attempt.maxAmountIn||!attempt.inputAssetId||attempt.inputAssetId!==campaign.assetId||!attempt.depositAddress||attempt.outputAmount!==payout.promisedAmount)throw new Error('Attempt is not eligible for reservation or does not match campaign denomination/payout promise');
       if(!attempt.expiresAt||attempt.expiresAt<=this.now()||attempt.timeWhenInactive&&attempt.timeWhenInactive<=this.now())throw new Error('Attempt quote has expired or is missing an expiry');
       if(amount!==attempt.maxAmountIn)throw new Error('Reservation must equal persisted quote maximum input');
       const existingById=await tx.reservation.findUnique({where:{id:reservationId}});
