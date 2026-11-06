@@ -40,9 +40,11 @@ describe('Anvil EVM funding integration (disposable local chain only)',()=>{
       const uncertainService=new EvmFundingService(db,uncertainAdapter,signer,cipher,{signerAddress:getAddress(source),token,gas:fundingPolicy,confirmations:1n});
       const unresolved=await uncertainService.authorizeAndSubmit({reservationId,idempotencyKey:`evm-op-${suffix}`});expect(unresolved.state).toBe('UNKNOWN');expect(unresolved.tokenAmount).toBe('1000000');
       expect((await db.reservation.findUniqueOrThrow({where:{id:reservationId}})).remainingAmount).toBe(1_000_000n);
-      const service=new EvmFundingService(db,adapter,signer,cipher,{signerAddress:getAddress(source),token,gas:fundingPolicy,confirmations:1n});
+      const service=new EvmFundingService(db,adapter,signer,cipher,{signerAddress:getAddress(source),token,gas:fundingPolicy,confirmations:2n});
       const first=await service.authorizeAndSubmit({reservationId,idempotencyKey:`evm-op-${suffix}`});expect(first.state).toBe('BROADCAST');expect(first.id).toBe(unresolved.id);expect(first.txHash).toBe(unresolved.txHash);
       const duplicate=await service.authorizeAndSubmit({reservationId,idempotencyKey:`evm-op-${suffix}`});expect(duplicate.id).toBe(first.id);expect(duplicate.txHash).toBe(first.txHash);
+      await publicClient.request({method:'anvil_mine',params:['0x1']} as never);
+      const delayed=await service.reconcile(first.id);expect(delayed.state).toBe('CONFIRMING');expect((await db.reservation.findUniqueOrThrow({where:{id:reservationId}})).remainingAmount).toBe(1_000_000n);
       await publicClient.request({method:'anvil_mine',params:['0x1']} as never);
       const final=await service.reconcile(first.id);expect(final.state).toBe('CONFIRMED');
       const balance=await publicClient.readContract({address:token.tokenAddress,abi:parseAbi(['function balanceOf(address) view returns (uint256)']),functionName:'balanceOf',args:[destination]});expect(balance).toBe(1_000_000n);

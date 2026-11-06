@@ -37,7 +37,7 @@ describe('single payout lifecycle on Anvil + PostgreSQL + deterministic provider
       const gas={maxGasLimit:200_000n,maxFeePerGas:100_000_000_000n,maxPriorityFeePerGas:2_000_000_000n,maxNativeGasCost:100_000_000_000_000_000n};
       const funding=new EvmFundingService(db,sourceAdapter,new PolicyCheckedAnvilSigner(db,sourceAdapter,source),new AesGcmSignedTransactionCipher(Buffer.alloc(32,9)),{signerAddress:getAddress(source),token:sourceConfig,gas,confirmations:1n});
       const outputVerifier=new EvmRecipientOutputVerifier(outputConfig,outputAdapter,1n);let clockMs=Date.now();const now=()=>new Date(clockMs);const worker=new SinglePayoutWorker(db,provider,funding,outputVerifier,'ANVIL',now);
-      const first=await worker.processOne();expect(first.state).toBe('QUOTED');
+      const parallel=await Promise.all([worker.processOne(),new SinglePayoutWorker(db,provider,funding,outputVerifier,'ANVIL',now).processOne()]);expect(parallel.filter(x=>x.processed)).toHaveLength(1);expect(parallel.find(x=>x.processed)?.state).toBe('QUOTED');
       const job=await db.payoutWorkItem.findUniqueOrThrow({where:{payoutId_kind:{payoutId:created.id,kind:'SINGLE_PAYOUT'}}});
       await db.payoutWorkItem.update({where:{id:job.id},data:{state:'LEASED',lockToken:'crashed-worker',leaseUntil:new Date(Date.now()-1),availableAt:new Date(Date.now()-1)}});
       const restartedWorker=new SinglePayoutWorker(db,provider,funding,outputVerifier,'ANVIL',now);
