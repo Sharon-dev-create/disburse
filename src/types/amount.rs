@@ -84,6 +84,7 @@ impl BorshDeserialize for TokenId {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 impl borsh::BorshSchema for TokenId {
     fn add_definitions_recursively(
         definitions: &mut std::collections::BTreeMap<String, borsh::schema::Definition>,
@@ -96,6 +97,7 @@ impl borsh::BorshSchema for TokenId {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 impl near_sdk::schemars::JsonSchema for TokenId {
     fn schema_name() -> String {
         "TokenId".to_string()

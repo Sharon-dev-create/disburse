@@ -59,6 +59,7 @@ impl BorshDeserialize for ChainId {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 impl borsh::BorshSchema for ChainId {
     fn add_definitions_recursively(
         definitions: &mut std::collections::BTreeMap<String, borsh::schema::Definition>,
@@ -71,6 +72,7 @@ impl borsh::BorshSchema for ChainId {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 impl near_sdk::schemars::JsonSchema for ChainId {
     fn schema_name() -> String {
         "ChainId".to_string()
