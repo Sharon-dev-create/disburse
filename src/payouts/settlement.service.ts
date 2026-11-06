@@ -6,8 +6,21 @@ import { canTransition, assertTransition, type PayoutStatus as DomainStatus } fr
 /** Applies provider snapshots atomically. Ledger amounts are positive cumulative deltas per attempt. */
 export class SettlementService {
   constructor(private readonly db:PrismaClient,private readonly now:()=>Date=()=>new Date()){}
+  private async serializable<T>(work:(tx:Prisma.TransactionClient)=>Promise<T>):Promise<T>{
+    for(let attempt=0;attempt<10;attempt++){
+      try{return await this.db.$transaction(work,{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});}
+      catch(error){
+        const metaCode=error instanceof Prisma.PrismaClientKnownRequestError?String(error.meta?.code??''):'';
+        const message=error instanceof Error?error.message:'';
+        const retryable=error instanceof Prisma.PrismaClientKnownRequestError&&(error.code==='P2034'||error.code==='P2010'&&['40001','40P01'].includes(metaCode))||/could not serialize access|deadlock detected/i.test(message);
+        if(!retryable||attempt===9)throw error;
+        await new Promise(resolve=>setTimeout(resolve,Math.min(20*(attempt+1),200)));
+      }
+    }
+    throw new Error('Serializable transaction retry exhausted');
+  }
   async apply(payoutId:string,result:StatusResult):Promise<void>{
-    await this.db.$transaction(async tx=>{
+    await this.serializable(async tx=>{
       const ownership=await tx.payout.findUniqueOrThrow({where:{id:payoutId},select:{campaignId:true}});
       await tx.$queryRaw`SELECT "id" FROM "Campaign" WHERE "id"=${ownership.campaignId} FOR UPDATE`;
       const payout=await tx.payout.findUniqueOrThrow({where:{id:payoutId},include:{attempts:{orderBy:{attemptNo:'desc'},take:1}}});
@@ -22,7 +35,7 @@ export class SettlementService {
         const delta=result.depositedAmount-prior;
         if(delta>0n)await tx.ledgerEntry.create({data:{campaignId:payout.campaignId,payoutId,attemptId:attempt.id,type:'DEPOSIT_OBSERVED',amount:delta,assetId:attempt.inputAssetId,externalRef:`provider:${attempt.quoteId}:deposit-total:${result.depositedAmount}`}});
       }
-      if(result.status==='SUCCESS'&&(result.amountOut!==payout.promisedAmount||!result.amountIn||result.amountIn>attempt.maxAmountIn)){
+      if(result.status==='SUCCESS'&&(result.amountOut!==payout.promisedAmount||!result.amountIn||result.amountIn>attempt.maxAmountIn||result.depositedAmount!==undefined&&result.amountIn>result.depositedAmount)||result.status==='REFUNDED'&&result.depositedAmount!==undefined&&result.refundedAmount!==undefined&&result.refundedAmount>result.depositedAmount){
         await tx.attempt.update({where:{id:attempt.id},data:{providerStatus:result.status,providerStatusUpdatedAt:result.updatedAt,...(result.depositedAmount!==undefined?{providerDepositedAmount:result.depositedAmount}:{})}});
         if(payout.status!=='UNKNOWN'&&canTransition(payout.status as DomainStatus,'UNKNOWN')){
           await tx.payout.update({where:{id:payoutId},data:{status:'UNKNOWN'}});
@@ -85,6 +98,6 @@ export class SettlementService {
       if(path.length>0)await tx.payout.update({where:{id:payoutId},data:{status:mapped.status}});
       let from=payout.status as DomainStatus;
       for(const to of path){await tx.payoutEvent.create({data:{payoutId,fromStatus:from,toStatus:to,note:`Provider status ${result.status}`,providerRef:attempt.quoteId,txHash:mapped.txHashes[0]??null}});from=to;}
-    },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+    });
   }
 }

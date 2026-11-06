@@ -16,7 +16,7 @@ describe('PostgreSQL financial integrity',()=>{
     const payoutIds=Array.from({length:count},(_,i)=>`${id}:p${i}`);
     const attemptIds=payoutIds.map((p,i)=>`${p}:a${i}`);
     campaignIds.push(id);
-    await db.campaign.create({data:{id,idempotencyKey:id,budget,assetId:'usdc:test',decimals:6,status:'APPROVED',payouts:{create:payoutIds.map((p,i)=>({id:p,recipientId:`r${i}`,recipientAddress:`addr-${i}`,promisedAmount:1n,outputAssetId:'out:test',outputChain:'test',status:'QUOTED',attempts:{create:{id:attemptIds[i]!,attemptNo:1,quoteId:`${p}:quote`,maxAmountIn:each,inputAssetId:'usdc:test',expiresAt:new Date(Date.now()+60_000),timeWhenInactive:new Date(Date.now()+50_000),depositAddress:`deposit-${i}`,status:'QUOTED'}}}))}}});
+    await db.campaign.create({data:{id,idempotencyKey:id,budget,assetId:'usdc:test',decimals:6,status:'APPROVED',payouts:{create:payoutIds.map((p,i)=>({id:p,recipientId:`r${i}`,recipientAddress:`addr-${i}`,promisedAmount:1n,outputAssetId:'out:test',outputChain:'test',status:'QUOTED',attempts:{create:{id:attemptIds[i]!,attemptNo:1,quoteId:`${p}:quote`,maxAmountIn:each,inputAssetId:'usdc:test',outputAmount:1n,expiresAt:new Date(Date.now()+60_000),timeWhenInactive:new Date(Date.now()+50_000),depositAddress:`deposit-${i}`,status:'QUOTED'}}}))}}});
     return {id,payoutIds,attemptIds};
   };
   const reserve=async(index:number,amount=70n,reservationId=`${fixture.id}:res${index}`)=>reservations.reserve(fixture.id,fixture.payoutIds[index]!,fixture.attemptIds[index]!,reservationId,amount);
