@@ -60,9 +60,9 @@ export class EvmFundingService {
     if(!op.signedTxCiphertext){
       const ctx=await this.loadContext(op.id);const tx=this.toTx(ctx);assertAuthorizedErc20Transfer(ctx,tx,new Date());
       const raw=await this.signer.sign(op.id,tx);
-      const parsed=parseTransaction(raw);
+      const parsed=parseTransaction(raw as `0x02${string}`);
       const recovered=await recoverTransactionAddress({serializedTransaction:raw});
-      if(!parsed.to||getAddress(recovered)!==getAddress(op.sourceAddress)||parsed.chainId!==Number(op.chainId)||parsed.nonce!==Number(op.nonce)||getAddress(parsed.to)!==getAddress(op.tokenAddress)||parsed.value!==0n||parsed.data.toLowerCase()!==tx.data.toLowerCase())throw new Error('Signer produced a transaction that differs from persisted authorization');
+      if(!parsed.to||getAddress(recovered)!==getAddress(op.sourceAddress)||parsed.chainId!==Number(op.chainId)||parsed.nonce!==Number(op.nonce)||getAddress(parsed.to)!==getAddress(op.tokenAddress)||parsed.value!==0n||(parsed.data??'0x').toLowerCase()!==tx.data.toLowerCase())throw new Error('Signer produced a transaction that differs from persisted authorization');
       const encrypted=this.cipher.encrypt(raw);const hash=keccak256(raw);
       op=await this.db.evmFundingOperation.update({where:{id:op.id,state:'AUTHORIZED'},data:{...encrypted,txHash:hash,state:'SIGNED',signedAt:new Date()}});
     }
