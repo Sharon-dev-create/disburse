@@ -2299,4 +2299,345 @@ mod tests {
             None
         );
     }
+
+    #[test]
+    fn reserved_payout_starts_execution_with_unique_reference_and_event() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        let payout_id = reserve_test_payout(&mut contract, campaign_id, "exec-start");
+        let accounting = contract.get_campaign(campaign_id).unwrap();
+        contract.start_payout_execution(payout_id, "tx:source:123".into());
+        let payout = contract.get_payout(payout_id).unwrap();
+        assert_eq!(payout.status, PayoutStatus::Executing);
+        assert_eq!(payout.execution_reference.as_deref(), Some("tx:source:123"));
+        let after = contract.get_campaign(campaign_id).unwrap();
+        assert_eq!(after.reserved, accounting.reserved);
+        assert_eq!(after.spent, accounting.spent);
+        assert_eq!(after.funded, accounting.funded);
+        assert_eq!(after.budget, accounting.budget);
+        let event: near_sdk::serde_json::Value = near_sdk::serde_json::from_str(
+            get_logs()
+                .last()
+                .unwrap()
+                .strip_prefix("EVENT_JSON:")
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(event["event"], "payout_execution_started");
+        assert_eq!(event["data"][0]["previous_status"], "Reserved");
+        assert_eq!(event["data"][0]["new_status"], "Executing");
+        assert_eq!(event["data"][0]["execution_reference"], "tx:source:123");
+    }
+
+    #[test]
+    fn execution_reference_validation_uniqueness_and_same_payout_index_are_safe() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        let first = reserve_test_payout(&mut contract, campaign_id, "reference-first");
+        let second = reserve_test_payout(&mut contract, campaign_id, "reference-second");
+        for invalid in ["", " \t", &"x".repeat(257)] {
+            assert!(
+                catch_unwind(AssertUnwindSafe(
+                    || contract.start_payout_execution(first, invalid.to_string())
+                ))
+                .is_err()
+            );
+        }
+        contract.start_payout_execution(first, "shared-ref".into());
+        set_context(accounts(1));
+        contract.grant_role(accounts(5), UserRole::Administrator);
+        set_context(accounts(5));
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || contract.start_payout_execution(second, "shared-ref".into())
+            ))
+            .is_err()
+        );
+        assert_eq!(
+            contract.get_payout(second).unwrap().status,
+            PayoutStatus::Reserved
+        );
+        // A duplicate index entry for the same payout is not treated as another payout's claim.
+        let third = reserve_test_payout(&mut contract, campaign_id, "reference-third");
+        contract
+            .execution_references
+            .insert("same-owner-ref".into(), third);
+        contract.start_payout_execution(third, "same-owner-ref".into());
+        assert_eq!(
+            contract
+                .get_payout(third)
+                .unwrap()
+                .execution_reference
+                .as_deref(),
+            Some("same-owner-ref")
+        );
+    }
+
+    #[test]
+    fn only_executing_payout_can_be_marked_pending_verification() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        let reserved = reserve_test_payout(&mut contract, campaign_id, "not-started");
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || contract.mark_payout_pending_verification(reserved)
+            ))
+            .is_err()
+        );
+        assert_eq!(
+            contract.get_payout(reserved).unwrap().status,
+            PayoutStatus::Reserved
+        );
+        assert_eq!(contract.get_payout(999), None);
+        contract.start_payout_execution(reserved, "tx:pending".into());
+        let before = contract.get_campaign(campaign_id).unwrap();
+        contract.mark_payout_pending_verification(reserved);
+        let payout = contract.get_payout(reserved).unwrap();
+        assert_eq!(payout.status, PayoutStatus::PendingVerification);
+        assert_eq!(payout.execution_reference.as_deref(), Some("tx:pending"));
+        assert_eq!(contract.get_campaign(campaign_id).unwrap(), before);
+        let event: near_sdk::serde_json::Value = near_sdk::serde_json::from_str(
+            get_logs()
+                .last()
+                .unwrap()
+                .strip_prefix("EVENT_JSON:")
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(event["event"], "payout_pending_verification");
+        assert_eq!(event["data"][0]["previous_status"], "Executing");
+        assert_eq!(event["data"][0]["new_status"], "PendingVerification");
+    }
+
+    #[test]
+    fn operator_admin_and_owner_can_transition_but_verifier_cannot() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        let operator_payout = reserve_test_payout(&mut contract, campaign_id, "auth-op");
+        contract.start_payout_execution(operator_payout, "tx:operator".into());
+        contract.mark_payout_pending_verification(operator_payout);
+
+        let admin_payout = reserve_test_payout(&mut contract, campaign_id, "auth-admin");
+        set_context(accounts(1));
+        contract.grant_role(accounts(5), UserRole::Administrator);
+        set_context(accounts(5));
+        contract.start_payout_execution(admin_payout, "tx:admin".into());
+
+        let owner_payout = reserve_test_payout(&mut contract, campaign_id, "auth-owner");
+        set_context(accounts(1));
+        contract.start_payout_execution(owner_payout, "tx:owner".into());
+
+        set_context(accounts(1));
+        contract.grant_role(accounts(4), UserRole::Verifier);
+        set_context(accounts(4));
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || contract.mark_payout_pending_verification(admin_payout)
+            ))
+            .is_err()
+        );
+        assert_eq!(
+            contract.get_payout(admin_payout).unwrap().status,
+            PayoutStatus::Executing
+        );
+        assert!(
+            get_logs()
+                .iter()
+                .all(|log| !log.contains("payout_pending_verification"))
+        );
+    }
+
+    #[test]
+    fn definitive_failure_from_executing_and_pending_retains_reservation_and_reason() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        let executing = reserve_test_payout(&mut contract, campaign_id, "fail-executing");
+        let before = contract.get_campaign(campaign_id).unwrap();
+        contract.start_payout_execution(executing, "tx:reverted-a".into());
+        contract.mark_payout_failed(executing, definitive_failure("receipt:reverted-a"));
+        let failed = contract.get_payout(executing).unwrap();
+        assert_eq!(failed.status, PayoutStatus::Failed);
+        assert_eq!(
+            failed.lifecycle_reason.as_deref(),
+            Some("Source transaction has a terminal reverted status")
+        );
+        assert_eq!(failed.execution_reference.as_deref(), Some("tx:reverted-a"));
+        assert_eq!(contract.get_campaign(campaign_id).unwrap(), before);
+        let event: near_sdk::serde_json::Value = near_sdk::serde_json::from_str(
+            get_logs()
+                .last()
+                .unwrap()
+                .strip_prefix("EVENT_JSON:")
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(event["event"], "payout_execution_failed");
+        assert_eq!(event["data"][0]["previous_status"], "Executing");
+        assert_eq!(event["data"][0]["new_status"], "Failed");
+        assert_eq!(event["data"][0]["evidence_reference"], "receipt:reverted-a");
+
+        let pending = reserve_test_payout(&mut contract, campaign_id, "fail-pending");
+        let before_pending = contract.get_campaign(campaign_id).unwrap();
+        contract.start_payout_execution(pending, "tx:reverted-b".into());
+        contract.mark_payout_pending_verification(pending);
+        contract.mark_payout_failed(pending, definitive_failure("receipt:reverted-b"));
+        assert_eq!(
+            contract.get_payout(pending).unwrap().status,
+            PayoutStatus::Failed
+        );
+        assert_eq!(contract.get_campaign(campaign_id).unwrap(), before_pending);
+    }
+
+    #[test]
+    fn manual_review_from_execution_states_keeps_reservation_and_reference() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        let executing = reserve_test_payout(&mut contract, campaign_id, "review-executing");
+        let before = contract.get_campaign(campaign_id).unwrap();
+        contract.start_payout_execution(executing, "tx:uncertain-a".into());
+        contract.move_payout_to_manual_review(executing, "Broadcast outcome is uncertain".into());
+        let review = contract.get_payout(executing).unwrap();
+        assert_eq!(review.status, PayoutStatus::ManualReview);
+        assert_eq!(
+            review.execution_reference.as_deref(),
+            Some("tx:uncertain-a")
+        );
+        assert_eq!(
+            review.lifecycle_reason.as_deref(),
+            Some("Broadcast outcome is uncertain")
+        );
+        assert_eq!(contract.get_campaign(campaign_id).unwrap(), before);
+
+        let pending = reserve_test_payout(&mut contract, campaign_id, "review-pending");
+        let before_pending = contract.get_campaign(campaign_id).unwrap();
+        contract.start_payout_execution(pending, "tx:uncertain-b".into());
+        contract.mark_payout_pending_verification(pending);
+        contract
+            .move_payout_to_manual_review(pending, "Provider and chain evidence disagree".into());
+        assert_eq!(
+            contract.get_payout(pending).unwrap().status,
+            PayoutStatus::ManualReview
+        );
+        assert_eq!(contract.get_campaign(campaign_id).unwrap(), before_pending);
+    }
+
+    #[test]
+    fn failure_and_manual_review_are_available_during_pause_but_submission_is_blocked() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        let failing = reserve_test_payout(&mut contract, campaign_id, "pause-fail");
+        contract.start_payout_execution(failing, "tx:pause-fail".into());
+        let reviewing = reserve_test_payout(&mut contract, campaign_id, "pause-review");
+        contract.start_payout_execution(reviewing, "tx:pause-review".into());
+        set_context(accounts(1));
+        contract.pause();
+        set_context(accounts(2));
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || contract.mark_payout_pending_verification(reviewing)
+            ))
+            .is_err()
+        );
+        assert_eq!(
+            contract.get_payout(reviewing).unwrap().status,
+            PayoutStatus::Executing
+        );
+        contract.mark_payout_failed(failing, definitive_failure("receipt:pause-fail"));
+        contract.move_payout_to_manual_review(reviewing, "Uncertain while paused".into());
+        assert_eq!(
+            contract.get_payout(failing).unwrap().status,
+            PayoutStatus::Failed
+        );
+        assert_eq!(
+            contract.get_payout(reviewing).unwrap().status,
+            PayoutStatus::ManualReview
+        );
+    }
+
+    #[test]
+    fn invalid_lifecycle_reasons_and_terminal_restarts_are_rejected_without_events() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        let payout_id = reserve_test_payout(&mut contract, campaign_id, "invalid-lifecycle");
+        let before = contract.get_campaign(campaign_id).unwrap();
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || contract.mark_payout_failed(payout_id, definitive_failure("evidence"))
+            ))
+            .is_err()
+        );
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || contract.move_payout_to_manual_review(payout_id, "review".into())
+            ))
+            .is_err()
+        );
+        contract.start_payout_execution(payout_id, "tx:terminal".into());
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| contract.mark_payout_failed(
+                payout_id,
+                ExecutionFailureEvidence {
+                    kind: ExecutionFailureKind::TransactionReverted,
+                    evidence_reference: "".into(),
+                    reason: "failed".into()
+                }
+            )))
+            .is_err()
+        );
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| contract.mark_payout_failed(
+                payout_id,
+                ExecutionFailureEvidence {
+                    kind: ExecutionFailureKind::TransactionReverted,
+                    evidence_reference: "receipt".into(),
+                    reason: " ".repeat(513)
+                }
+            )))
+            .is_err()
+        );
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || contract.move_payout_to_manual_review(payout_id, "".into())
+            ))
+            .is_err()
+        );
+        contract.mark_payout_failed(payout_id, definitive_failure("receipt:terminal"));
+        let failed = contract.get_payout(payout_id).unwrap();
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || contract.start_payout_execution(payout_id, "retry".into())
+            ))
+            .is_err()
+        );
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || contract.move_payout_to_manual_review(payout_id, "late review".into())
+            ))
+            .is_err()
+        );
+        assert_eq!(contract.get_payout(payout_id).unwrap(), failed);
+        assert_eq!(contract.get_campaign(campaign_id).unwrap(), before);
+        assert!(
+            get_logs()
+                .iter()
+                .all(|log| !log.contains("\"new_status\":\"Succeeded\""))
+        );
+    }
+
+    #[test]
+    fn global_pause_blocks_starting_execution_and_nonexistent_payouts_fail() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        let payout_id = reserve_test_payout(&mut contract, campaign_id, "pause-start");
+        set_context(accounts(1));
+        contract.pause();
+        set_context(accounts(2));
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || contract.start_payout_execution(payout_id, "tx:paused".into())
+            ))
+            .is_err()
+        );
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || contract.start_payout_execution(999, "tx:missing".into())
+            ))
+            .is_err()
+        );
+        assert_eq!(
+            contract.get_payout(payout_id).unwrap().status,
+            PayoutStatus::Reserved
+        );
+    }
 }
