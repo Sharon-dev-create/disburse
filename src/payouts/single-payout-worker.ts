@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { PrismaClient, type JsonValue, type PayoutWorkItem } from '@prisma/client';
+import { PrismaClient, Prisma, type PayoutWorkItem } from '@prisma/client';
 import type { IntentsProvider, QuoteRequest, StatusResult } from '../intents/provider.interface.js';
 import type { EvmFundingService } from '../funding-control/evm/evm-funding.service.js';
 import { ReservationService } from '../budget/reservation.service.js';
@@ -7,9 +7,9 @@ import { PayoutOrchestrator } from './orchestrator.js';
 import { SettlementService } from './settlement.service.js';
 import type { RecipientOutputVerifier } from './recipient-output-verifier.js';
 
-interface ClaimedWork {id:string;payoutId:string;payload:JsonValue;attempts:number;maxAttempts:number;lockToken:string}
+interface ClaimedWork {id:string;payoutId:string;payload:Prisma.JsonValue;attempts:number;maxAttempts:number;lockToken:string}
 export interface WorkerTickResult {processed:boolean;payoutId?:string;state?:string;error?:string}
-const quoteRequest=(payload:JsonValue):QuoteRequest=>{
+const quoteRequest=(payload:Prisma.JsonValue):QuoteRequest=>{
   if(!payload||typeof payload!=='object'||Array.isArray(payload))throw new Error('Persisted payout quote request is invalid');
   const p=payload as Record<string,unknown>;
   const strings=['swapType','originAsset','destinationAsset','amount','recipient','refundTo','depositType','recipientType','refundType','deadline'];
@@ -75,7 +75,7 @@ export class SinglePayoutWorker {
       return{done:false,state:'QUOTED'};
     }
     if(attempt.inputAssetId!==payout.campaign.assetId||attempt.outputAmount!==payout.promisedAmount||requestRecipient(work.payload)!==payout.recipientAddress)throw new Error('Persisted quote attempt no longer matches campaign payout');
-    if(!attempt.depositAddress||!attempt.expiresAt||attempt.expiresAt<=this.now()||attempt.timeWhenInactive&&attempt.timeWhenInactive<=this.now()){
+    if(!attempt.quoteId||!attempt.depositAddress||!attempt.expiresAt||attempt.expiresAt<=this.now()||attempt.timeWhenInactive&&attempt.timeWhenInactive<=this.now()){
       if(!payout.reservations.some(r=>r.status==='ACTIVE')){
         await this.db.$transaction(async tx=>{await tx.attempt.update({where:{id:attempt!.id},data:{status:'EXPIRED'}});await tx.payout.update({where:{id:payout.id},data:{status:'EXPIRED'}});await tx.payoutEvent.create({data:{payoutId:payout.id,fromStatus:payout.status,toStatus:'EXPIRED',note:'Quote expired before reservation or funding',providerRef:attempt!.quoteId}});});
         return{done:false,state:'EXPIRED',delayMs:300_000};
@@ -139,4 +139,4 @@ export class SinglePayoutWorker {
   private async markPayoutManual(payoutId:string,error:string):Promise<void>{await this.db.$transaction(async tx=>{const p=await tx.payout.findUnique({where:{id:payoutId}});if(!p)return;await tx.payout.update({where:{id:payoutId},data:{recipientOutputState:'MANUAL_REVIEW',...(p.status!=='SUCCESS'&&p.status!=='UNKNOWN'?{status:'UNKNOWN'}:{})}});if(p.status!=='SUCCESS'&&p.status!=='UNKNOWN')await tx.payoutEvent.create({data:{payoutId,fromStatus:p.status,toStatus:'UNKNOWN',note:`Worker stopped after bounded retries: ${error.slice(0,300)}`}});});}
 }
 
-function requestRecipient(payload:JsonValue):string {return String((payload as Record<string,unknown>).recipient??'');}
+function requestRecipient(payload:Prisma.JsonValue):string {return String((payload as Record<string,unknown>).recipient??'');}
