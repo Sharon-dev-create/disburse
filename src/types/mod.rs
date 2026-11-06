@@ -78,6 +78,10 @@ mod tests {
         assert_eq!(round_trip_borsh(&original), original);
         let json = serde_json::to_string(&original).unwrap();
         assert_eq!(serde_json::from_str::<Payout>(&json).unwrap(), original);
+        assert_eq!(
+            original.expected_output_amount.token_id(),
+            &TokenId::external("eip155:11155111/erc20:0xtoken".to_string()).unwrap()
+        );
     }
 
     #[test]
@@ -101,43 +105,75 @@ mod tests {
 
     #[test]
     fn token_amount_keeps_atomic_value_decimals_and_token_identity() {
-        let amount = token_amount(TokenId::external("token.one".to_string()), 42, 8);
+        let amount = token_amount(TokenId::external("token.one".to_string()).unwrap(), 42, 8);
         assert_eq!(amount.atomic_amount(), 42);
         assert_eq!(amount.decimals(), 8);
         assert_eq!(
             amount.token_id(),
-            &TokenId::external("token.one".to_string())
+            &TokenId::external("token.one".to_string()).unwrap()
         );
         assert_ne!(
             amount,
-            token_amount(TokenId::external("token.two".to_string()), 42, 8)
+            token_amount(TokenId::external("token.two".to_string()).unwrap(), 42, 8)
         );
+    }
+
+    #[test]
+    fn near_token_identity_uses_validated_account_id() {
+        let token = TokenId::near(accounts(2));
+        assert_eq!(token.near_account_id(), Some(&accounts(2)));
+    }
+
+    #[test]
+    fn external_token_identifiers_reject_empty_and_whitespace() {
+        use super::identifier::IdentifierError;
+
+        assert_eq!(
+            TokenId::external(String::new()),
+            Err(IdentifierError::Empty)
+        );
+        assert_eq!(
+            TokenId::external(" \t ".to_string()),
+            Err(IdentifierError::Empty)
+        );
+
+        let token = TokenId::external("  opaque:token  ".to_string()).unwrap();
+        assert_eq!(token, TokenId::External("  opaque:token  ".to_string()));
+    }
+
+    #[test]
+    fn chain_identifiers_reject_empty_and_whitespace() {
+        use super::identifier::IdentifierError;
+
+        assert_eq!(ChainId::new(String::new()), Err(IdentifierError::Empty));
+        assert_eq!(
+            ChainId::new(" \n ".to_string()),
+            Err(IdentifierError::Empty)
+        );
+
+        let chain = ChainId::new(" custom:network ".to_string()).unwrap();
+        assert_eq!(chain.as_str(), " custom:network ");
     }
 
     #[test]
     fn destination_represents_an_evm_recipient_without_assuming_support() {
         let destination = PayoutDestination {
-            chain_id: ChainId::new("eip155:1".to_string()),
+            chain_id: ChainId::new("eip155:1".to_string()).unwrap(),
             recipient_address: "0x2222222222222222222222222222222222222222".to_string(),
-            expected_output_token_id: TokenId::external("eip155:1/erc20:0xabc".to_string()),
         };
         assert_eq!(destination.chain_id.as_str(), "eip155:1");
         assert!(destination.recipient_address.starts_with("0x"));
-        assert_eq!(
-            destination.expected_output_token_id,
-            TokenId::external("eip155:1/erc20:0xabc".to_string())
-        );
     }
 
     #[test]
     fn settlement_evidence_records_verifier_assertion() {
         let evidence = SettlementEvidence {
             payout_id: 4,
-            destination_chain_id: ChainId::new("eip155:1".to_string()),
+            destination_chain_id: ChainId::new("eip155:1".to_string()).unwrap(),
             destination_transaction_reference: "0xdeadbeef".to_string(),
             recipient_address: "0x2222222222222222222222222222222222222222".to_string(),
             output_amount: token_amount(
-                TokenId::external("eip155:1/erc20:0xabc".to_string()),
+                TokenId::external("eip155:1/erc20:0xabc".to_string()).unwrap(),
                 90,
                 6,
             ),
@@ -146,6 +182,7 @@ mod tests {
             verified_at_ns: 789,
             evidence_reference: Some("sha256:example".to_string()),
         };
+        assert_eq!(round_trip_borsh(&evidence), evidence);
         let decoded: SettlementEvidence =
             serde_json::from_str(&serde_json::to_string(&evidence).unwrap()).unwrap();
         assert_eq!(decoded, evidence);

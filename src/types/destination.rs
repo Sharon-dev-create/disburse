@@ -1,6 +1,6 @@
 use near_sdk::near;
 
-use super::{amount::TokenId, identifier::{IdentifierError, validate_identifier}};
+use super::identifier::{IdentifierError, validate_identifier};
 
 /// Provider/chain-native identifier. This type does not claim the chain is supported.
 #[near(serializers = [borsh, json])]
