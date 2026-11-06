@@ -89,22 +89,27 @@ describe('PostgreSQL financial integrity',()=>{
     expect(await db.ledgerEntry.count({where:{campaignId:fixture.id,type:'RESERVED'}})).toBe(10);
   });
 
-  it('does not double-count a deposit when it becomes a settlement',async()=>{
+  it('does not mark provider-reported success as payout success without source and recipient proof',async()=>{
     await reserve(0);
     await settlements.apply(fixture.payoutIds[0]!,{status:'SUCCESS',updatedAt:new Date(),amountIn:50n,amountOut:1n,depositedAmount:70n,refundAssetId:'usdc:test',outputAssetId:'out:test',recipient:'addr-0',originTxHashes:['origin'],destinationTxHashes:['destination'],rawSanitized:{}});
     const reservation=await db.reservation.findUniqueOrThrow({where:{id:`${fixture.id}:res0`}});
     const payout=await db.payout.findUniqueOrThrow({where:{id:fixture.payoutIds[0]!}});
-    expect(reservation.remainingAmount).toBe(20n);
-    expect(payout.activeExposure).toBe(20n);
-    expect(await db.ledgerEntry.count({where:{attemptId:fixture.attemptIds[0]!,type:'SETTLEMENT_CONFIRMED'}})).toBe(1);
+    expect(reservation.remainingAmount).toBe(70n);
+    expect(payout.activeExposure).toBe(70n);
+    expect(payout.status).toBe('PROCESSING');
+    expect(payout.recipientOutputState).toBe('PENDING');
+    expect(await db.ledgerEntry.count({where:{attemptId:fixture.attemptIds[0]!,type:'PROVIDER_SETTLEMENT_REPORTED'}})).toBe(1);
+    expect(await db.ledgerEntry.count({where:{attemptId:fixture.attemptIds[0]!,type:'SETTLEMENT_CONFIRMED'}})).toBe(0);
   });
 
-  it('reduces exposure only by confirmed partial refund amounts',async()=>{
+  it('records a provider partial-refund report without releasing unverified source exposure',async()=>{
     await reserve(0);
     await settlements.apply(fixture.payoutIds[0]!,{status:'SUCCESS',updatedAt:new Date(),amountIn:50n,amountOut:1n,depositedAmount:70n,refundedAmount:10n,refundAssetId:'usdc:test',outputAssetId:'out:test',recipient:'addr-0',originTxHashes:['origin'],destinationTxHashes:['destination'],rawSanitized:{}});
     const reservation=await db.reservation.findUniqueOrThrow({where:{id:`${fixture.id}:res0`}});
-    expect(reservation.remainingAmount).toBe(10n);
-    expect((await db.payout.findUniqueOrThrow({where:{id:fixture.payoutIds[0]!}})).activeExposure).toBe(10n);
+    expect(reservation.remainingAmount).toBe(70n);
+    expect((await db.payout.findUniqueOrThrow({where:{id:fixture.payoutIds[0]!}})).activeExposure).toBe(70n);
+    expect(await db.ledgerEntry.count({where:{attemptId:fixture.attemptIds[0]!,type:'PROVIDER_REFUND_REPORTED'}})).toBe(1);
+    expect(await db.ledgerEntry.count({where:{attemptId:fixture.attemptIds[0]!,type:'REFUND_CONFIRMED'}})).toBe(0);
   });
 
   it('retains exposure when deposits remain unresolved',async()=>{
