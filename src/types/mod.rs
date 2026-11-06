@@ -138,7 +138,29 @@ mod tests {
         );
 
         let token = TokenId::external("  opaque:token  ".to_string()).unwrap();
-        assert_eq!(token, TokenId::External("  opaque:token  ".to_string()));
+        assert_eq!(token.external_identifier(), Some("  opaque:token  "));
+    }
+
+    #[test]
+    fn token_id_deserialization_rejects_empty_external_identifiers() {
+        let invalid_json = r#"{"External":""}"#;
+        assert!(serde_json::from_str::<TokenId>(invalid_json).is_err());
+
+        // Borsh enum variant 1 (External), followed by an empty string length.
+        let invalid_borsh = [1_u8, 0, 0, 0, 0];
+        assert!(borsh::from_slice::<TokenId>(&invalid_borsh).is_err());
+    }
+
+    #[test]
+    fn token_amount_deserialization_rejects_invalid_nested_token_id() {
+        let invalid_json = r#"{"token_id":{"External":" "},"atomic_amount":1,"decimals":0}"#;
+        assert!(serde_json::from_str::<TokenAmount>(invalid_json).is_err());
+
+        let valid = token_amount(TokenId::near(accounts(2)), 1, 0);
+        assert_eq!(
+            serde_json::from_str::<TokenAmount>(&serde_json::to_string(&valid).unwrap()).unwrap(),
+            valid
+        );
     }
 
     #[test]
@@ -153,6 +175,12 @@ mod tests {
 
         let chain = ChainId::new(" custom:network ".to_string()).unwrap();
         assert_eq!(chain.as_str(), " custom:network ");
+    }
+
+    #[test]
+    fn chain_id_deserialization_rejects_empty_identifiers() {
+        assert!(serde_json::from_str::<ChainId>("\" \t \"").is_err());
+        assert!(borsh::from_slice::<ChainId>(&[0, 0, 0, 0]).is_err());
     }
 
     #[test]
