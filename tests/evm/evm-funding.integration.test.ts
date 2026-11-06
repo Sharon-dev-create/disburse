@@ -25,6 +25,8 @@ describe('Anvil EVM funding integration (disposable local chain only)',()=>{
     const deployment=await publicClient.waitForTransactionReceipt({hash:deployed});if(!deployment.contractAddress)throw new Error('Anvil test token deployment failed');
     const token: EvmTokenConfig={assetId:'SPIKE_USDC',sourceChain:'ANVIL',chainId,tokenAddress:deployment.contractAddress,decimals:6};
     const adapter=new EvmChainAdapter(chain,token,rpc);
+    class LostBroadcastResponseAdapter extends EvmChainAdapter { override async broadcast(_raw:`0x${string}`):Promise<`0x${string}`>{throw new Error('simulated network timeout before acceptance');} }
+    const uncertainAdapter=new LostBroadcastResponseAdapter(chain,token,rpc);
     const fundingPolicy:EvmGasPolicy={maxGasLimit:200000n,maxFeePerGas:100_000_000_000n,maxPriorityFeePerGas:2_000_000_000n,maxNativeGasCost:100_000_000_000_000_000n};
     const destination='0x00000000000000000000000000000000000000d1' as Address;
     const suffix=`${Date.now()}-${Math.floor(Math.random()*1e8)}`;const campaignId=`evm-c-${suffix}`;const payoutId=`evm-p-${suffix}`;const attemptId=`evm-a-${suffix}`;const reservationId=`evm-r-${suffix}`;
@@ -33,8 +35,13 @@ describe('Anvil EVM funding integration (disposable local chain only)',()=>{
       await db.payout.create({data:{id:payoutId,campaignId,recipientId:`r-${suffix}`,recipientAddress:destination,promisedAmount:900_000n,outputAssetId:'DEST',outputChain:'OTHER',status:'RESERVED',activeExposure:1_000_000n}});
       await db.attempt.create({data:{id:attemptId,payoutId,attemptNo:1,quoteId:`q-${suffix}`,maxAmountIn:1_000_000n,inputAssetId:token.assetId,inputChain:token.sourceChain,outputAmount:900_000n,expiresAt:new Date(Date.now()+300_000),depositAddress:destination,status:'COMMITTED'}});
       await db.reservation.create({data:{id:reservationId,campaignId,payoutId,attemptId,amount:1_000_000n,remainingAmount:1_000_000n,status:'ACTIVE'}});
-      const service=new EvmFundingService(db,adapter,new PolicyCheckedAnvilSigner(db,adapter,source),new AesGcmSignedTransactionCipher(Buffer.alloc(32,7)),{signerAddress:getAddress(source),token,gas:fundingPolicy,confirmations:1n});
-      const first=await service.authorizeAndSubmit({reservationId,idempotencyKey:`evm-op-${suffix}`});expect(first.state).toBe('BROADCAST');expect(first.tokenAmount).toBe('1000000');
+      const cipher=new AesGcmSignedTransactionCipher(Buffer.alloc(32,7));
+      const signer=new PolicyCheckedAnvilSigner(db,adapter,source);
+      const uncertainService=new EvmFundingService(db,uncertainAdapter,signer,cipher,{signerAddress:getAddress(source),token,gas:fundingPolicy,confirmations:1n});
+      const unresolved=await uncertainService.authorizeAndSubmit({reservationId,idempotencyKey:`evm-op-${suffix}`});expect(unresolved.state).toBe('UNKNOWN');expect(unresolved.tokenAmount).toBe('1000000');
+      expect((await db.reservation.findUniqueOrThrow({where:{id:reservationId}})).remainingAmount).toBe(1_000_000n);
+      const service=new EvmFundingService(db,adapter,signer,cipher,{signerAddress:getAddress(source),token,gas:fundingPolicy,confirmations:1n});
+      const first=await service.authorizeAndSubmit({reservationId,idempotencyKey:`evm-op-${suffix}`});expect(first.state).toBe('BROADCAST');expect(first.id).toBe(unresolved.id);expect(first.txHash).toBe(unresolved.txHash);
       const duplicate=await service.authorizeAndSubmit({reservationId,idempotencyKey:`evm-op-${suffix}`});expect(duplicate.id).toBe(first.id);expect(duplicate.txHash).toBe(first.txHash);
       await publicClient.request({method:'anvil_mine',params:['0x1']} as never);
       const final=await service.reconcile(first.id);expect(final.state).toBe('CONFIRMED');

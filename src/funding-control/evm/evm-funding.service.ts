@@ -62,13 +62,14 @@ export class EvmFundingService {
       const raw=await this.signer.sign(op.id,tx);
       const parsed=parseTransaction(raw as `0x02${string}`);
       const recovered=await recoverTransactionAddress({serializedTransaction:raw as `0x02${string}`});
-      if(!parsed.to||getAddress(recovered)!==getAddress(op.sourceAddress)||parsed.chainId!==Number(op.chainId)||parsed.nonce!==Number(op.nonce)||getAddress(parsed.to)!==getAddress(op.tokenAddress)||(parsed.value??0n)!==0n||(parsed.data??'0x').toLowerCase()!==tx.data.toLowerCase())throw new Error('Signer produced a transaction that differs from persisted authorization');
+      const signedGas=parsed.gas??0n;const signedMaxFee=parsed.maxFeePerGas??0n;const signedPriority=parsed.maxPriorityFeePerGas??0n;
+      if(!parsed.to||getAddress(recovered)!==getAddress(op.sourceAddress)||parsed.chainId!==Number(op.chainId)||parsed.nonce!==Number(op.nonce)||getAddress(parsed.to)!==getAddress(op.tokenAddress)||(parsed.value??0n)!==0n||(parsed.data??'0x').toLowerCase()!==tx.data.toLowerCase()||signedGas!==op.gasLimit||signedGas>op.maxGasLimit||signedMaxFee>op.maxFeePerGasCap||signedPriority>op.maxPriorityFeePerGasCap||signedPriority>signedMaxFee||signedGas*signedMaxFee>op.maxNativeGasCost||parsed.accessList?.length)throw new Error('Signer produced a transaction that differs from persisted authorization');
       const encrypted=this.cipher.encrypt(raw);const hash=keccak256(raw);
       op=await this.db.evmFundingOperation.update({where:{id:op.id,state:'AUTHORIZED'},data:{signedTxCiphertext:encrypted.ciphertext,signedTxIv:encrypted.iv,signedTxAuthTag:encrypted.authTag,txHash:hash,state:'SIGNED',signedAt:new Date()}});
     }
     const raw=this.cipher.decrypt({ciphertext:op.signedTxCiphertext!,iv:op.signedTxIv!,authTag:op.signedTxAuthTag!});
     try{const hash=await this.chain.broadcast(raw);if(hash.toLowerCase()!==op.txHash?.toLowerCase())throw new Error('Broadcast hash differs from persisted signed transaction');op=await this.db.evmFundingOperation.update({where:{id:op.id},data:{state:'BROADCAST',broadcastAt:op.broadcastAt??new Date(),failureReason:null}});}
-    catch(error){const known=op.txHash?await this.chain.publicClient.getTransaction({hash:op.txHash as Hex}).catch(()=>null):null;if(!known){op=await this.db.evmFundingOperation.update({where:{id:op.id},data:{state:'UNKNOWN',failureReason:error instanceof Error?error.message:'Broadcast outcome unknown'}});}}
+    catch(error){const known=op.txHash?await this.chain.publicClient.getTransaction({hash:op.txHash as Hex}).catch(()=>null):null;if(known){op=await this.db.evmFundingOperation.update({where:{id:op.id},data:{state:'BROADCAST',broadcastAt:op.broadcastAt??new Date(),failureReason:null}});}else{op=await this.db.evmFundingOperation.update({where:{id:op.id},data:{state:'UNKNOWN',failureReason:error instanceof Error?error.message:'Broadcast outcome unknown'}});}}
     return summary(op);
   }
 
@@ -76,8 +77,8 @@ export class EvmFundingService {
     let op=await this.db.evmFundingOperation.findUniqueOrThrow({where:{id},include:{campaign:true,payout:true,attempt:true,reservation:true}});
     if(!op.txHash)return summary(op);
     const hash=op.txHash as Hex;const tx=await this.chain.publicClient.getTransaction({hash}).catch(()=>null);const receipt=await this.chain.publicClient.getTransactionReceipt({hash}).catch(()=>null);
-    if(!tx){return summary(await this.db.evmFundingOperation.update({where:{id},data:{state:'UNKNOWN',reconciledAt:new Date()}}));}
-    if(!receipt)return summary(await this.db.evmFundingOperation.update({where:{id},data:{state:'CONFIRMING',reconciledAt:new Date()}}));
+    if(!tx){if(op.state==='CONFIRMED'){await this.reverseIfPreviouslyObserved(op,op.lastObservedBlockHash??'unknown');return summary(await this.db.evmFundingOperation.update({where:{id},data:{state:'REORGED',failureReason:'Previously confirmed transaction is no longer available from the chain RPC',reconciledAt:new Date()}}));}return summary(await this.db.evmFundingOperation.update({where:{id},data:{state:'UNKNOWN',reconciledAt:new Date()}}));}
+    if(!receipt){if(op.state==='CONFIRMED'){await this.reverseIfPreviouslyObserved(op,op.lastObservedBlockHash??'unknown');return summary(await this.db.evmFundingOperation.update({where:{id},data:{state:'REORGED',failureReason:'Previously confirmed transaction no longer has a receipt',reconciledAt:new Date()}}));}return summary(await this.db.evmFundingOperation.update({where:{id},data:{state:'CONFIRMING',reconciledAt:new Date()}}));}
     const ctx: EvmFundingOperationContext={operation:op,campaign:op.campaign,payout:op.payout,attempt:op.attempt,reservation:op.reservation};const expected=this.toTx(ctx);
     if(tx.chainId!==Number(op.chainId)||getAddress(tx.from)!==getAddress(op.sourceAddress)||!tx.to||getAddress(tx.to)!==getAddress(op.tokenAddress)||tx.input.toLowerCase()!==expected.data.toLowerCase()||tx.value!==0n||tx.nonce!==Number(op.nonce))throw new Error('Chain transaction evidence does not match funding authorization');
     if(receipt.status!=='success')return summary(await this.db.evmFundingOperation.update({where:{id},data:{state:'FAILED',failureReason:'Source-chain transaction reverted',reconciledAt:new Date()}}));
@@ -91,7 +92,7 @@ export class EvmFundingService {
     return summary(await this.db.evmFundingOperation.findUniqueOrThrow({where:{id}}));
   }
 
-  private async reverseIfPreviouslyObserved(op:EvmFundingOperation,blockHash:Hex):Promise<void>{await this.db.ledgerEntry.createMany({data:[{campaignId:op.campaignId,payoutId:op.payoutId,attemptId:op.attemptId,type:'DEPOSIT_REVERSED',amount:op.tokenAmount,assetId:op.sourceAssetId,externalRef:`evm-reorg:${op.id}:${blockHash}`,metadata:{txHash:op.txHash,orphanedBlockHash:blockHash}}],skipDuplicates:true});}
+  private async reverseIfPreviouslyObserved(op:EvmFundingOperation,blockHash:string):Promise<void>{await this.db.$transaction(async db=>{await db.ledgerEntry.createMany({data:[{campaignId:op.campaignId,payoutId:op.payoutId,attemptId:op.attemptId,type:'DEPOSIT_REVERSED',amount:op.tokenAmount,assetId:op.sourceAssetId,externalRef:`evm-reorg:${op.id}:${blockHash}`,metadata:{txHash:op.txHash,orphanedBlockHash:blockHash}}],skipDuplicates:true});const reservation=await db.reservation.findUnique({where:{id:op.reservationId}});if(reservation&&reservation.remainingAmount<reservation.amount){const restore=reservation.amount-reservation.remainingAmount;await db.reservation.update({where:{id:reservation.id},data:{remainingAmount:reservation.amount,status:'ACTIVE',releasedAt:null}});await db.payout.update({where:{id:op.payoutId},data:{activeExposure:{increment:restore},status:'UNKNOWN'}});await db.payoutEvent.create({data:{payoutId:op.payoutId,fromStatus:'UNKNOWN',toStatus:'UNKNOWN',note:'Previously confirmed source deposit was removed by a chain reorganization; exposure restored for manual reconciliation',txHash:op.txHash}});}});}
 }
 
 function awaitTransferData(destination:string,amount:bigint):Hex {return `0xa9059cbb${destination.toLowerCase().replace(/^0x/,'').padStart(64,'0')}${amount.toString(16).padStart(64,'0')}` as Hex;}
