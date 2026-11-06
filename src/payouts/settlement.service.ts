@@ -83,7 +83,7 @@ export class SettlementService {
         if(settled+refunded>deposited)throw new Error('Confirmed settlement and refunds exceed authoritative deposit');
         const unresolved=deposited-settled-refunded;
         const reservation=await tx.reservation.findFirst({where:{attemptId:attempt.id,status:'ACTIVE'}});
-        const fundingUnresolved=await tx.evmFundingOperation.findFirst({where:{reservationId:reservation?.id,state:{in:['AUTHORIZED','SIGNED','BROADCAST','CONFIRMING','UNKNOWN','REORGED']}}});
+        const fundingUnresolved=reservation?await tx.evmFundingOperation.findFirst({where:{reservationId:reservation.id,state:{in:['AUTHORIZED','SIGNED','BROADCAST','CONFIRMING','UNKNOWN','REORGED']}}}):null;
         if(reservation&&!fundingUnresolved&&reservation.remainingAmount>unresolved){
           const delta=reservation.remainingAmount-unresolved;
           const nextRemaining=unresolved;
