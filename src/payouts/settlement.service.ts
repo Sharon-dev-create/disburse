@@ -9,9 +9,22 @@ export class SettlementService {
     await this.db.$transaction(async tx=>{
       const payout=await tx.payout.findUniqueOrThrow({where:{id:payoutId},include:{attempts:{orderBy:{attemptNo:'desc'},take:1}}});
       const attempt=payout.attempts[0]; if(!attempt?.maxAmountIn||!attempt.inputAssetId) throw new Error('Attempt missing source asset or reserved maximum');
+      if(result.refundAssetId!==attempt.inputAssetId||result.outputAssetId!==payout.outputAssetId||result.recipient!==payout.recipientAddress)throw new Error('Provider status asset or recipient does not match persisted payout');
       const mapped=reconcile({status:payout.status as PayoutStatus,promisedOutput:payout.promisedAmount,outputAssetId:payout.outputAssetId,inputAssetId:attempt.inputAssetId,reserved:payout.activeExposure},result);
       const terminal=mapped.status==='SUCCESS'||mapped.status==='REFUNDED';
       const ext=`provider:${attempt.quoteId}:${mapped.status}`;
+      if(result.depositedAmount!==undefined){
+        const depositRef=`provider:${attempt.quoteId}:deposit`;
+        const previous=await tx.ledgerEntry.findUnique({where:{externalRef:depositRef}});
+        if(previous&&previous.amount!==result.depositedAmount)throw new Error('Provider deposit amount changed; manual reconciliation required');
+        if(!previous)await tx.ledgerEntry.create({data:{campaignId:payout.campaignId,payoutId,type:'DEPOSIT_OBSERVED',amount:result.depositedAmount,assetId:attempt.inputAssetId,externalRef:depositRef}});
+      }
+      if(mapped.confirmedRefund!==undefined){
+        const refundRef=`provider:${attempt.quoteId}:refund-confirmed`;
+        const previous=await tx.ledgerEntry.findUnique({where:{externalRef:refundRef}});
+        if(previous&&previous.amount!==mapped.confirmedRefund)throw new Error('Provider refund amount changed; manual reconciliation required');
+        if(!previous)await tx.ledgerEntry.create({data:{campaignId:payout.campaignId,payoutId,type:'REFUND_CONFIRMED',amount:mapped.confirmedRefund,assetId:attempt.inputAssetId,externalRef:refundRef,metadata:{originTxHashes:result.originTxHashes}}});
+      }
       const exists=await tx.ledgerEntry.findUnique({where:{externalRef:ext}}); if(exists)return;
       const path:DomainStatus[]=[];let cursor=payout.status as DomainStatus;
       for(let guard=0;cursor!==mapped.status&&guard<5;guard++){
@@ -24,7 +37,10 @@ export class SettlementService {
       if(mapped.status==='SUCCESS'){
         await tx.ledgerEntry.create({data:{campaignId:payout.campaignId,payoutId,type:'SETTLEMENT_CONFIRMED',amount:mapped.settledInput!,assetId:attempt.inputAssetId,externalRef:ext,metadata:{txHashes:mapped.txHashes}}});
       } else if(mapped.status==='REFUNDED'){
-        await tx.ledgerEntry.create({data:{campaignId:payout.campaignId,payoutId,type:'REFUND_CONFIRMED',amount:mapped.confirmedRefund!,assetId:attempt.inputAssetId,externalRef:ext,metadata:{txHashes:mapped.txHashes}}});
+        const refundRef=`provider:${attempt.quoteId}:refund-confirmed`;
+        const previous=await tx.ledgerEntry.findUnique({where:{externalRef:refundRef}});
+        if(previous&&previous.amount!==mapped.confirmedRefund)throw new Error('Provider refund amount changed; manual reconciliation required');
+        if(!previous)await tx.ledgerEntry.create({data:{campaignId:payout.campaignId,payoutId,type:'REFUND_CONFIRMED',amount:mapped.confirmedRefund!,assetId:attempt.inputAssetId,externalRef:refundRef,metadata:{txHashes:mapped.txHashes}}});
       } else if(mapped.status==='FAILED'){
         await tx.ledgerEntry.create({data:{campaignId:payout.campaignId,payoutId,type:'FAILED',amount:0n,assetId:attempt.inputAssetId,externalRef:ext}});
       }

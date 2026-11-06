@@ -27,7 +27,8 @@ export class OneClickClient implements IntentsProvider {
     const d=statusSchema.parse(await res.json()); const s=d.swapDetails; const optional=(x?:string)=>x===undefined?undefined:positive(x);
     const amountIn=optional(s.amountIn),amountOut=optional(s.amountOut),depositedAmount=optional(s.depositedAmount),refundedAmount=optional(s.refundedAmount);
     const refundAssetId=d.quoteResponse.quoteRequest.originAsset;
-    if(typeof refundAssetId!=='string'||refundAssetId.length===0)throw new Error('Status response missing original quote originAsset');
-    return {status:d.status as ProviderStatus,updatedAt:new Date(d.updatedAt),...(amountIn!==undefined?{amountIn}:{}),...(amountOut!==undefined?{amountOut}:{}),...(depositedAmount!==undefined?{depositedAmount}:{}),...(refundedAmount!==undefined?{refundedAmount}:{}),refundAssetId,originTxHashes:(s.originChainTxHashes??[]).map(x=>x.hash),destinationTxHashes:(s.destinationChainTxHashes??[]).map(x=>x.hash),rawSanitized:sanitize(d)};
+    const outputAssetId=d.quoteResponse.quoteRequest.destinationAsset,recipient=d.quoteResponse.quoteRequest.recipient;
+    if(typeof refundAssetId!=='string'||!refundAssetId||typeof outputAssetId!=='string'||!outputAssetId||typeof recipient!=='string'||!recipient)throw new Error('Status response missing original quote asset or recipient');
+    return {status:d.status as ProviderStatus,updatedAt:new Date(d.updatedAt),...(amountIn!==undefined?{amountIn}:{}),...(amountOut!==undefined?{amountOut}:{}),...(depositedAmount!==undefined?{depositedAmount}:{}),...(refundedAmount!==undefined?{refundedAmount}:{}),refundAssetId,outputAssetId,recipient,originTxHashes:(s.originChainTxHashes??[]).map(x=>x.hash),destinationTxHashes:(s.destinationChainTxHashes??[]).map(x=>x.hash),rawSanitized:sanitize(d)};
   }
 }

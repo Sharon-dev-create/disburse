@@ -1,15 +1,20 @@
-export interface LedgerLine { type:'APPROVED'|'RESERVED'|'RELEASED'|'DEPOSITED'|'SETTLED'|'REFUND_PENDING'|'REFUNDED'|'FAILED'|'ADJUSTMENT'; amount:bigint; reference:string; confirmed:boolean; direction?:'IN'|'OUT' }
+export interface LedgerLine { type:'APPROVED'|'RESERVED'|'RELEASED'|'DEPOSITED'|'SETTLED'|'REFUND_PENDING'|'REFUNDED'|'FAILED'|'ADJUSTMENT'; amount:bigint; reference:string; confirmed:boolean; direction?:'IN'|'OUT'; payoutId?:string }
 export interface Balances { approved:bigint; reserved:bigint; deposited:bigint; settled:bigint; refunded:bigint; unresolved:bigint; available:bigint }
 export function balances(lines:LedgerLine[]):Balances {
   const sum=(...types:LedgerLine['type'][])=>(lines.filter(l=>types.includes(l.type)&&l.confirmed).reduce((s,l)=>s+l.amount,0n));
   const approved=sum('APPROVED')+lines.filter(l=>l.type==='ADJUSTMENT'&&l.confirmed&&l.direction!=='OUT').reduce((s,l)=>s+l.amount,0n)-lines.filter(l=>l.type==='ADJUSTMENT'&&l.confirmed&&l.direction==='OUT').reduce((s,l)=>s+l.amount,0n);
-  const reserved=sum('RESERVED')-sum('RELEASED');
-  const deposited=sum('DEPOSITED'); const settled=sum('SETTLED'); const refunded=sum('REFUNDED');
-  const observedResidual=deposited-settled-refunded;
-  // During execution the active reservation and observed deposit describe overlapping exposure; retain the larger.
-  const unresolved=reserved>observedResidual?reserved:observedResidual;
-  const available=approved-reserved-settled+refunded;
-  if(approved<=0n||reserved<0n||available<0n||unresolved<0n)throw new Error('Ledger does not reconcile');
+  const groups=new Map<string,{reserved:bigint;deposited:bigint;settled:bigint;refunded:bigint;hasDeposit:boolean}>();
+  const group=(id:string)=>{let g=groups.get(id);if(!g){g={reserved:0n,deposited:0n,settled:0n,refunded:0n,hasDeposit:false};groups.set(id,g);}return g;};
+  for(const l of lines){if(!l.confirmed)continue;const g=group(l.payoutId??'__campaign__');if(l.type==='RESERVED')g.reserved+=l.amount;else if(l.type==='RELEASED')g.reserved-=l.amount;else if(l.type==='DEPOSITED'){g.deposited+=l.amount;g.hasDeposit=true;}else if(l.type==='SETTLED')g.settled+=l.amount;else if(l.type==='REFUNDED')g.refunded+=l.amount;}
+  let reserved=0n,settled=0n,refunded=0n,exposure=0n,unresolved=0n;
+  for(const g of groups.values()){
+    const gross=g.hasDeposit?g.deposited:(g.settled>g.refunded?g.settled:g.refunded);const net=gross-g.refunded;
+    if(g.reserved<0n||net<0n)throw new Error('Confirmed release or refund exceeds its recorded exposure');
+    const payoutExposure=g.reserved>net?g.reserved:net;reserved+=g.reserved;settled+=g.settled;refunded+=g.refunded;exposure+=payoutExposure;
+    unresolved+=payoutExposure>g.settled?payoutExposure-g.settled:0n;
+  }
+  const available=approved-exposure;
+  if(approved<=0n||available<0n||unresolved<0n)throw new Error('Ledger does not reconcile');
   return {approved,reserved,deposited,settled,refunded,unresolved,available};
 }
 

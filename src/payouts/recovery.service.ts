@@ -6,7 +6,9 @@ export function reconcile(facts:PayoutFacts,result:StatusResult):{status:PayoutS
     if(result.amountOut!==facts.promisedOutput)throw new Error('Settlement output does not equal promise');
     if(!result.amountIn)throw new Error('Successful settlement missing actual input amount');
     if(result.amountIn>facts.reserved)throw new Error('Actual settlement input exceeds reserved maximum');
-    return {status:'SUCCESS',releaseExposure:true,settledInput:result.amountIn,txHashes:result.destinationTxHashes};
+    if(result.refundedAmount!==undefined&&result.refundAssetId!==facts.inputAssetId)throw new Error('Refund asset does not match original quote input');
+    if(result.refundedAmount!==undefined&&(result.refundedAmount>facts.reserved-result.amountIn||result.depositedAmount!==undefined&&result.amountIn+result.refundedAmount>result.depositedAmount))throw new Error('Refund amount is inconsistent with confirmed deposit and settlement');
+    return {status:'SUCCESS',releaseExposure:true,settledInput:result.amountIn,...(result.refundedAmount!==undefined?{confirmedRefund:result.refundedAmount}:{}),txHashes:result.destinationTxHashes};
   }
   if(result.status==='REFUNDED'){
     if(!result.refundedAmount||result.refundAssetId&&result.refundAssetId!==facts.inputAssetId)throw new Error('Refund amount or asset is not validated');

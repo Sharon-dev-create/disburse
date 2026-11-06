@@ -10,15 +10,21 @@ export class ReservationService {
       const campaign=rows[0]; if(!campaign||campaign.status!=='APPROVED')throw new Error('Campaign is not approved');
       const attempt=await tx.attempt.findFirst({where:{payoutId},orderBy:{attemptNo:'desc'}}); if(!attempt)throw new Error('Payout has no persisted quote attempt');
       const existing=await tx.reservation.findFirst({where:{attemptId:attempt.id,status:'ACTIVE'}}); if(existing)throw new Error('Attempt already has an active reservation');
-      const totals=await tx.reservation.aggregate({where:{campaignId,status:'ACTIVE'},_sum:{amount:true}});
-      const active=totals._sum.amount??0n; if(active+amount>campaign.budget)throw new Error('Insufficient campaign budget');
-      const [spent,refunds]=await Promise.all([
-        tx.ledgerEntry.aggregate({where:{campaignId,type:'SETTLEMENT_CONFIRMED'},_sum:{amount:true}}),
-        tx.ledgerEntry.aggregate({where:{campaignId,type:'REFUND_CONFIRMED'},_sum:{amount:true}})
+      const [reservations,entries]=await Promise.all([
+        tx.reservation.findMany({where:{campaignId,status:'ACTIVE'},select:{payoutId:true,amount:true}}),
+        tx.ledgerEntry.findMany({where:{campaignId,type:{in:['DEPOSIT_OBSERVED','SETTLEMENT_CONFIRMED','REFUND_CONFIRMED']}},select:{payoutId:true,type:true,amount:true}})
       ]);
-      const netSpent=(spent._sum.amount??0n)-(refunds._sum.amount??0n);
-      if(netSpent<0n)throw new Error('Confirmed refunds exceed recorded settlement expenditure');
-      if(active+netSpent+amount>campaign.budget)throw new Error('Reservation exceeds remaining budget after settlements');
+      const groups=new Map<string,{reserved:bigint;deposited:bigint;settled:bigint;refunded:bigint}>();
+      const group=(key:string)=>{let g=groups.get(key);if(!g){g={reserved:0n,deposited:0n,settled:0n,refunded:0n};groups.set(key,g);}return g;};
+      for(const r of reservations)group(r.payoutId??'__campaign__').reserved+=r.amount;
+      for(const e of entries){const g=group(e.payoutId??'__campaign__');if(e.type==='DEPOSIT_OBSERVED')g.deposited+=e.amount;else if(e.type==='SETTLEMENT_CONFIRMED')g.settled+=e.amount;else g.refunded+=e.amount;}
+      let committed=0n;
+      for(const g of groups.values()){
+        const gross=g.deposited>0n?g.deposited:(g.settled>g.refunded?g.settled:g.refunded);
+        if(g.refunded>gross)throw new Error('Confirmed refunds exceed recorded source outflow');
+        const net=gross-g.refunded;committed+=g.reserved>net?g.reserved:net;
+      }
+      if(committed+amount>campaign.budget)throw new Error('Reservation exceeds remaining budget after settlements and unresolved deposits');
       await tx.reservation.create({data:{id:reservationId,campaignId,payoutId,attemptId:attempt.id,amount,status:'ACTIVE'}});
       await tx.ledgerEntry.create({data:{campaignId,payoutId,type:'RESERVED',amount,assetId:campaign.assetId,externalRef:`reserve:${reservationId}`}});
       await tx.payout.update({where:{id:payoutId},data:{activeExposure:{increment:amount},status:'RESERVED'}});
