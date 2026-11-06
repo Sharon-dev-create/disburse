@@ -19,7 +19,7 @@ export class CampaignService {
         await tx.payout.update({where:{id:payoutId},data:{status:'QUOTED'}});
         await tx.payoutEvent.create({data:{payoutId,fromStatus:'CREATED',toStatus:'QUOTED',note:'Provider quote validated',providerRef:r.quoteId}});
         await tx.reservation.create({data:{id:reservationId,campaignId:input.id,payoutId,attemptId,amount:r.maximumInput,remainingAmount:r.maximumInput,status:'ACTIVE'}});
-        await tx.ledgerEntry.create({data:{campaignId:input.id,payoutId,type:'RESERVED',amount:r.maximumInput,assetId:r.inputAsset.assetId,externalRef:`reserve:${reservationId}`}});
+        await tx.ledgerEntry.create({data:{campaignId:input.id,payoutId,attemptId,type:'RESERVED',amount:r.maximumInput,assetId:r.inputAsset.assetId,externalRef:`reserve:${reservationId}`}});
         await tx.payout.update({where:{id:payoutId},data:{status:'RESERVED',activeExposure:r.maximumInput}});
         await tx.payoutEvent.create({data:{payoutId,fromStatus:'QUOTED',toStatus:'RESERVED',note:'Maximum input reserved for committed quote',providerRef:r.quoteId}});
         await tx.payout.update({where:{id:payoutId},data:{status:'COMMITTED'}});

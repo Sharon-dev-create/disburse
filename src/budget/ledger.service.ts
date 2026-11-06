@@ -19,6 +19,7 @@ export function balances(lines:LedgerLine[]):Balances {
 }
 
 import { PrismaClient } from '@prisma/client';
+import { calculateAuthorizedExposure, type ExposureEntry } from './exposure.js';
 export class LedgerService {
   constructor(private readonly db:PrismaClient){}
   async manualAdjustment(args:{campaignId:string;amount:bigint;direction:'IN'|'OUT';reason:string;actor:string;externalRef:string}):Promise<void>{
@@ -26,13 +27,13 @@ export class LedgerService {
     await this.db.$transaction(async tx=>{
       const rows=await tx.$queryRaw<Array<{budget:bigint;assetId:string}>>`SELECT "budget", "assetId" FROM "Campaign" WHERE "id"=${args.campaignId} FOR UPDATE`;
       const c=rows[0];if(!c)throw new Error('Campaign not found');
-      const active=await tx.reservation.aggregate({where:{campaignId:args.campaignId,status:'ACTIVE'},_sum:{amount:true}});
-      const spent=await tx.ledgerEntry.aggregate({where:{campaignId:args.campaignId,type:'SETTLEMENT_CONFIRMED'},_sum:{amount:true}});
-      const refunds=await tx.ledgerEntry.aggregate({where:{campaignId:args.campaignId,type:'REFUND_CONFIRMED'},_sum:{amount:true}});
-      if((refunds._sum.amount??0n)>(spent._sum.amount??0n))throw new Error('Confirmed refunds exceed recorded settlement expenditure');
+      const [active,entries]=await Promise.all([
+        tx.reservation.findMany({where:{campaignId:args.campaignId,status:'ACTIVE'},select:{attemptId:true,payoutId:true,remainingAmount:true}}),
+        tx.ledgerEntry.findMany({where:{campaignId:args.campaignId,type:{in:['DEPOSIT_OBSERVED','SETTLEMENT_CONFIRMED','REFUND_CONFIRMED']}},select:{attemptId:true,payoutId:true,type:true,amount:true}})
+      ]);
       const delta=args.direction==='IN'?args.amount:-args.amount;
       const next=c.budget+delta;
-      const committed=(active._sum.amount??0n)+(spent._sum.amount??0n)-(refunds._sum.amount??0n);
+      const committed=calculateAuthorizedExposure(active,entries as ExposureEntry[]);
       if(next<=0n||next<committed)throw new Error('Adjustment would put approved budget below authorized exposure');
       await tx.campaign.update({where:{id:args.campaignId},data:{budget:next}});
       await tx.ledgerEntry.create({data:{campaignId:args.campaignId,type:'ADJUSTMENT',amount:args.amount,direction:args.direction,assetId:c.assetId,externalRef:args.externalRef,reason:args.reason,metadata:{actor:args.actor}}});

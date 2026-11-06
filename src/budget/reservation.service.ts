@@ -1,5 +1,5 @@
 import { Prisma, PrismaClient } from '@prisma/client';
-import { calculateAuthorizedExposure } from './exposure.js';
+import { calculateAuthorizedExposure, type ExposureEntry } from './exposure.js';
 
 export type ReleaseEvidence =
   | {source:'PROVIDER_TERMINAL_NO_DEPOSIT';actor:string;reason:string}
@@ -38,7 +38,7 @@ export class ReservationService {
         tx.reservation.findMany({where:{campaignId,status:'ACTIVE'},select:{attemptId:true,payoutId:true,remainingAmount:true}}),
         tx.ledgerEntry.findMany({where:{campaignId,type:{in:['DEPOSIT_OBSERVED','SETTLEMENT_CONFIRMED','REFUND_CONFIRMED']}},select:{attemptId:true,payoutId:true,type:true,amount:true}})
       ]);
-      const committed=calculateAuthorizedExposure(reservations,entries);
+      const committed=calculateAuthorizedExposure(reservations,entries as ExposureEntry[]);
       if(committed+amount>campaign.budget)throw new Error('Reservation exceeds remaining approved campaign budget');
       await tx.reservation.create({data:{id:reservationId,campaignId,payoutId,attemptId,amount,remainingAmount:amount,status:'ACTIVE'}});
       await tx.ledgerEntry.create({data:{campaignId,payoutId,attemptId,type:'RESERVED',amount,assetId:campaign.assetId,externalRef:`reserve:${reservationId}`}});
