@@ -10,7 +10,7 @@ export class StatusService {
     const payout=await this.db.payout.findUniqueOrThrow({where:{id:payoutId},include:{attempts:{orderBy:{attemptNo:'desc'},take:1}}});
     const attempt=payout.attempts[0];if(!attempt?.depositAddress)throw new Error('Payout attempt has no committed deposit address');
     // A thrown timeout/status error deliberately makes no state or ledger change.
-    const status=await this.provider.status(attempt.depositAddress);
+    const status=await this.provider.status(attempt.depositAddress,attempt.depositMemo);
     await this.settlement.apply(payoutId,status);
   }
   async refreshAllUnresolved():Promise<Array<{payoutId:string;error?:string}>>{

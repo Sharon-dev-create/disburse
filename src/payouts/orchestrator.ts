@@ -12,7 +12,7 @@ export class PayoutOrchestrator {
     const payout=await this.db.payout.findUniqueOrThrow({where:{id:payoutId}});
     if(!['CREATED','FAILED','EXPIRED','REFUNDED'].includes(payout.status)||payout.activeExposure!==0n)throw new Error('Payout is not safely retryable; unresolved exposure remains');
     const quote=await this.provider.quote({...request,dry:false});
-    if(quote.deadline<=this.now())throw new Error('Quote already expired');
+    if(!quote.deadline||quote.deadline<=this.now())throw new Error('Committed quote omitted expiry or is already expired');
     if(quote.amountOut!==payout.promisedAmount)throw new Error('Quote amount differs from promise');
     const current=payout.status as PayoutStatus; assertTransition(current,'QUOTED');
     const attemptNo=await this.db.attempt.count({where:{payoutId}})+1;

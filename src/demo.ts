@@ -19,6 +19,6 @@ const simulatedReserve=async(amount:bigint)=>{await Promise.resolve();if(amount>
 const concurrent=await Promise.all([simulatedReserve(70n*million),simulatedReserve(70n*million)]);
 console.log(`D Concurrent reservation attack (in-process illustration only): ${concurrent.filter(Boolean).length} accepted, ${concurrent.filter(x=>!x).length} rejected; database guarantee is covered only by the PostgreSQL integration test.`);
 const retries=new Map<string,string>();
-const retry=async(key:string)=>{const existing=retries.get(key);if(existing)return existing;const quote=await provider.quote({dry:false,swapType:'EXACT_OUTPUT',originAsset:'sim:usdc',destinationAsset:'sim:out',amount:'100',recipient:'sim:recipient',refundTo:'sim:refund'});retries.set(key,quote.correlationId);return quote.correlationId;};
+const retry=async(key:string)=>{const existing=retries.get(key);if(existing)return existing;const quote=await provider.quote({dry:false,swapType:'EXACT_OUTPUT',slippageTolerance:100,originAsset:'sim:usdc',destinationAsset:'sim:out',amount:'100',recipient:'sim:recipient',refundTo:'sim:refund',depositType:'ORIGIN_CHAIN',recipientType:'DESTINATION_CHAIN',refundType:'ORIGIN_CHAIN',deadline:new Date(Date.now()+600_000).toISOString()});retries.set(key,quote.correlationId);return quote.correlationId;};
 await retry('same-retry-request');await retry('same-retry-request');
 console.log(`E Duplicate retry: ${lifecycle.status}; mock idempotency key reused once and uncertain outcome remains locked (simulated only).`);
