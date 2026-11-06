@@ -92,9 +92,12 @@ export class SinglePayoutWorker {
     let funding=payout.evmFundingOperations[0];
     if(!funding){
       await this.funding.authorizeAndSubmit({reservationId:reservation.id,idempotencyKey:`evm:${attempt.id}`});
+      if(payout.status==='RESERVED')await this.transitionToCommitted(payout.id,attempt.quoteId);
       return{done:false,state:'FUNDING_SUBMITTED'};
     }
     if(funding.attemptId!==attempt.id||funding.quoteId!==attempt.quoteId||funding.reservationId!==reservation.id||funding.tokenAmount!==reservation.amount)throw new Error('Funding operation does not match the active payout attempt and quote');
+    if(payout.status==='RESERVED')await this.transitionToCommitted(payout.id,attempt.quoteId);
+    if(funding.state==='CONFIRMED'&&payout.status==='COMMITTED')await this.transition(payout.id,'COMMITTED','AWAITING_DEPOSIT','Source-chain transfer independently confirmed; waiting for provider observation',attempt.quoteId,funding.txHash);
     if(funding.state!=='CONFIRMED'){
       const result=await this.funding.reconcile(funding.id);
       if(result.state!=='CONFIRMED')return{done:false,state:`FUNDING_${result.state}`,delayMs:1_000};
@@ -127,6 +130,7 @@ export class SinglePayoutWorker {
   private async transition(payoutId:string,from:string,to:'AWAITING_DEPOSIT',note:string,providerRef:string,txHash:string|null):Promise<void>{
     await this.db.$transaction(async tx=>{const current=await tx.payout.findUniqueOrThrow({where:{id:payoutId}});if(current.status!==from)return;await tx.payout.update({where:{id:payoutId},data:{status:to}});await tx.payoutEvent.create({data:{payoutId,fromStatus:from as never,toStatus:to,note,providerRef,txHash}});});
   }
+  private async transitionToCommitted(payoutId:string,providerRef:string):Promise<void>{await this.db.$transaction(async tx=>{const p=await tx.payout.findUniqueOrThrow({where:{id:payoutId}});if(p.status!=='RESERVED')return;await tx.payout.update({where:{id:payoutId},data:{status:'COMMITTED'}});await tx.payoutEvent.create({data:{payoutId,fromStatus:'RESERVED',toStatus:'COMMITTED',note:'Funding operation authorized and persisted',providerRef}});});}
   private async markOutputPending(payoutId:string):Promise<void>{await this.markOutputState(payoutId,'PENDING');}
   private async markOutputState(payoutId:string,state:'PENDING'|'MISMATCH'):Promise<void>{await this.db.payout.update({where:{id:payoutId},data:{recipientOutputState:state}});}
   private async finish(work:ClaimedWork):Promise<void>{await this.db.payoutWorkItem.updateMany({where:{id:work.id,state:'LEASED',lockToken:work.lockToken},data:{state:'DONE',leaseUntil:null,lockToken:null,lastError:null}});}
