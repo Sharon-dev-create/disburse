@@ -15,7 +15,7 @@ CREATE TABLE "Payout" (
   CONSTRAINT "Payout_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign"("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 CREATE TABLE "Attempt" (
-  "id" TEXT PRIMARY KEY, "payoutId" TEXT NOT NULL, "attemptNo" INTEGER NOT NULL, "quoteId" TEXT UNIQUE,
+  "id" TEXT PRIMARY KEY, "payoutId" TEXT NOT NULL, "attemptNo" INTEGER NOT NULL, "retryKey" TEXT UNIQUE, "quoteId" TEXT UNIQUE,
   "maxAmountIn" BIGINT, "inputAssetId" TEXT, "inputChain" TEXT, "outputAmount" BIGINT, "expiresAt" TIMESTAMP(3),
   "depositAddress" TEXT, "depositMemo" TEXT, "status" "PayoutStatus" NOT NULL DEFAULT 'CREATED', "providerJson" JSONB,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

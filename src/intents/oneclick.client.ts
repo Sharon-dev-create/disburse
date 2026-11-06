@@ -15,7 +15,7 @@ export class OneClickClient implements IntentsProvider {
     const res=await this.fetcher(`${this.base}/v0/quote`,{method:'POST',headers,body:JSON.stringify(request)}); if(!res.ok)throw new Error(`1Click quote HTTP ${res.status}`);
     const parsed=quoteSchema.safeParse(await res.json()); if(!parsed.success)throw new Error(`Invalid 1Click quote response: ${parsed.error.message}`);
     const q=parsed.data.quote; const min=q.minAmountIn??q.amountIn; const deadline=new Date(q.deadline); if(!Number.isFinite(deadline.getTime()))throw new Error('Invalid provider deadline');
-    if(parsed.data.quoteRequest.swapType!=='EXACT_OUTPUT'||parsed.data.quoteRequest.amount!==request.amount)throw new Error('Provider quote does not match exact-output request');
+    if(parsed.data.quoteRequest.swapType!=='EXACT_OUTPUT'||parsed.data.quoteRequest.amount!==request.amount||parsed.data.quoteRequest.originAsset!==request.originAsset||parsed.data.quoteRequest.destinationAsset!==request.destinationAsset||parsed.data.quoteRequest.recipient!==request.recipient||parsed.data.quoteRequest.refundTo!==request.refundTo)throw new Error('Provider quote does not match exact-output request');
     if(BigInt(q.amountOut)!==BigInt(request.amount))throw new Error('Provider output amount differs from promised amount');
     if(BigInt(q.maxAmountIn)<BigInt(q.amountIn)||BigInt(q.maxAmountIn)<BigInt(min))throw new Error('Provider maxAmountIn is inconsistent');
     if(!request.dry&&!q.depositAddress)throw new Error('Committed quote omitted depositAddress');

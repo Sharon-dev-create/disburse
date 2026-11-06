@@ -1,12 +1,12 @@
 import { PrismaClient } from '@prisma/client';
 import { calculateExposure } from '../budget/budget-calculator.js';
 import type { Amount, Asset } from '../domain/money.js';
-export interface RecipientSpec { id:string; address:string; amount:bigint; outputAssetId:string; outputChain:string; maximumInput:bigint; inputAsset:Asset; quoteId:string; expiresAt:Date; depositAddress:string; depositMemo?:string|null; rawQuote?:object }
+export interface RecipientSpec { id:string; address:string; amount:bigint; quotedOutput:bigint; outputAssetId:string; outputChain:string; maximumInput:bigint; inputAsset:Asset; quoteId:string; expiresAt:Date; depositAddress:string; depositMemo?:string|null; rawQuote?:object }
 export class CampaignService {
   constructor(private readonly db:PrismaClient,private readonly now:()=>Date=()=>new Date()){}
   async createAndApprove(input:{id:string;idempotencyKey:string;budget:bigint;budgetAsset:Asset;recipients:RecipientSpec[];separatelyPayableFees?:Amount[]}):Promise<bigint>{
     if(input.recipients.length===0)throw new Error('Campaign requires recipients');
-    for(const r of input.recipients){if(r.amount<=0n||r.maximumInput<=0n||!r.quoteId||!r.depositAddress)throw new Error('Recipient quote is incomplete or has invalid amounts');if(r.expiresAt<=this.now())throw new Error('Expired quote cannot be approved');}
+    for(const r of input.recipients){if(r.amount<=0n||r.maximumInput<=0n||r.quotedOutput!==r.amount||!r.quoteId||!r.depositAddress)throw new Error('Recipient quote is incomplete or does not guarantee promised output');if(r.expiresAt<=this.now())throw new Error('Expired quote cannot be approved');}
     const fees=input.separatelyPayableFees??[];
     const exposure=calculateExposure({approved:input.budget,denomination:input.budgetAsset,quotes:input.recipients.map(r=>({atomic:r.maximumInput,asset:r.inputAsset})),separatelyPayableFees:fees});
     await this.db.$transaction(async tx=>{

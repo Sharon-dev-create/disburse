@@ -3,7 +3,7 @@ export interface Balances { approved:bigint; reserved:bigint; deposited:bigint; 
 export function balances(lines:LedgerLine[]):Balances {
   const sum=(...types:LedgerLine['type'][])=>(lines.filter(l=>types.includes(l.type)&&l.confirmed).reduce((s,l)=>s+l.amount,0n));
   const approved=sum('APPROVED')+sum('ADJUSTMENT');
-  const reserved=sum('RESERVED')-sum('RELEASED')-sum('SETTLED','FAILED','REFUNDED');
+  const reserved=sum('RESERVED')-sum('RELEASED');
   const deposited=sum('DEPOSITED'); const settled=sum('SETTLED'); const refunded=sum('REFUNDED');
   const observedResidual=deposited-settled-refunded;
   // During execution the active reservation and observed deposit describe overlapping exposure; retain the larger.
