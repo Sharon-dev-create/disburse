@@ -44,12 +44,13 @@ stateDiagram-v2
 
 - Money is represented as positive integer atomic units (`bigint`). Token decimals are metadata and constrained to 0–30; amounts are never parsed through `number`.
 - Each campaign has exactly one budget asset denomination. Every quote `amountIn` reservation ceiling and separately payable fee must identify that same asset/chain/precision. Mixed denominations fail closed because no validated valuation or FX risk model is configured.
-- Authorization is based on the provider's documented EXACT_OUTPUT `amountIn` buffer (stored internally as `maxAmountIn`), not `minAmountIn`. Budget approval rejects if the sum plus explicit separately payable fees exceeds the campaign budget.
-- A PostgreSQL row lock and serializable transaction protect the campaign budget check. A unique reservation per payout, unique campaign idempotency key, and unique `(campaignId, recipientId)` prevent duplicate authorization.
+- Authorization reserves exactly the persisted attempt's `amountIn` buffer (stored internally as `maxAmountIn`), not `minAmountIn`. Every reservation verifies campaign/payout/attempt ownership, denomination, quote eligibility and expiry. Budget approval rejects if the sum plus explicit separately payable fees exceeds the campaign budget.
+- `amountIn` is an internal authorization ceiling, **not a provider-enforced cap**. The current 1Click documentation does not promise that an address rejects a larger deposit or that the solver can never consume more. This spike does not submit deposits; a production funding path must independently prevent overfunding and reconcile any observed deposit above the authorization ceiling before allowing further spending.
+- A PostgreSQL campaign row lock plus serializable transactions protect budget checks. Bounded retries handle serialization/deadlock errors. Reservations are unique per attempt; campaign idempotency keys and `(campaignId, recipientId)` prevent duplicate campaign/payout creation.
 - A settlement is accepted only when provider status is `SUCCESS`, actual output equals the promised atomic amount, and actual source spend is present. A confirmed refund is credited only if amount is present, positive, bounded by reserved input, and associated with the quote's origin asset. The status endpoint does not independently identify refund asset; association to the original quote must be preserved.
 - Pending refunds do not reduce available funds. Unknown outcomes remain exposed. Cross-chain exactly-once settlement is not claimed; local idempotency cannot control an external solver's behavior.
 
-Ledger reconciliation is grouped by logical payout to avoid double counting funds as they move from reservation to provider: `payout exposure = max(active reservation, observed deposit − confirmed refund)`; if no deposit amount has been observed, confirmed settlement spend is the fallback source outflow. Campaign `available = approved budget − sum(payout exposure)` and `unresolved = sum(max(0, payout exposure − confirmed settlement spend))`. Deposit observations do not add a second charge while the matching reservation remains active. A pending refund does not lower exposure or become available. All releases and actuals remain separate append-only entries.
+Ledger reconciliation is grouped by provider attempt so retries cannot be merged: `attempt exposure = max(remaining active reservation, observed deposit − confirmed refund)`. If no deposit is observed, confirmed settlement/refund records are the fallback source outflow. Campaign `available = approved budget − sum(attempt exposure)` and unresolved deposits remain exposed. Deposits are not double-counted when they become settlements. Only confirmed settlements/refunds lower remaining exposure when an authoritative deposit total is known; a missing or uncertain amount retains the reservation. Campaign-level fees have their own exposure group. Releases are idempotent and ledgered separately with actor/reason metadata for manual reconciliation.
 
 ## NEAR Intents behavior: verified and assumptions
 
@@ -82,14 +83,14 @@ pnpm test
 pnpm demo
 ```
 
-`tests/concurrency/reservation.integration.test.ts` runs when `DATABASE_URL` is configured and asserts that only one of two simultaneous 70-unit reservations can succeed against 100 units. Unit tests do not require PostgreSQL. `pnpm demo` prints budget rejection, a 92-unit approval example, partial execution states, concurrent reservation expectations, and duplicate retry behavior; every outcome is simulated.
+`tests/concurrency/reservation.integration.test.ts` requires a reachable PostgreSQL database in `DATABASE_URL` and fails explicitly if the prerequisite is missing. It covers concurrent budget limits, campaign/payout/attempt ownership, quote bounds and expiry, idempotent release, serialization retries, settlement/deposit overlap, partial refunds and unresolved/uncertain outcomes. `pnpm demo` prints budget rejection, a 92-unit approval example, partial execution states, concurrent reservation expectations, and duplicate retry behavior; every outcome is simulated.
 
 Set `NEAR_INTENTS_BASE_URL` and optionally `NEAR_INTENTS_JWT` in `.env` for real dry quotes/status reads. Do not put private keys in this application. Never point a transaction signer at these deposit addresses as part of this spike.
 
 ## Known limits and next work
 
 - No production wallet, deposit observer, chain finality verification, deposit submission, signing, or funding support.
-- The persistence services have been designed for PostgreSQL, but the integration suite must be run against a live local PostgreSQL to validate isolation and Prisma SQL behavior.
+- Provider status remains the source of deposit, settlement and refund evidence in this spike; a production system should independently verify chain transactions and finality before reducing exposure.
 - Provider status alone is trusted as settlement evidence in the spike; a production system should independently verify destination-chain transactions/finality and refund transaction provenance.
 - Fee coverage/auth pricing must be confirmed with NEAR Intents for the partner account. External gas valuation is intentionally not invented.
 - Add durable retry orchestration with provider-status gating, campaign-level reconciliation reports, operational alerts, and audited manual adjustment approval before production.
