@@ -6,11 +6,11 @@ export function balances(lines:LedgerLine[]):Balances {
   const groups=new Map<string,{reserved:bigint;deposited:bigint;settled:bigint;refunded:bigint;hasDeposit:boolean}>();
   const group=(id:string)=>{let g=groups.get(id);if(!g){g={reserved:0n,deposited:0n,settled:0n,refunded:0n,hasDeposit:false};groups.set(id,g);}return g;};
   for(const l of lines){if(!l.confirmed)continue;const g=group(l.payoutId??'__campaign__');if(l.type==='RESERVED')g.reserved+=l.amount;else if(l.type==='RELEASED')g.reserved-=l.amount;else if(l.type==='DEPOSITED'){g.deposited+=l.amount;g.hasDeposit=true;}else if(l.type==='SETTLED')g.settled+=l.amount;else if(l.type==='REFUNDED')g.refunded+=l.amount;}
-  let reserved=0n,settled=0n,refunded=0n,exposure=0n,unresolved=0n;
+  let reserved=0n,deposited=0n,settled=0n,refunded=0n,exposure=0n,unresolved=0n;
   for(const g of groups.values()){
     const gross=g.hasDeposit?g.deposited:(g.settled>g.refunded?g.settled:g.refunded);const net=gross-g.refunded;
     if(g.reserved<0n||net<0n)throw new Error('Confirmed release or refund exceeds its recorded exposure');
-    const payoutExposure=g.reserved>net?g.reserved:net;reserved+=g.reserved;settled+=g.settled;refunded+=g.refunded;exposure+=payoutExposure;
+    const payoutExposure=g.reserved>net?g.reserved:net;reserved+=g.reserved;deposited+=g.deposited;settled+=g.settled;refunded+=g.refunded;exposure+=payoutExposure;
     unresolved+=payoutExposure>g.settled?payoutExposure-g.settled:0n;
   }
   const available=approved-exposure;
