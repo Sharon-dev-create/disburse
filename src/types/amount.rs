@@ -1,17 +1,30 @@
-use near_sdk::near;
+use near_sdk::{AccountId, near};
 
-/// Opaque token identity. It may be a NEP-141 account ID or a chain-native identifier.
+use super::identifier::{IdentifierError, validate_identifier};
+
+/// A NEP-141 token uses a validated NEAR account ID; other chain identifiers remain opaque.
 #[near(serializers = [borsh, json])]
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct TokenId(String);
+pub enum TokenId {
+    Near(AccountId),
+    External(String),
+}
 
 impl TokenId {
-    pub fn new(value: String) -> Self {
-        Self(value)
+    pub fn near(account_id: AccountId) -> Self {
+        Self::Near(account_id)
     }
 
-    pub fn as_str(&self) -> &str {
-        &self.0
+    pub fn external(identifier: String) -> Result<Self, IdentifierError> {
+        validate_identifier(&identifier)?;
+        Ok(Self::External(identifier))
+    }
+
+    pub fn near_account_id(&self) -> Option<&AccountId> {
+        match self {
+            Self::Near(account_id) => Some(account_id),
+            Self::External(_) => None,
+        }
     }
 }
 

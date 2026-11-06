@@ -14,6 +14,7 @@ pub struct Payout {
     pub expected_output_amount: TokenAmount,
     pub status: PayoutStatus,
     pub created_at_ns: u64,
+    /// Correlation only; a submitted execution is not proof of recipient settlement.
     pub execution_reference: Option<String>,
     pub settlement_evidence_reference: Option<String>,
 }

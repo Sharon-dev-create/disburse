@@ -1,6 +1,7 @@
 pub mod amount;
 pub mod destination;
 pub mod evidence;
+pub mod identifier;
 pub mod role;
 pub mod status;
 
@@ -34,8 +35,8 @@ mod tests {
         }
     }
 
-    fn token_amount(token: &str, amount: u128, decimals: u8) -> TokenAmount {
-        TokenAmount::new(TokenId::new(token.to_string()), amount, decimals)
+    fn token_amount(token: TokenId, amount: u128, decimals: u8) -> TokenAmount {
+        TokenAmount::new(token, amount, decimals)
     }
 
     fn round_trip_borsh<T>(value: &T) -> T
@@ -59,13 +60,16 @@ mod tests {
             id: 4,
             campaign_id: 7,
             recipient_near_account_id: Some(accounts(3)),
-            input_amount: token_amount("usdc.near", 250, 6),
+            input_amount: token_amount(TokenId::near(accounts(2)), 250, 6),
             destination: PayoutDestination {
-                chain_id: ChainId::new("eip155:11155111".to_string()),
+                chain_id: ChainId::new("eip155:11155111".to_string()).unwrap(),
                 recipient_address: "0x1111111111111111111111111111111111111111".to_string(),
-                expected_output_token_id: TokenId::new("eip155:11155111/erc20:0xtoken".to_string()),
             },
-            expected_output_amount: token_amount("eip155:11155111/erc20:0xtoken", 125, 6),
+            expected_output_amount: token_amount(
+                TokenId::external("eip155:11155111/erc20:0xtoken".to_string()).unwrap(),
+                125,
+                6,
+            ),
             status: PayoutStatus::Created,
             created_at_ns: 456,
             execution_reference: None,
@@ -97,11 +101,17 @@ mod tests {
 
     #[test]
     fn token_amount_keeps_atomic_value_decimals_and_token_identity() {
-        let amount = token_amount("token.one", 42, 8);
+        let amount = token_amount(TokenId::external("token.one".to_string()), 42, 8);
         assert_eq!(amount.atomic_amount(), 42);
         assert_eq!(amount.decimals(), 8);
-        assert_eq!(amount.token_id().as_str(), "token.one");
-        assert_ne!(amount, token_amount("token.two", 42, 8));
+        assert_eq!(
+            amount.token_id(),
+            &TokenId::external("token.one".to_string())
+        );
+        assert_ne!(
+            amount,
+            token_amount(TokenId::external("token.two".to_string()), 42, 8)
+        );
     }
 
     #[test]
@@ -109,13 +119,13 @@ mod tests {
         let destination = PayoutDestination {
             chain_id: ChainId::new("eip155:1".to_string()),
             recipient_address: "0x2222222222222222222222222222222222222222".to_string(),
-            expected_output_token_id: TokenId::new("eip155:1/erc20:0xabc".to_string()),
+            expected_output_token_id: TokenId::external("eip155:1/erc20:0xabc".to_string()),
         };
         assert_eq!(destination.chain_id.as_str(), "eip155:1");
         assert!(destination.recipient_address.starts_with("0x"));
         assert_eq!(
-            destination.expected_output_token_id.as_str(),
-            "eip155:1/erc20:0xabc"
+            destination.expected_output_token_id,
+            TokenId::external("eip155:1/erc20:0xabc".to_string())
         );
     }
 
@@ -126,7 +136,11 @@ mod tests {
             destination_chain_id: ChainId::new("eip155:1".to_string()),
             destination_transaction_reference: "0xdeadbeef".to_string(),
             recipient_address: "0x2222222222222222222222222222222222222222".to_string(),
-            output_amount: token_amount("eip155:1/erc20:0xabc", 90, 6),
+            output_amount: token_amount(
+                TokenId::external("eip155:1/erc20:0xabc".to_string()),
+                90,
+                6,
+            ),
             verifier_id: accounts(4),
             verification_method: "receipt-and-transfer-log".to_string(),
             verified_at_ns: 789,
