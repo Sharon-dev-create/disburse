@@ -33,6 +33,9 @@ enum LedgerType {
   RELEASED
   DEPOSIT_OBSERVED
   DEPOSIT_REVERSED
+  PROVIDER_SETTLEMENT_REPORTED
+  PROVIDER_REFUND_REPORTED
+  RECIPIENT_OUTPUT_VERIFIED
   SETTLEMENT_CONFIRMED
   REFUND_INITIATED
   REFUND_CONFIRMED
@@ -51,6 +54,21 @@ enum EvmFundingState {
   FAILED
   UNKNOWN
   REORGED
+}
+
+enum RecipientOutputState {
+  NOT_CHECKED
+  PENDING
+  VERIFIED
+  MISMATCH
+  MANUAL_REVIEW
+}
+
+enum PayoutWorkState {
+  READY
+  LEASED
+  DONE
+  MANUAL_REVIEW
 }
 
 model Campaign {
@@ -72,12 +90,17 @@ model Payout {
   id                String        @id
   campaignId        String
   recipientId       String
+  idempotencyKey    String?       @unique
   recipientAddress  String
   promisedAmount    BigInt
   outputAssetId     String
   outputChain       String
   status            PayoutStatus  @default(CREATED)
   activeExposure    BigInt        @default(0)
+  recipientOutputState RecipientOutputState @default(NOT_CHECKED)
+  recipientOutputTxHash String?
+  recipientOutputBlockHash String?
+  recipientOutputVerifiedAt DateTime?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   campaign          Campaign      @relation(fields: [campaignId], references: [id], onDelete: Restrict)
@@ -86,6 +109,7 @@ model Payout {
   ledger            LedgerEntry[]
   reservations      Reservation[]
   evmFundingOperations EvmFundingOperation[]
+  workItems         PayoutWorkItem[]
   @@unique([campaignId, recipientId])
 }
 
@@ -171,10 +195,12 @@ model EvmFundingOperation {
   attemptId            String
   reservationId        String          @unique
   idempotencyKey       String          @unique
+  quoteId              String
   chainId              BigInt
   sourceAssetId        String
   sourceChain           String
   sourceAddress        String
+  destinationMemo      String?
   tokenAddress         String
   tokenAmount          BigInt
   tokenDecimals        Int
@@ -212,6 +238,27 @@ model EvmFundingOperation {
   @@index([campaignId, state, createdAt])
   @@index([payoutId, attemptId])
   @@index([txHash])
+}
+
+model PayoutWorkItem {
+  id          String         @id @default(cuid())
+  payoutId    String
+  kind        String         @default("SINGLE_PAYOUT")
+  payload     Json
+  state       PayoutWorkState @default(READY)
+  attempts    Int            @default(0)
+  maxAttempts Int            @default(12)
+  availableAt DateTime       @default(now())
+  leaseUntil  DateTime?
+  lockToken   String?
+  lastError   String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  payout      Payout         @relation(fields: [payoutId], references: [id], onDelete: Restrict)
+
+  @@unique([payoutId, kind])
+  @@index([state, availableAt])
+  @@index([leaseUntil])
 }
 
 model EvmNonceCursor {

@@ -2,6 +2,7 @@ import { Prisma, PrismaClient, type PayoutStatus } from '@prisma/client';
 import type { StatusResult } from '../intents/provider.interface.js';
 import { reconcile } from './recovery.service.js';
 import { canTransition, assertTransition, type PayoutStatus as DomainStatus } from '../domain/payout.js';
+import type { RecipientOutputEvidence } from './recipient-output-verifier.js';
 
 /** Applies provider snapshots atomically. Ledger amounts are positive cumulative deltas per attempt. */
 export class SettlementService {
@@ -19,7 +20,7 @@ export class SettlementService {
     }
     throw new Error('Serializable transaction retry exhausted');
   }
-  async apply(payoutId:string,result:StatusResult):Promise<void>{
+  async apply(payoutId:string,result:StatusResult,outputEvidence?:RecipientOutputEvidence):Promise<void>{
     await this.serializable(async tx=>{
       const ownership=await tx.payout.findUniqueOrThrow({where:{id:payoutId},select:{campaignId:true}});
       await tx.$queryRaw`SELECT "id" FROM "Campaign" WHERE "id"=${ownership.campaignId} FOR UPDATE`;
@@ -35,7 +36,7 @@ export class SettlementService {
         const delta=result.depositedAmount-prior;
         if(delta>0n)await tx.ledgerEntry.create({data:{campaignId:payout.campaignId,payoutId,attemptId:attempt.id,type:'DEPOSIT_OBSERVED',amount:delta,assetId:attempt.inputAssetId,externalRef:`provider:${attempt.quoteId}:deposit-total:${result.depositedAmount}`}});
       }
-      if(result.status==='SUCCESS'&&(result.amountOut!==payout.promisedAmount||!result.amountIn||result.amountIn>attempt.maxAmountIn||result.depositedAmount!==undefined&&result.amountIn>result.depositedAmount)||result.status==='REFUNDED'&&result.depositedAmount!==undefined&&result.refundedAmount!==undefined&&result.refundedAmount>result.depositedAmount){
+      if(result.status==='SUCCESS'&&(result.amountOut!==payout.promisedAmount||!result.amountIn||result.amountIn>attempt.maxAmountIn||result.depositedAmount!==undefined&&result.amountIn>result.depositedAmount||result.depositedAmount!==undefined&&result.depositedAmount>attempt.maxAmountIn)||result.status==='REFUNDED'&&result.depositedAmount!==undefined&&result.refundedAmount!==undefined&&result.refundedAmount>result.depositedAmount){
         await tx.attempt.update({where:{id:attempt.id},data:{providerStatus:result.status,providerStatusUpdatedAt:result.updatedAt,...(result.depositedAmount!==undefined?{providerDepositedAmount:result.depositedAmount}:{})}});
         if(payout.status!=='UNKNOWN'&&canTransition(payout.status as DomainStatus,'UNKNOWN')){
           await tx.payout.update({where:{id:payoutId},data:{status:'UNKNOWN'}});
@@ -45,16 +46,35 @@ export class SettlementService {
       }
       const mapped=reconcile({status:payout.status as PayoutStatus,promisedOutput:payout.promisedAmount,outputAssetId:payout.outputAssetId,inputAssetId:attempt.inputAssetId,reserved:attempt.maxAmountIn},result);
       if(mapped.status==='SUCCESS'&&(!result.amountIn||result.amountIn>attempt.maxAmountIn))throw new Error('Successful settlement input is missing or exceeds persisted quote maximum');
+      const sourceFunding=await tx.evmFundingOperation.findFirst({where:{attemptId:attempt.id,quoteId:attempt.quoteId,state:'CONFIRMED'}});
+      const outputVerified=!!outputEvidence&&!!sourceFunding&&mapped.status==='SUCCESS'&&outputEvidence.chain===payout.outputChain&&outputEvidence.assetId===payout.outputAssetId&&outputEvidence.recipient.toLowerCase()===payout.recipientAddress.toLowerCase()&&outputEvidence.amount===payout.promisedAmount&&result.destinationTxHashes.includes(outputEvidence.transactionHash);
+      if(outputEvidence&&!outputVerified)throw new Error('Recipient output evidence does not match confirmed funding, provider quote, payout, recipient, asset, or amount');
       if(mapped.confirmedRefund!==undefined){
-        const prior=(await tx.ledgerEntry.aggregate({where:{attemptId:attempt.id,type:'REFUND_CONFIRMED'},_sum:{amount:true}}))._sum.amount??0n;
+        const prior=(await tx.ledgerEntry.aggregate({where:{attemptId:attempt.id,type:'PROVIDER_REFUND_REPORTED'},_sum:{amount:true}}))._sum.amount??0n;
         if(mapped.confirmedRefund<prior)throw new Error('Provider cumulative refund decreased; manual reconciliation required');
         const delta=mapped.confirmedRefund-prior;
-        if(delta>0n)await tx.ledgerEntry.create({data:{campaignId:payout.campaignId,payoutId,attemptId:attempt.id,type:'REFUND_CONFIRMED',amount:delta,assetId:attempt.inputAssetId,externalRef:`provider:${attempt.quoteId}:refund-total:${mapped.confirmedRefund}`,metadata:{originTxHashes:result.originTxHashes}}});
+        if(delta>0n)await tx.ledgerEntry.create({data:{campaignId:payout.campaignId,payoutId,attemptId:attempt.id,type:'PROVIDER_REFUND_REPORTED',amount:delta,assetId:attempt.inputAssetId,externalRef:`provider:${attempt.quoteId}:refund-reported:${mapped.confirmedRefund}`,metadata:{originTxHashes:result.originTxHashes,requiresIndependentVerification:true}}});
       }
       await tx.attempt.update({where:{id:attempt.id},data:{providerStatus:result.status,providerStatusUpdatedAt:result.updatedAt,...(result.depositedAmount!==undefined?{providerDepositedAmount:result.depositedAmount}:{})}});
 
       const ext=`provider:${attempt.quoteId}:${mapped.status}`;
       const exists=await tx.ledgerEntry.findUnique({where:{externalRef:ext}});
+      if(mapped.status==='SUCCESS'&&!outputVerified){
+        await tx.ledgerEntry.createMany({data:[{campaignId:payout.campaignId,payoutId,attemptId:attempt.id,type:'PROVIDER_SETTLEMENT_REPORTED',amount:mapped.settledInput!,assetId:attempt.inputAssetId,externalRef:`provider:${attempt.quoteId}:success-reported:${result.updatedAt.toISOString()}`,metadata:{destinationTxHashes:mapped.txHashes,amountOut:result.amountOut?.toString(),requiresIndependentOutputVerification:true}}],skipDuplicates:true});
+        await tx.payout.update({where:{id:payoutId},data:{recipientOutputState:'PENDING'}});
+      }
+      if(mapped.status==='SUCCESS'&&outputVerified){
+        await tx.ledgerEntry.createMany({data:[{campaignId:payout.campaignId,payoutId,attemptId:attempt.id,type:'RECIPIENT_OUTPUT_VERIFIED',amount:payout.promisedAmount,assetId:payout.outputAssetId,externalRef:`output-verified:${outputEvidence.transactionHash}`,metadata:{chain:outputEvidence.chain,blockNumber:outputEvidence.blockNumber.toString(),blockHash:outputEvidence.blockHash}},{campaignId:payout.campaignId,payoutId,attemptId:attempt.id,type:'SETTLEMENT_CONFIRMED',amount:mapped.settledInput!,assetId:attempt.inputAssetId,externalRef:ext,metadata:{txHashes:mapped.txHashes,sourceFundingOperationId:sourceFunding!.id}}],skipDuplicates:true});
+        await tx.payout.update({where:{id:payoutId},data:{recipientOutputState:'VERIFIED',recipientOutputTxHash:outputEvidence.transactionHash,recipientOutputBlockHash:outputEvidence.blockHash,recipientOutputVerifiedAt:this.now()}});
+      }else if(!exists&&mapped.status==='FAILED'){
+        await tx.ledgerEntry.create({data:{campaignId:payout.campaignId,payoutId,attemptId:attempt.id,type:'FAILED',amount:0n,assetId:attempt.inputAssetId,externalRef:ext}});
+      }
+      /* Provider terminal reports are not chain evidence. Keep refunds unresolved here. */
+      if(mapped.status==='SUCCESS'&&outputVerified){
+        const existing=await tx.ledgerEntry.findFirst({where:{attemptId:attempt.id,type:'SETTLEMENT_CONFIRMED'}});
+        if(existing&&existing.amount!==mapped.settledInput)throw new Error('Provider settlement amount changed; manual reconciliation required');
+      }
+      /*
       if(!exists){
         if(mapped.status==='SUCCESS'){
           const existing=await tx.ledgerEntry.findFirst({where:{attemptId:attempt.id,type:'SETTLEMENT_CONFIRMED'}});
@@ -63,20 +83,22 @@ export class SettlementService {
         }else if(mapped.status==='FAILED'){
           await tx.ledgerEntry.create({data:{campaignId:payout.campaignId,payoutId,attemptId:attempt.id,type:'FAILED',amount:0n,assetId:attempt.inputAssetId,externalRef:ext}});
         }
-      }
+      }*/
 
       const path:DomainStatus[]=[];let cursor=payout.status as DomainStatus;
-      if(cursor!==mapped.status&&!exists){
-        for(let guard=0;cursor!==mapped.status&&guard<5;guard++){
-          if(canTransition(cursor,mapped.status)){path.push(mapped.status);cursor=mapped.status;break;}
+      const targetStatus:DomainStatus=mapped.status==='SUCCESS'&&!outputVerified?'PROCESSING':mapped.status==='REFUNDED'?'REFUND_PENDING':mapped.status;
+      const finalExists=mapped.status==='SUCCESS'&&outputVerified?await tx.ledgerEntry.findUnique({where:{externalRef:ext}}):null;
+      if(cursor!==targetStatus&&(!finalExists||targetStatus!=='SUCCESS')){
+        for(let guard=0;cursor!==targetStatus&&guard<5;guard++){
+          if(canTransition(cursor,targetStatus)){path.push(targetStatus);cursor=targetStatus;break;}
           const intermediate:DomainStatus|undefined=cursor==='RESERVED'?'COMMITTED':cursor==='COMMITTED'||cursor==='AWAITING_DEPOSIT'?'PROCESSING':undefined;
-          if(!intermediate||!canTransition(cursor,intermediate))throw new Error(`Unsafe provider status regression ${cursor} -> ${mapped.status}`);
+          if(!intermediate||!canTransition(cursor,intermediate))throw new Error(`Unsafe provider status regression ${cursor} -> ${targetStatus}`);
           assertTransition(cursor,intermediate);path.push(intermediate);cursor=intermediate;
         }
-        if(cursor!==mapped.status)throw new Error(`Unable to reach provider status ${mapped.status}`);
+        if(cursor!==targetStatus)throw new Error(`Unable to reach provider status ${targetStatus}`);
       }
 
-      if((mapped.status==='SUCCESS'||mapped.status==='REFUNDED')&&result.depositedAmount!==undefined){
+      if(mapped.status==='SUCCESS'&&outputVerified&&result.depositedAmount!==undefined){
         const deposited=(await tx.ledgerEntry.aggregate({where:{attemptId:attempt.id,type:'DEPOSIT_OBSERVED'},_sum:{amount:true}}))._sum.amount??0n;
         const settled=(await tx.ledgerEntry.aggregate({where:{attemptId:attempt.id,type:'SETTLEMENT_CONFIRMED'},_sum:{amount:true}}))._sum.amount??0n;
         const refunded=(await tx.ledgerEntry.aggregate({where:{attemptId:attempt.id,type:'REFUND_CONFIRMED'},_sum:{amount:true}}))._sum.amount??0n;
