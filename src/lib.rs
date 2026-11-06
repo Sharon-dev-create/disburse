@@ -62,6 +62,15 @@ pub struct CampaignPayoutAccounting {
     pub available: U128,
 }
 
+#[derive(Clone)]
+struct PayoutRequest {
+    campaign_id: u64,
+    recipient_near_account_id: Option<AccountId>,
+    destination: PayoutDestination,
+    input_amount: TokenAmount,
+    expected_output_amount: TokenAmount,
+}
+
 struct CampaignFundingMessage {
     campaign_id: u64,
 }
@@ -230,6 +239,158 @@ impl Disburse {
                 remaining_budget: U128(remaining_budget),
             }
         })
+    }
+
+    /// Authorize a payout and reserve its campaign input amount. This does not execute it.
+    pub fn create_payout(
+        &mut self,
+        campaign_id: u64,
+        idempotency_key: String,
+        recipient_near_account_id: Option<AccountId>,
+        destination: PayoutDestination,
+        input_amount: TokenAmount,
+        expected_output_amount: TokenAmount,
+    ) -> u64 {
+        self.assert_campaign_operations_enabled();
+        let actor_id = env::predecessor_account_id();
+        require!(
+            self.is_operator_or_administrator(&actor_id),
+            "Operator or administrator role required to create payouts"
+        );
+        require!(
+            validate_identifier(&idempotency_key).is_ok(),
+            "Idempotency key cannot be empty"
+        );
+        require!(
+            input_amount.atomic_amount() > 0,
+            "Input amount must be greater than zero"
+        );
+        require!(
+            expected_output_amount.atomic_amount() > 0,
+            "Expected output amount must be greater than zero"
+        );
+
+        let request = PayoutRequest {
+            campaign_id,
+            recipient_near_account_id,
+            destination,
+            input_amount,
+            expected_output_amount,
+        };
+        let idempotency_index = (campaign_id, idempotency_key);
+        if let Some(existing_id) = self.payout_idempotency.get(&idempotency_index).copied() {
+            let existing = self
+                .payouts
+                .get(&existing_id)
+                .unwrap_or_else(|| env::panic_str("Payout idempotency invariant violated"));
+            require!(
+                Self::payout_matches_request(existing, &request),
+                "Idempotency key reused with different payout details"
+            );
+            return existing_id;
+        }
+
+        let mut campaign = self.campaign_or_panic(campaign_id);
+        self.require_campaign_status(&campaign, CampaignStatus::Active, "create payout for");
+        require!(
+            request.input_amount.token_id().near_account_id() == Some(&campaign.token_id),
+            "Payout input token must match campaign funding token"
+        );
+        let available = Self::available_campaign_funds(&campaign);
+        require!(
+            request.input_amount.atomic_amount() <= available,
+            "Insufficient available campaign funds"
+        );
+        let new_reserved = campaign
+            .reserved
+            .checked_add(request.input_amount.atomic_amount())
+            .unwrap_or_else(|| env::panic_str("Campaign reservation overflow"));
+        let new_committed = new_reserved
+            .checked_add(campaign.spent)
+            .unwrap_or_else(|| env::panic_str("Campaign accounting overflow"));
+        require!(
+            new_committed <= campaign.funded,
+            "Campaign accounting invariant violated"
+        );
+
+        let payout_id = self.next_payout_id;
+        let next_payout_id = payout_id
+            .checked_add(1)
+            .unwrap_or_else(|| env::panic_str("Payout ID overflow"));
+        require!(
+            !self.payouts.contains_key(&payout_id),
+            "Payout ID collision"
+        );
+
+        let mut payout = Payout {
+            id: payout_id,
+            campaign_id,
+            recipient_near_account_id: request.recipient_near_account_id,
+            input_amount: request.input_amount,
+            destination: request.destination,
+            expected_output_amount: request.expected_output_amount,
+            status: PayoutStatus::Created,
+            created_at_ns: env::block_timestamp(),
+            execution_reference: None,
+            settlement_evidence_reference: None,
+        };
+        payout.status = PayoutStatus::Authorized;
+        campaign.reserved = new_reserved;
+        payout.status = PayoutStatus::Reserved;
+
+        self.campaigns.insert(campaign_id, campaign);
+        self.payouts.insert(payout_id, payout.clone());
+        self.payout_idempotency.insert(idempotency_index, payout_id);
+        self.next_payout_id = next_payout_id;
+        self.emit_event("payout_reserved", near_sdk::serde_json::json!({
+            "payout_id": payout_id,
+            "campaign_id": campaign_id,
+            "actor_id": actor_id,
+            "input_token_id": Self::token_id_string(payout.input_amount.token_id()),
+            "input_amount": payout.input_amount.atomic_amount().to_string(),
+            "expected_output_token_id": Self::token_id_string(payout.expected_output_amount.token_id()),
+            "expected_output_amount": payout.expected_output_amount.atomic_amount().to_string(),
+            "status": "Reserved",
+        }));
+        payout_id
+    }
+
+    pub fn get_payout(&self, payout_id: u64) -> Option<PayoutView> {
+        self.payouts.get(&payout_id).map(Self::payout_view)
+    }
+
+    pub fn get_campaign_payout(&self, campaign_id: u64, payout_id: u64) -> Option<PayoutView> {
+        self.payouts
+            .get(&payout_id)
+            .filter(|payout| payout.campaign_id == campaign_id)
+            .map(Self::payout_view)
+    }
+
+    pub fn get_payout_by_idempotency(
+        &self,
+        campaign_id: u64,
+        idempotency_key: String,
+    ) -> Option<PayoutView> {
+        self.payout_idempotency
+            .get(&(campaign_id, idempotency_key))
+            .and_then(|id| self.payouts.get(id))
+            .map(Self::payout_view)
+    }
+
+    pub fn get_campaign_payout_accounting(
+        &self,
+        campaign_id: u64,
+    ) -> Option<CampaignPayoutAccounting> {
+        self.campaigns
+            .get(&campaign_id)
+            .map(|campaign| CampaignPayoutAccounting {
+                campaign_id,
+                budget: U128(campaign.budget),
+                funded: U128(campaign.funded),
+                reserved: U128(campaign.reserved),
+                spent: U128(campaign.spent),
+                available: U128(Self::available_campaign_funds(campaign)),
+            })
     }
 
     /// Grant a non-owner role. The owner is the only grant authority and cannot self-grant.
@@ -435,6 +596,64 @@ impl Disburse {
             .get(&campaign_id)
             .cloned()
             .unwrap_or_else(|| env::panic_str("Campaign not found"))
+    }
+
+    fn payout_matches_request(payout: &Payout, request: &PayoutRequest) -> bool {
+        payout.campaign_id == request.campaign_id
+            && payout.recipient_near_account_id == request.recipient_near_account_id
+            && payout.destination == request.destination
+            && payout.input_amount == request.input_amount
+            && payout.expected_output_amount == request.expected_output_amount
+    }
+
+    fn available_campaign_funds(campaign: &Campaign) -> u128 {
+        require!(
+            campaign.funded <= campaign.budget,
+            "Campaign funding invariant violated"
+        );
+        let committed = campaign
+            .reserved
+            .checked_add(campaign.spent)
+            .unwrap_or_else(|| env::panic_str("Campaign accounting overflow"));
+        require!(
+            committed <= campaign.funded,
+            "Campaign accounting invariant violated"
+        );
+        campaign
+            .funded
+            .checked_sub(committed)
+            .unwrap_or_else(|| env::panic_str("Campaign accounting underflow"))
+    }
+
+    fn token_id_string(token_id: &TokenId) -> String {
+        token_id
+            .near_account_id()
+            .map(ToString::to_string)
+            .or_else(|| token_id.external_identifier().map(ToString::to_string))
+            .unwrap_or_default()
+    }
+
+    fn token_amount_view(amount: &TokenAmount) -> TokenAmountView {
+        TokenAmountView {
+            token_id: amount.token_id().clone(),
+            atomic_amount: U128(amount.atomic_amount()),
+            decimals: amount.decimals(),
+        }
+    }
+
+    fn payout_view(payout: &Payout) -> PayoutView {
+        PayoutView {
+            id: payout.id,
+            campaign_id: payout.campaign_id,
+            recipient_near_account_id: payout.recipient_near_account_id.clone(),
+            input_amount: Self::token_amount_view(&payout.input_amount),
+            destination: payout.destination.clone(),
+            expected_output_amount: Self::token_amount_view(&payout.expected_output_amount),
+            status: payout.status,
+            created_at_ns: payout.created_at_ns,
+            execution_reference: payout.execution_reference.clone(),
+            settlement_evidence_reference: payout.settlement_evidence_reference.clone(),
+        }
     }
 
     fn require_campaign_status(&self, campaign: &Campaign, expected: CampaignStatus, action: &str) {
@@ -650,6 +869,53 @@ mod tests {
                 .iter()
                 .all(|log| !log.contains("\"event\":\"campaign_funded\""))
         );
+    }
+
+    fn payout_destination(address: &str) -> PayoutDestination {
+        PayoutDestination {
+            chain_id: types::destination::ChainId::new("eip155:1".to_string()).unwrap(),
+            recipient_address: types::destination::RecipientAddress::new(address.to_string())
+                .unwrap(),
+        }
+    }
+
+    fn payout_amount(token_id: TokenId, amount: u128) -> TokenAmount {
+        TokenAmount::new(token_id, amount, 6)
+    }
+
+    fn funded_active_campaign(funded: u128) -> (Disburse, u64) {
+        let (mut contract, campaign_id) = approved_funding_campaign(funded, accounts(3));
+        assert_eq!(
+            receiver_unused(
+                &mut contract,
+                accounts(3),
+                accounts(4),
+                funded,
+                &format!("{{\"campaign_id\":{campaign_id}}}")
+            ),
+            0
+        );
+        set_context(accounts(1));
+        contract.grant_role(accounts(2), UserRole::Operator);
+        set_context(accounts(2));
+        contract.activate_campaign(campaign_id);
+        (contract, campaign_id)
+    }
+
+    fn submit_test_payout(
+        contract: &mut Disburse,
+        campaign_id: u64,
+        key: &str,
+        amount: u128,
+    ) -> u64 {
+        contract.create_payout(
+            campaign_id,
+            key.to_string(),
+            Some(accounts(4)),
+            payout_destination("0xrecipient"),
+            payout_amount(TokenId::near(accounts(3)), amount),
+            payout_amount(TokenId::external("sol:usdc".to_string()).unwrap(), 95),
+        )
     }
 
     #[test]
@@ -1351,5 +1617,455 @@ mod tests {
             &format!("{{\"campaign_id\":{campaign_id}}}"),
         );
         assert_eq!(contract.get_campaign(campaign_id).unwrap().funded, 450);
+    }
+
+    #[test]
+    fn operator_reserves_exact_input_and_views_use_u128_strings() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        let before = contract.get_campaign(campaign_id).unwrap();
+        let id = submit_test_payout(&mut contract, campaign_id, "payout-1", 40);
+        let after = contract.get_campaign(campaign_id).unwrap();
+        assert_eq!(after.reserved, 40);
+        assert_eq!(after.funded, before.funded);
+        assert_eq!(after.spent, before.spent);
+        assert_eq!(
+            contract.get_payout(id).unwrap().status,
+            PayoutStatus::Reserved
+        );
+        assert_eq!(
+            contract.get_campaign_payout(campaign_id, id).unwrap().id,
+            id
+        );
+        assert_eq!(contract.get_campaign_payout(999, id), None);
+        let by_key = contract
+            .get_payout_by_idempotency(campaign_id, "payout-1".to_string())
+            .unwrap();
+        assert_eq!(by_key.id, id);
+        assert_eq!(
+            contract
+                .get_campaign_payout_accounting(campaign_id)
+                .unwrap()
+                .available,
+            U128(60)
+        );
+        assert!(
+            near_sdk::serde_json::to_string(&contract.get_payout(id).unwrap())
+                .unwrap()
+                .contains("\"atomic_amount\":\"40\"")
+        );
+        let event: near_sdk::serde_json::Value = near_sdk::serde_json::from_str(
+            get_logs()
+                .last()
+                .unwrap()
+                .strip_prefix("EVENT_JSON:")
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(event["event"], "payout_reserved");
+        assert_eq!(event["data"][0]["input_amount"], "40");
+        assert_eq!(event["data"][0]["expected_output_amount"], "95");
+        assert_eq!(contract.get_payout(999), None);
+    }
+
+    #[test]
+    fn administrator_and_owner_can_create_payouts() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        set_context(accounts(1));
+        contract.create_payout(
+            campaign_id,
+            "owner".into(),
+            None,
+            payout_destination("addr"),
+            payout_amount(TokenId::near(accounts(3)), 1),
+            payout_amount(TokenId::near(accounts(5)), 2),
+        );
+        set_context(accounts(1));
+        contract.grant_role(accounts(5), UserRole::Administrator);
+        set_context(accounts(5));
+        contract.create_payout(
+            campaign_id,
+            "admin".into(),
+            None,
+            payout_destination("addr"),
+            payout_amount(TokenId::near(accounts(3)), 1),
+            payout_amount(TokenId::near(accounts(5)), 2),
+        );
+        assert_eq!(
+            contract.get_payout(0).unwrap().status,
+            PayoutStatus::Reserved
+        );
+        assert_eq!(
+            contract.get_payout(1).unwrap().status,
+            PayoutStatus::Reserved
+        );
+    }
+
+    #[test]
+    fn identical_idempotent_retry_does_not_reserve_or_emit_again() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        let first = submit_test_payout(&mut contract, campaign_id, "stable", 40);
+        let before_logs = get_logs().len();
+        let second = submit_test_payout(&mut contract, campaign_id, "stable", 40);
+        assert_eq!(first, second);
+        assert_eq!(contract.get_campaign(campaign_id).unwrap().reserved, 40);
+        assert_eq!(contract.next_payout_id, 1);
+        assert_eq!(get_logs().len(), before_logs);
+    }
+
+    #[test]
+    fn payout_rejections_preserve_campaign_ids_records_and_events() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        for (caller, role) in [(accounts(4), None), (accounts(5), Some(UserRole::Verifier))] {
+            if let Some(role) = role {
+                set_context(accounts(1));
+                contract.grant_role(caller.clone(), role);
+            }
+            set_context(caller);
+            let before = contract.get_campaign(campaign_id).unwrap();
+            assert!(
+                catch_unwind(AssertUnwindSafe(|| submit_test_payout(
+                    &mut contract,
+                    campaign_id,
+                    "no",
+                    1
+                )))
+                .is_err()
+            );
+            assert_eq!(contract.get_campaign(campaign_id).unwrap(), before);
+            assert_eq!(contract.next_payout_id, 0);
+            assert_eq!(
+                contract.get_payout_by_idempotency(campaign_id, "no".into()),
+                None
+            );
+            assert!(
+                get_logs()
+                    .iter()
+                    .all(|log| !log.contains("payout_reserved"))
+            );
+        }
+    }
+
+    #[test]
+    fn global_pause_blocks_reservations_without_mutation() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        set_context(accounts(1));
+        contract.pause();
+        set_context(accounts(2));
+        let before = contract.get_campaign(campaign_id).unwrap();
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| submit_test_payout(
+                &mut contract,
+                campaign_id,
+                "paused",
+                1
+            )))
+            .is_err()
+        );
+        assert_eq!(contract.get_campaign(campaign_id).unwrap(), before);
+        assert_eq!(contract.next_payout_id, 0);
+        assert_eq!(contract.get_payout(0), None);
+    }
+
+    #[test]
+    fn invalid_campaign_amount_token_and_balance_are_rejected() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        let before = contract.get_campaign(campaign_id).unwrap();
+        let fails =
+            |contract: &mut Disburse, key: &str, input: TokenAmount, output: TokenAmount| {
+                catch_unwind(AssertUnwindSafe(|| {
+                    contract.create_payout(
+                        campaign_id,
+                        key.into(),
+                        None,
+                        payout_destination("addr"),
+                        input,
+                        output,
+                    )
+                }))
+                .is_err()
+            };
+        set_context(accounts(2));
+        assert!(fails(
+            &mut contract,
+            "zero-in",
+            payout_amount(TokenId::near(accounts(3)), 0),
+            payout_amount(TokenId::near(accounts(5)), 1)
+        ));
+        assert!(fails(
+            &mut contract,
+            "zero-out",
+            payout_amount(TokenId::near(accounts(3)), 1),
+            payout_amount(TokenId::near(accounts(5)), 0)
+        ));
+        assert!(fails(
+            &mut contract,
+            "wrong-token",
+            payout_amount(TokenId::near(accounts(5)), 1),
+            payout_amount(TokenId::near(accounts(5)), 1)
+        ));
+        assert!(fails(
+            &mut contract,
+            "too-much",
+            payout_amount(TokenId::near(accounts(3)), 101),
+            payout_amount(TokenId::near(accounts(5)), 1)
+        ));
+        assert_eq!(contract.get_campaign(campaign_id).unwrap(), before);
+        assert_eq!(contract.next_payout_id, 0);
+    }
+
+    #[test]
+    fn idempotency_key_payload_mismatch_and_campaign_scope() {
+        let (mut contract, c1) = funded_active_campaign(100);
+        set_context(accounts(2));
+        let first = submit_test_payout(&mut contract, c1, "scope", 10);
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| submit_test_payout(
+                &mut contract,
+                c1,
+                "scope",
+                11
+            )))
+            .is_err()
+        );
+        let c2 = contract.create_campaign("second".into(), accounts(3), 100);
+        set_context(accounts(1));
+        contract.approve_campaign(c2);
+        assert_eq!(
+            receiver_unused(
+                &mut contract,
+                accounts(3),
+                accounts(4),
+                100,
+                &format!("{{\"campaign_id\":{c2}}}")
+            ),
+            0
+        );
+        set_context(accounts(1));
+        contract.grant_role(accounts(2), UserRole::Operator);
+        set_context(accounts(2));
+        contract.activate_campaign(c2);
+        let second = submit_test_payout(&mut contract, c2, "scope", 10);
+        assert_ne!(first, second);
+        assert_eq!(contract.get_campaign(c1).unwrap().reserved, 10);
+        assert_eq!(contract.get_campaign(c2).unwrap().reserved, 10);
+    }
+
+    #[test]
+    fn idempotency_rejects_each_changed_request_field_and_blank_keys() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        set_context(accounts(2));
+        submit_test_payout(&mut contract, campaign_id, "fields", 10);
+        let baseline = || {
+            (
+                Some(accounts(4)),
+                payout_destination("0xrecipient"),
+                payout_amount(TokenId::near(accounts(3)), 10),
+                payout_amount(TokenId::external("sol:usdc".to_string()).unwrap(), 95),
+            )
+        };
+        for changed in [
+            (
+                None,
+                payout_destination("0xrecipient"),
+                payout_amount(TokenId::near(accounts(3)), 10),
+                payout_amount(TokenId::external("sol:usdc".to_string()).unwrap(), 95),
+            ),
+            (
+                Some(accounts(4)),
+                payout_destination("another"),
+                payout_amount(TokenId::near(accounts(3)), 10),
+                payout_amount(TokenId::external("sol:usdc".to_string()).unwrap(), 95),
+            ),
+            (
+                Some(accounts(4)),
+                payout_destination("0xrecipient"),
+                payout_amount(TokenId::near(accounts(3)), 10),
+                payout_amount(TokenId::external("sol:usdc".to_string()).unwrap(), 94),
+            ),
+            (
+                Some(accounts(4)),
+                payout_destination("0xrecipient"),
+                payout_amount(TokenId::near(accounts(3)), 10),
+                payout_amount(TokenId::external("sol:other".to_string()).unwrap(), 95),
+            ),
+        ] {
+            let before = contract.get_campaign(campaign_id).unwrap();
+            assert!(
+                catch_unwind(AssertUnwindSafe(|| contract.create_payout(
+                    campaign_id,
+                    "fields".into(),
+                    changed.0,
+                    changed.1,
+                    changed.2,
+                    changed.3
+                )))
+                .is_err()
+            );
+            assert_eq!(contract.get_campaign(campaign_id).unwrap(), before);
+            assert_eq!(contract.next_payout_id, 1);
+        }
+        let (recipient, destination, input, output) = baseline();
+        for blank in ["", "  \t"] {
+            assert!(
+                catch_unwind(AssertUnwindSafe(|| contract.create_payout(
+                    campaign_id,
+                    blank.into(),
+                    recipient.clone(),
+                    destination.clone(),
+                    input.clone(),
+                    output.clone()
+                )))
+                .is_err()
+            );
+        }
+        assert_eq!(contract.get_campaign(campaign_id).unwrap().reserved, 10);
+        assert_eq!(contract.next_payout_id, 1);
+    }
+
+    #[test]
+    fn exact_available_balance_can_be_reserved_and_spent_is_counted() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        let mut campaign = contract.get_campaign(campaign_id).unwrap();
+        campaign.reserved = 30;
+        campaign.spent = 20;
+        contract.campaigns.insert(campaign_id, campaign);
+        set_context(accounts(2));
+        let id = submit_test_payout(&mut contract, campaign_id, "remaining", 50);
+        let updated = contract.get_campaign(campaign_id).unwrap();
+        assert_eq!(updated.reserved, 80);
+        assert_eq!(updated.spent, 20);
+        assert_eq!(
+            contract
+                .get_campaign_payout_accounting(campaign_id)
+                .unwrap()
+                .available,
+            U128(0)
+        );
+        assert_eq!(
+            contract.get_payout(id).unwrap().input_amount.atomic_amount,
+            U128(50)
+        );
+    }
+
+    #[test]
+    fn nonexistent_campaign_and_available_balance_underflow_are_rejected() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        set_context(accounts(2));
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| submit_test_payout(
+                &mut contract,
+                999,
+                "missing",
+                1
+            )))
+            .is_err()
+        );
+        let mut campaign = contract.get_campaign(campaign_id).unwrap();
+        campaign.reserved = 101;
+        contract.campaigns.insert(campaign_id, campaign);
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| submit_test_payout(
+                &mut contract,
+                campaign_id,
+                "underflow",
+                1
+            )))
+            .is_err()
+        );
+        assert_eq!(contract.next_payout_id, 0);
+        assert_eq!(contract.get_payout(0), None);
+    }
+
+    #[test]
+    fn rejected_non_active_campaign_and_malformed_accounting_do_not_create_payout() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        let mut campaign = contract.get_campaign(campaign_id).unwrap();
+        campaign.status = CampaignStatus::Paused;
+        contract.campaigns.insert(campaign_id, campaign.clone());
+        set_context(accounts(2));
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| submit_test_payout(
+                &mut contract,
+                campaign_id,
+                "inactive",
+                1
+            )))
+            .is_err()
+        );
+        campaign.status = CampaignStatus::Active;
+        campaign.reserved = u128::MAX;
+        campaign.spent = 1;
+        contract.campaigns.insert(campaign_id, campaign);
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| submit_test_payout(
+                &mut contract,
+                campaign_id,
+                "overflow",
+                1
+            )))
+            .is_err()
+        );
+        assert_eq!(contract.next_payout_id, 0);
+        assert_eq!(contract.get_payout(0), None);
+    }
+
+    #[test]
+    fn every_non_active_campaign_status_rejects_payout_creation() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        set_context(accounts(2));
+        for status in [
+            CampaignStatus::Draft,
+            CampaignStatus::Approved,
+            CampaignStatus::Paused,
+            CampaignStatus::Cancelled,
+            CampaignStatus::Completed,
+        ] {
+            let mut campaign = contract.get_campaign(campaign_id).unwrap();
+            campaign.status = status;
+            contract.campaigns.insert(campaign_id, campaign.clone());
+            assert!(
+                catch_unwind(AssertUnwindSafe(|| submit_test_payout(
+                    &mut contract,
+                    campaign_id,
+                    "inactive",
+                    1
+                )))
+                .is_err()
+            );
+            assert_eq!(contract.get_campaign(campaign_id).unwrap(), campaign);
+            assert_eq!(contract.next_payout_id, 0);
+            assert_eq!(
+                contract.get_payout_by_idempotency(campaign_id, "inactive".into()),
+                None
+            );
+            assert!(
+                get_logs()
+                    .iter()
+                    .all(|log| !log.contains("payout_reserved"))
+            );
+        }
+    }
+
+    #[test]
+    fn payout_id_overflow_fails_before_any_persistent_write() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        contract.next_payout_id = u64::MAX;
+        set_context(accounts(2));
+        let before = contract.get_campaign(campaign_id).unwrap();
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| submit_test_payout(
+                &mut contract,
+                campaign_id,
+                "overflow-id",
+                1
+            )))
+            .is_err()
+        );
+        assert_eq!(contract.get_campaign(campaign_id).unwrap(), before);
+        assert_eq!(contract.get_payout(u64::MAX), None);
+        assert_eq!(
+            contract.get_payout_by_idempotency(campaign_id, "overflow-id".into()),
+            None
+        );
     }
 }
