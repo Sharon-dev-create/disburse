@@ -16,7 +16,7 @@ CREATE TABLE "Payout" (
 );
 CREATE TABLE "Attempt" (
   "id" TEXT PRIMARY KEY, "payoutId" TEXT NOT NULL, "attemptNo" INTEGER NOT NULL, "retryKey" TEXT UNIQUE, "quoteId" TEXT UNIQUE,
-  "maxAmountIn" BIGINT, "inputAssetId" TEXT, "inputChain" TEXT, "outputAmount" BIGINT, "expiresAt" TIMESTAMP(3),
+  "maxAmountIn" BIGINT, "inputAssetId" TEXT, "inputChain" TEXT, "outputAmount" BIGINT, "expiresAt" TIMESTAMP(3), "timeWhenInactive" TIMESTAMP(3),
   "depositAddress" TEXT, "depositMemo" TEXT, "status" "PayoutStatus" NOT NULL DEFAULT 'CREATED', "providerJson" JSONB,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "Attempt_payoutId_fkey" FOREIGN KEY ("payoutId") REFERENCES "Payout"("id") ON DELETE RESTRICT ON UPDATE CASCADE

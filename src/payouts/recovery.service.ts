@@ -11,7 +11,7 @@ export function reconcile(facts:PayoutFacts,result:StatusResult):{status:PayoutS
     return {status:'SUCCESS',releaseExposure:true,settledInput:result.amountIn,...(result.refundedAmount!==undefined?{confirmedRefund:result.refundedAmount}:{}),txHashes:result.destinationTxHashes};
   }
   if(result.status==='REFUNDED'){
-    if(!result.refundedAmount||result.refundAssetId&&result.refundAssetId!==facts.inputAssetId)throw new Error('Refund amount or asset is not validated');
+    if(!result.refundedAmount||result.refundAssetId!==facts.inputAssetId)throw new Error('Refund amount or asset is not validated');
     if(result.refundedAmount>facts.reserved)throw new Error('Refund exceeds reserved input');
     return {status:'REFUNDED',releaseExposure:true,confirmedRefund:result.refundedAmount,txHashes:result.originTxHashes};
   }

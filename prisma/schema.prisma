@@ -84,6 +84,7 @@ model Attempt {
   inputChain      String?
   outputAmount    BigInt?
   expiresAt       DateTime?
+  timeWhenInactive DateTime?
   depositAddress  String?
   depositMemo     String?
   status          PayoutStatus @default(CREATED)
