@@ -1,29 +1,8 @@
+pub mod state;
+pub mod types;
+
 use near_sdk::{AccountId, PanicOnDefault, env, near, require, store::LookupMap};
-
-#[near(serializers = [borsh, json])]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum CampaignStatus {
-    Draft,
-    Active,
-    Paused,
-    Completed,
-    Cancelled,
-}
-
-#[near(serializers = [borsh, json])]
-#[derive(Clone)]
-pub struct Campaign {
-    pub id: u64,
-    pub creator_id: AccountId,
-    pub title: String,
-    pub token_id: AccountId,
-    pub budget: u128,
-    pub funded: u128,
-    pub reserved: u128,
-    pub spent: u128,
-    pub status: CampaignStatus,
-    pub created_at_ns: u64,
-}
+use state::campaign::Campaign;
 
 #[near(contract_state)]
 #[derive(PanicOnDefault)]
@@ -53,7 +32,6 @@ impl Disburse {
         require!(budget > 0, "Campaign budget must be greater than zero");
 
         let campaign_id = self.next_campaign_id;
-
         self.next_campaign_id = self
             .next_campaign_id
             .checked_add(1)
@@ -68,14 +46,12 @@ impl Disburse {
             funded: 0,
             reserved: 0,
             spent: 0,
-            status: CampaignStatus::Draft,
+            status: types::status::CampaignStatus::Draft,
             created_at_ns: env::block_timestamp(),
         };
 
         self.campaigns.insert(campaign_id, campaign);
-
-        env::log_str(&format!("CampaignCreated:{}", campaign_id));
-
+        env::log_str(&format!("CampaignCreated:{campaign_id}"));
         campaign_id
     }
 
@@ -121,12 +97,10 @@ mod tests {
 
     fn set_context(predecessor: AccountId) {
         let mut context = VMContextBuilder::new();
-
         context
             .current_account_id(accounts(0))
             .predecessor_account_id(predecessor.clone())
             .signer_account_id(predecessor);
-
         testing_env!(context.build());
     }
 
@@ -138,7 +112,6 @@ mod tests {
     #[test]
     fn initializes_with_caller_as_owner() {
         let contract = new_contract();
-
         assert_eq!(contract.get_owner(), accounts(1));
         assert!(!contract.is_paused());
         assert_eq!(contract.get_campaign_count(), 0);
@@ -147,10 +120,8 @@ mod tests {
     #[test]
     fn creates_campaign_with_zero_initial_funding() {
         let mut contract = new_contract();
-
         let campaign_id =
             contract.create_campaign("Community Grants".to_string(), accounts(2), 1_000_000);
-
         let campaign = contract.get_campaign(campaign_id).unwrap();
 
         assert_eq!(campaign_id, 0);
@@ -161,46 +132,36 @@ mod tests {
         assert_eq!(campaign.funded, 0);
         assert_eq!(campaign.reserved, 0);
         assert_eq!(campaign.spent, 0);
-        assert_eq!(campaign.status, CampaignStatus::Draft);
+        assert_eq!(campaign.status, types::status::CampaignStatus::Draft);
         assert_eq!(contract.get_campaign_count(), 1);
     }
 
     #[test]
     fn campaign_ids_are_unique_and_incrementing() {
         let mut contract = new_contract();
-
         let first = contract.create_campaign("First campaign".to_string(), accounts(2), 100);
-
         let second = contract.create_campaign("Second campaign".to_string(), accounts(2), 200);
-
-        assert_eq!(first, 0);
-        assert_eq!(second, 1);
+        assert_eq!((first, second), (0, 1));
         assert_eq!(contract.get_campaign_count(), 2);
     }
 
     #[test]
     #[should_panic(expected = "Campaign title cannot be empty")]
     fn rejects_empty_campaign_title() {
-        let mut contract = new_contract();
-
-        contract.create_campaign("   ".to_string(), accounts(2), 100);
+        new_contract().create_campaign("   ".to_string(), accounts(2), 100);
     }
 
     #[test]
     #[should_panic(expected = "Campaign budget must be greater than zero")]
     fn rejects_zero_campaign_budget() {
-        let mut contract = new_contract();
-
-        contract.create_campaign("Community Grants".to_string(), accounts(2), 0);
+        new_contract().create_campaign("Community Grants".to_string(), accounts(2), 0);
     }
 
     #[test]
     fn owner_can_pause_and_unpause() {
         let mut contract = new_contract();
-
         contract.pause();
         assert!(contract.is_paused());
-
         contract.unpause();
         assert!(!contract.is_paused());
     }
@@ -209,7 +170,6 @@ mod tests {
     #[should_panic(expected = "Only the contract owner")]
     fn non_owner_cannot_pause() {
         let mut contract = new_contract();
-
         set_context(accounts(2));
         contract.pause();
     }
@@ -218,9 +178,7 @@ mod tests {
     #[should_panic(expected = "Contract is paused")]
     fn cannot_create_campaign_while_contract_is_paused() {
         let mut contract = new_contract();
-
         contract.pause();
-
         contract.create_campaign("Blocked campaign".to_string(), accounts(2), 100);
     }
 }

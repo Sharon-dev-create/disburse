@@ -1,0 +1,19 @@
+use near_sdk::{AccountId, near};
+
+use crate::types::{amount::TokenAmount, destination::PayoutDestination, status::PayoutStatus};
+
+#[near(serializers = [borsh, json])]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Payout {
+    pub id: u64,
+    pub campaign_id: u64,
+    pub recipient_near_account_id: Option<AccountId>,
+    pub amount: TokenAmount,
+    pub input_token_id: AccountId,
+    pub destination: PayoutDestination,
+    pub expected_output_amount: TokenAmount,
+    pub status: PayoutStatus,
+    pub created_at_ns: u64,
+    pub execution_reference: Option<String>,
+    pub settlement_evidence_reference: Option<String>,
+}
