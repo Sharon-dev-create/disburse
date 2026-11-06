@@ -84,6 +84,8 @@ export class SimulatedSigningPolicy {
     this.authorizationChecks++;
     const actual=adapter.inspectUnsignedTransfer(tx);
     if(!adapter.capabilities.canEnforceMaximumAtIsolatedSigner)throw new Error('Adapter does not declare isolated signer maximum enforcement');
+    if(actual.chainId!==adapter.capabilities.networkId)throw new Error('Transaction network does not match adapter network');
+    if(policy.maxSourceAmount<=0n||policy.maxNetworkFee<0n||!proposalKey(actual.idempotencyKey))throw new Error('Funding policy or idempotency key is invalid');
     if(now>=policy.expiresAt)throw new Error('Quote authorization is expired');
     if(actual.quoteId!==policy.quoteId||actual.chainId!==policy.chainId||actual.sourceAssetId!==policy.sourceAssetId)throw new Error('Transaction quote, chain, or source asset does not match authorization');
     if(actual.to!==policy.depositAddress)throw new Error('Transaction destination does not match 1Click deposit address');
@@ -122,7 +124,7 @@ export class FundingControlPoc {
   constructor(private readonly adapter:ChainFundingAdapter,private readonly journal:InMemoryFundingJournal,private readonly signerPolicy:SimulatedSigningPolicy,private readonly now:()=>Date=()=>new Date()){}
 
   prepare(policy:FundingPolicy,proposal:ProposedTransfer):FundingRecord {
-    const fingerprint=hash(encode(proposal));
+    const fingerprint=hash(`${encode(proposal)}|${policy.quoteId}|${policy.chainId}|${policy.sourceAssetId}|${policy.depositAddress}|${policy.maxSourceAmount}|${policy.feeAssetId}|${policy.maxNetworkFee}|${policy.expiresAt.toISOString()}`);
     const existing=this.journal.get(proposal.idempotencyKey);
     if(existing){if(existing.fingerprint!==fingerprint||existing.policy.quoteId!==policy.quoteId)throw new Error('Idempotency key was already used for a different transfer');return existing;}
     if(!this.adapter.capabilities.supportedAssetIds.includes(proposal.sourceAssetId))throw new Error('Source asset is not enabled by this chain adapter');
@@ -155,3 +157,4 @@ function encode(proposal:ProposedTransfer):string {
   return JSON.stringify({quoteId:proposal.quoteId,chainId:proposal.chainId,sourceAssetId:proposal.sourceAssetId,from:proposal.from,to:proposal.to,amount:proposal.amount.toString(),feeAssetId:proposal.feeAssetId,networkFee:proposal.networkFee.toString(),...(proposal.memo!==undefined?{memo:proposal.memo}:{}),idempotencyKey:proposal.idempotencyKey});
 }
 function hash(value:string):string{return createHash('sha256').update(value).digest('hex');}
+function proposalKey(value:string):boolean{return value.trim().length>0;}
