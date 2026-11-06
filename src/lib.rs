@@ -84,7 +84,8 @@ impl Disburse {
         self.next_campaign_id
     }
 
-    /// Add a NEP-141 token contract to the funding allowlist. Duplicate additions are no-ops.
+    /// Add a NEP-141 token contract to the funding allowlist. This is a trust decision about
+    /// that contract's NEP-141 behavior. Duplicate additions are no-ops.
     pub fn add_accepted_token(&mut self, token_id: AccountId) {
         let actor_id = env::predecessor_account_id();
         self.assert_owner();
@@ -391,6 +392,8 @@ impl Disburse {
     }
 
     fn decode_funding_message(msg: &str) -> Option<u64> {
+        // The only supported payload is `{ "campaign_id": <u64> }`; reject extra fields
+        // so caller-supplied token identities cannot look authoritative.
         let value = near_sdk::serde_json::from_str::<near_sdk::serde_json::Value>(msg).ok()?;
         let object = value.as_object()?;
         if object.len() != 1 {
@@ -413,7 +416,7 @@ impl FungibleTokenReceiver for Disburse {
         let token_id = env::predecessor_account_id();
         let unused = || PromiseOrValue::Value(U128(amount.0));
 
-        if amount.0 == 0 || !self.accepted_tokens.contains(&token_id) {
+        if self.paused || amount.0 == 0 || !self.accepted_tokens.contains(&token_id) {
             return unused();
         }
 
@@ -1184,6 +1187,19 @@ mod tests {
                 &format!("{{\"campaign_id\":{campaign_id}}}"),
             );
         }
+    }
+
+    #[test]
+    fn global_pause_returns_funding_without_changing_campaign_accounting() {
+        let (mut contract, campaign_id) = approved_funding_campaign(1_000, accounts(3));
+        contract.pause();
+        assert_rejected_funding_unchanged(
+            &mut contract,
+            campaign_id,
+            accounts(3),
+            25,
+            &format!("{{\"campaign_id\":{campaign_id}}}"),
+        );
     }
 
     #[test]
