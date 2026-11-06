@@ -102,7 +102,7 @@ impl near_sdk::schemars::JsonSchema for TokenId {
     }
 
     fn json_schema(
-        generator: &mut near_sdk::schemars::gen::SchemaGenerator,
+        generator: &mut near_sdk::schemars::r#gen::SchemaGenerator,
     ) -> near_sdk::schemars::schema::Schema {
         <TokenIdKind as near_sdk::schemars::JsonSchema>::json_schema(generator)
     }
