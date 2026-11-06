@@ -27,7 +27,7 @@ export class SettlementService {
       const payout=await tx.payout.findUniqueOrThrow({where:{id:payoutId},include:{attempts:{orderBy:{attemptNo:'desc'},take:1}}});
       const attempt=payout.attempts[0];if(!attempt?.quoteId||!attempt.maxAmountIn||!attempt.inputAssetId)throw new Error('Attempt missing provider quote, source asset or reserved maximum');
       if(result.refundAssetId!==attempt.inputAssetId||result.outputAssetId!==payout.outputAssetId||result.recipient!==payout.recipientAddress)throw new Error('Provider status asset or recipient does not match persisted payout');
-      if(attempt.providerStatusUpdatedAt&&result.updatedAt<attempt.providerStatusUpdatedAt)return;
+      if(attempt.providerStatusUpdatedAt&&result.updatedAt<=attempt.providerStatusUpdatedAt&&!outputEvidence)return;
       if(result.depositedAmount!==undefined){
         const old=attempt.providerDepositedAmount;
         if(old!==null&&result.depositedAmount<old)throw new Error('Provider cumulative deposit decreased; manual reconciliation required');

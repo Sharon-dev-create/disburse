@@ -6,6 +6,7 @@ import { ReservationService } from '../budget/reservation.service.js';
 import { PayoutOrchestrator } from './orchestrator.js';
 import { SettlementService } from './settlement.service.js';
 import type { RecipientOutputVerifier } from './recipient-output-verifier.js';
+import { canTransition } from '../domain/payout.js';
 
 interface ClaimedWork {id:string;payoutId:string;payload:Prisma.JsonValue;attempts:number;maxAttempts:number;lockToken:string}
 export interface WorkerTickResult {processed:boolean;payoutId?:string;state?:string;error?:string}
@@ -43,6 +44,10 @@ export class SinglePayoutWorker {
     }
   }
 
+  async run(signal:AbortSignal,pollIntervalMs=1_000):Promise<void>{
+    while(!signal.aborted){const result=await this.processOne();if(!result.processed)await new Promise<void>(resolve=>setTimeout(resolve,pollIntervalMs));}
+  }
+
   private async claim():Promise<ClaimedWork|null>{
     const token=randomUUID();const now=this.now();
     return this.db.$transaction(async tx=>{
@@ -67,7 +72,7 @@ export class SinglePayoutWorker {
   private async advance(work:ClaimedWork):Promise<{done:boolean;state:string;delayMs?:number}>{
     const payout=await this.db.payout.findUniqueOrThrow({where:{id:work.payoutId},include:{campaign:true,attempts:{orderBy:{attemptNo:'desc'},take:1},reservations:{orderBy:{createdAt:'desc'},take:1},evmFundingOperations:{orderBy:{createdAt:'desc'},take:1}}});
     if(payout.status==='SUCCESS')return{done:true,state:'SUCCESS'};
-    if(payout.status==='FAILED'||payout.status==='EXPIRED')return{done:false,state:payout.status,delayMs:300_000};
+    if(payout.status==='EXPIRED'&&!payout.reservations.some(r=>r.status==='ACTIVE'))return{done:true,state:'EXPIRED'};
     let attempt=payout.attempts[0];
     if(!attempt){
       const request=quoteRequest(work.payload);
@@ -136,7 +141,7 @@ export class SinglePayoutWorker {
   private async finish(work:ClaimedWork):Promise<void>{await this.db.payoutWorkItem.updateMany({where:{id:work.id,state:'LEASED',lockToken:work.lockToken},data:{state:'DONE',leaseUntil:null,lockToken:null,lastError:null}});}
   private async reschedule(work:ClaimedWork,delayMs:number,error?:string):Promise<void>{await this.db.payoutWorkItem.updateMany({where:{id:work.id,state:'LEASED',lockToken:work.lockToken},data:{state:'READY',availableAt:new Date(this.now().getTime()+delayMs),leaseUntil:null,lockToken:null,lastError:error??null}});}
   private async manualReview(work:ClaimedWork,error:string):Promise<void>{await this.db.payoutWorkItem.updateMany({where:{id:work.id,state:'LEASED',lockToken:work.lockToken},data:{state:'MANUAL_REVIEW',leaseUntil:null,lockToken:null,lastError:error}});await this.markPayoutManual(work.payoutId,error);}
-  private async markPayoutManual(payoutId:string,error:string):Promise<void>{await this.db.$transaction(async tx=>{const p=await tx.payout.findUnique({where:{id:payoutId}});if(!p)return;await tx.payout.update({where:{id:payoutId},data:{recipientOutputState:'MANUAL_REVIEW',...(p.status!=='SUCCESS'&&p.status!=='UNKNOWN'?{status:'UNKNOWN'}:{})}});if(p.status!=='SUCCESS'&&p.status!=='UNKNOWN')await tx.payoutEvent.create({data:{payoutId,fromStatus:p.status,toStatus:'UNKNOWN',note:`Worker stopped after bounded retries: ${error.slice(0,300)}`}});});}
+  private async markPayoutManual(payoutId:string,error:string):Promise<void>{await this.db.$transaction(async tx=>{const p=await tx.payout.findUnique({where:{id:payoutId}});if(!p)return;const moveToUnknown=p.status!=='SUCCESS'&&p.status!=='UNKNOWN'&&canTransition(p.status,'UNKNOWN');await tx.payout.update({where:{id:payoutId},data:{recipientOutputState:'MANUAL_REVIEW',...(moveToUnknown?{status:'UNKNOWN'}:{})}});if(moveToUnknown)await tx.payoutEvent.create({data:{payoutId,fromStatus:p.status,toStatus:'UNKNOWN',note:`Worker stopped after bounded retries: ${error.slice(0,300)}`}});});}
 }
 
 function requestRecipient(payload:Prisma.JsonValue):string {return String((payload as Record<string,unknown>).recipient??'');}
