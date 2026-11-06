@@ -96,3 +96,6 @@ Set `NEAR_INTENTS_BASE_URL` and optionally `NEAR_INTENTS_JWT` in `.env` for real
 - Fee coverage/auth pricing must be confirmed with NEAR Intents for the partner account. External gas valuation is intentionally not invented.
 - Add durable retry orchestration with provider-status gating, campaign-level reconciliation reports, operational alerts, and audited manual adjustment approval before production.
 - No exactly-once cross-chain guarantee is possible from local database idempotency alone.
+# EVM funding adapter spike
+
+The local-only EVM funding control feasibility work, its threat model, limitations, and Anvil proof instructions are in [docs/EVM-FUNDING-ADAPTER.md](docs/EVM-FUNDING-ADAPTER.md). The adapter is not enabled for production funding.
