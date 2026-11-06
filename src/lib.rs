@@ -454,12 +454,12 @@ impl FungibleTokenReceiver for Disburse {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use near_sdk::testing_env;
     use near_sdk::{
         PromiseOrValue,
         json_types::U128,
         test_utils::{VMContextBuilder, accounts, get_logs},
     };
-    use near_sdk::testing_env;
     use std::panic::{AssertUnwindSafe, catch_unwind};
 
     fn set_context(predecessor: AccountId) {
@@ -515,7 +515,8 @@ mod tests {
         let mut contract = new_contract();
         contract.add_accepted_token(accounts(3));
         set_context(accounts(2));
-        let campaign_id = contract.create_campaign("Funding campaign".to_string(), campaign_token, budget);
+        let campaign_id =
+            contract.create_campaign("Funding campaign".to_string(), campaign_token, budget);
         set_context(accounts(1));
         contract.approve_campaign(campaign_id);
         (contract, campaign_id)
@@ -529,12 +530,8 @@ mod tests {
         msg: &str,
     ) -> u128 {
         set_context(token_contract);
-        match FungibleTokenReceiver::ft_on_transfer(
-            contract,
-            sender,
-            U128(amount),
-            msg.to_string(),
-        ) {
+        match FungibleTokenReceiver::ft_on_transfer(contract, sender, U128(amount), msg.to_string())
+        {
             PromiseOrValue::Value(U128(unused)) => unused,
             PromiseOrValue::Promise(_) => panic!("funding receiver must be synchronous"),
         }
@@ -557,9 +554,11 @@ mod tests {
         assert_eq!(after.reserved, before.reserved);
         assert_eq!(after.spent, before.spent);
         assert_eq!(after, before);
-        assert!(get_logs()
-            .iter()
-            .all(|log| !log.contains("\"event\":\"campaign_funded\"")));
+        assert!(
+            get_logs()
+                .iter()
+                .all(|log| !log.contains("\"event\":\"campaign_funded\""))
+        );
     }
 
     #[test]
@@ -982,5 +981,236 @@ mod tests {
         let result = catch_unwind(AssertUnwindSafe(|| contract.unpause()));
         assert!(result.is_err());
         assert!(contract.is_paused());
+    }
+
+    #[test]
+    fn owner_manages_persistent_token_allowlist_and_duplicate_add_is_idempotent() {
+        let mut contract = new_contract();
+        let token_id = accounts(3);
+        assert!(!contract.is_accepted_token(token_id.clone()));
+
+        contract.add_accepted_token(token_id.clone());
+        contract.add_accepted_token(token_id.clone());
+        assert!(contract.is_accepted_token(token_id.clone()));
+        let added_events = get_logs()
+            .iter()
+            .filter(|log| log.contains("\"event\":\"accepted_token_added\""))
+            .count();
+        assert_eq!(added_events, 1);
+
+        contract.remove_accepted_token(token_id.clone());
+        assert!(!contract.is_accepted_token(token_id));
+        assert!(
+            get_logs()
+                .iter()
+                .any(|log| log.contains("\"event\":\"accepted_token_removed\""))
+        );
+    }
+
+    #[test]
+    fn non_owner_cannot_change_token_allowlist() {
+        let mut contract = new_contract();
+        set_context(accounts(2));
+        let add = catch_unwind(AssertUnwindSafe(|| {
+            contract.add_accepted_token(accounts(3))
+        }));
+        assert!(add.is_err());
+        assert!(!contract.is_accepted_token(accounts(3)));
+
+        set_context(accounts(1));
+        contract.add_accepted_token(accounts(3));
+        set_context(accounts(2));
+        let remove = catch_unwind(AssertUnwindSafe(|| {
+            contract.remove_accepted_token(accounts(3))
+        }));
+        assert!(remove.is_err());
+        assert!(contract.is_accepted_token(accounts(3)));
+    }
+
+    #[test]
+    fn approved_campaign_accepts_multiple_deposits_and_reports_atomic_balances() {
+        let (mut contract, campaign_id) = approved_funding_campaign(1_000, accounts(3));
+
+        assert_eq!(
+            receiver_unused(
+                &mut contract,
+                accounts(3),
+                accounts(4),
+                300,
+                &format!("{{\"campaign_id\":{campaign_id}}}")
+            ),
+            0
+        );
+        let funding_event = get_logs()
+            .into_iter()
+            .find(|log| log.contains("\"event\":\"campaign_funded\""))
+            .unwrap();
+        let event: near_sdk::serde_json::Value =
+            near_sdk::serde_json::from_str(funding_event.trim_start_matches("EVENT_JSON:"))
+                .unwrap();
+        assert_eq!(event["data"][0]["campaign_id"], campaign_id);
+        assert_eq!(event["data"][0]["sender_id"], accounts(4).as_str());
+        assert_eq!(event["data"][0]["token_id"], accounts(3).as_str());
+        assert_eq!(event["data"][0]["amount"], "300");
+        assert_eq!(event["data"][0]["total_funded"], "300");
+
+        assert_eq!(
+            receiver_unused(
+                &mut contract,
+                accounts(3),
+                accounts(5),
+                200,
+                &format!("{{\"campaign_id\":{campaign_id}}}")
+            ),
+            0
+        );
+
+        let campaign = contract.get_campaign(campaign_id).unwrap();
+        assert_eq!(campaign.budget, 1_000);
+        assert_eq!(campaign.funded, 500);
+        assert_eq!(campaign.reserved, 0);
+        assert_eq!(campaign.spent, 0);
+        assert_eq!(campaign.status, CampaignStatus::Approved);
+
+        let funding = contract.get_campaign_funding(campaign_id).unwrap();
+        assert_eq!(funding.token_id, accounts(3));
+        assert_eq!(funding.budget, U128(1_000));
+        assert_eq!(funding.funded, U128(500));
+        assert_eq!(funding.remaining_budget, U128(500));
+        let json = near_sdk::serde_json::to_string(&funding).unwrap();
+        assert!(json.contains("\"funded\":\"500\""));
+    }
+
+    #[test]
+    fn unsupported_predecessor_cannot_spoof_allowlisted_token_in_message() {
+        let (mut contract, campaign_id) = approved_funding_campaign(1_000, accounts(3));
+        let spoofed_message = format!(
+            "{{\"campaign_id\":{campaign_id},\"token_id\":\"{}\"}}",
+            accounts(3)
+        );
+        assert_rejected_funding_unchanged(
+            &mut contract,
+            campaign_id,
+            accounts(4),
+            100,
+            &spoofed_message,
+        );
+    }
+
+    #[test]
+    fn wrong_campaign_token_contract_is_rejected() {
+        let (mut contract, campaign_id) = approved_funding_campaign(1_000, accounts(4));
+        assert_rejected_funding_unchanged(
+            &mut contract,
+            campaign_id,
+            accounts(3),
+            100,
+            &format!("{{\"campaign_id\":{campaign_id}}}"),
+        );
+    }
+
+    #[test]
+    fn malformed_zero_and_nonexistent_campaign_deposits_return_all_tokens() {
+        let (mut contract, campaign_id) = approved_funding_campaign(1_000, accounts(3));
+        assert_rejected_funding_unchanged(&mut contract, campaign_id, accounts(3), 100, "not-json");
+        assert_rejected_funding_unchanged(
+            &mut contract,
+            campaign_id,
+            accounts(3),
+            0,
+            &format!("{{\"campaign_id\":{campaign_id}}}"),
+        );
+        assert_eq!(
+            receiver_unused(
+                &mut contract,
+                accounts(3),
+                accounts(4),
+                75,
+                "{\"campaign_id\":999}"
+            ),
+            75
+        );
+        assert!(
+            get_logs()
+                .iter()
+                .all(|log| !log.contains("\"event\":\"campaign_funded\""))
+        );
+        assert_eq!(contract.get_campaign(campaign_id).unwrap().funded, 0);
+        assert_eq!(contract.get_campaign_funding(999), None);
+    }
+
+    #[test]
+    fn deposits_exceeding_budget_or_overflowing_funded_are_rejected_unchanged() {
+        let (mut contract, campaign_id) = approved_funding_campaign(100, accounts(3));
+        assert_rejected_funding_unchanged(
+            &mut contract,
+            campaign_id,
+            accounts(3),
+            101,
+            &format!("{{\"campaign_id\":{campaign_id}}}"),
+        );
+
+        let mut campaign = contract.get_campaign(campaign_id).unwrap();
+        campaign.budget = u128::MAX;
+        campaign.funded = u128::MAX - 1;
+        contract.campaigns.insert(campaign_id, campaign);
+        assert_rejected_funding_unchanged(
+            &mut contract,
+            campaign_id,
+            accounts(3),
+            2,
+            &format!("{{\"campaign_id\":{campaign_id}}}"),
+        );
+    }
+
+    #[test]
+    fn only_approved_campaigns_accept_funding() {
+        let (mut contract, campaign_id) = approved_funding_campaign(1_000, accounts(3));
+        for status in [
+            CampaignStatus::Draft,
+            CampaignStatus::Active,
+            CampaignStatus::Paused,
+            CampaignStatus::Completed,
+            CampaignStatus::Cancelled,
+        ] {
+            let mut campaign = contract.get_campaign(campaign_id).unwrap();
+            campaign.status = status;
+            contract.campaigns.insert(campaign_id, campaign);
+            assert_rejected_funding_unchanged(
+                &mut contract,
+                campaign_id,
+                accounts(3),
+                10,
+                &format!("{{\"campaign_id\":{campaign_id}}}"),
+            );
+        }
+    }
+
+    #[test]
+    fn removing_token_preserves_historical_funding_and_blocks_future_deposits() {
+        let (mut contract, campaign_id) = approved_funding_campaign(1_000, accounts(3));
+        assert_eq!(
+            receiver_unused(
+                &mut contract,
+                accounts(3),
+                accounts(4),
+                450,
+                &format!("{{\"campaign_id\":{campaign_id}}}")
+            ),
+            0
+        );
+        set_context(accounts(1));
+        contract.remove_accepted_token(accounts(3));
+
+        let before = contract.get_campaign(campaign_id).unwrap();
+        assert_eq!(before.funded, 450);
+        assert_rejected_funding_unchanged(
+            &mut contract,
+            campaign_id,
+            accounts(3),
+            100,
+            &format!("{{\"campaign_id\":{campaign_id}}}"),
+        );
+        assert_eq!(contract.get_campaign(campaign_id).unwrap().funded, 450);
     }
 }
