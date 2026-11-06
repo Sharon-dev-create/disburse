@@ -13,7 +13,7 @@ mod tests {
         state::{campaign::Campaign, payout::Payout, recipient::Recipient},
         types::{
             amount::{TokenAmount, TokenId},
-            destination::{ChainId, PayoutDestination},
+            destination::{ChainId, PayoutDestination, RecipientAddress},
             evidence::SettlementEvidence,
             role::UserRole,
             status::{CampaignStatus, PayoutStatus},
@@ -63,7 +63,10 @@ mod tests {
             input_amount: token_amount(TokenId::near(accounts(2)), 250, 6),
             destination: PayoutDestination {
                 chain_id: ChainId::new("eip155:11155111".to_string()).unwrap(),
-                recipient_address: "0x1111111111111111111111111111111111111111".to_string(),
+                recipient_address: RecipientAddress::new(
+                    "0x1111111111111111111111111111111111111111".to_string(),
+                )
+                .unwrap(),
             },
             expected_output_amount: token_amount(
                 TokenId::external("eip155:11155111/erc20:0xtoken".to_string()).unwrap(),
@@ -184,13 +187,60 @@ mod tests {
     }
 
     #[test]
+    fn recipient_address_constructor_preserves_nonblank_opaque_value() {
+        use super::identifier::IdentifierError;
+
+        assert_eq!(
+            RecipientAddress::new(String::new()),
+            Err(IdentifierError::Empty)
+        );
+        assert_eq!(
+            RecipientAddress::new(" \t\n ".to_string()),
+            Err(IdentifierError::Empty)
+        );
+
+        let address = RecipientAddress::new("  chain-specific:recipient  ".to_string()).unwrap();
+        assert_eq!(address.as_str(), "  chain-specific:recipient  ");
+    }
+
+    #[test]
+    fn recipient_address_round_trips_json_and_borsh() {
+        let address = RecipientAddress::new("opaque:destination".to_string()).unwrap();
+        assert_eq!(round_trip_borsh(&address), address);
+        let json = serde_json::to_string(&address).unwrap();
+        assert_eq!(
+            serde_json::from_str::<RecipientAddress>(&json).unwrap(),
+            address
+        );
+    }
+
+    #[test]
+    fn recipient_address_rejects_empty_values_during_json_and_borsh_deserialization() {
+        for json in ["\"\"", "\" \t \""] {
+            assert!(serde_json::from_str::<RecipientAddress>(json).is_err());
+        }
+        for borsh_bytes in [&[0, 0, 0, 0][..], &[1, 0, 0, 0, b' '][..]] {
+            assert!(borsh::from_slice::<RecipientAddress>(borsh_bytes).is_err());
+        }
+    }
+
+    #[test]
+    fn payout_destination_rejects_blank_recipient_during_json_deserialization() {
+        let blank = r#"{"chain_id":"eip155:1","recipient_address":"  "}"#;
+        assert!(serde_json::from_str::<PayoutDestination>(blank).is_err());
+    }
+
+    #[test]
     fn destination_represents_an_evm_recipient_without_assuming_support() {
         let destination = PayoutDestination {
             chain_id: ChainId::new("eip155:1".to_string()).unwrap(),
-            recipient_address: "0x2222222222222222222222222222222222222222".to_string(),
+            recipient_address: RecipientAddress::new(
+                "0x2222222222222222222222222222222222222222".to_string(),
+            )
+            .unwrap(),
         };
         assert_eq!(destination.chain_id.as_str(), "eip155:1");
-        assert!(destination.recipient_address.starts_with("0x"));
+        assert!(destination.recipient_address.as_str().starts_with("0x"));
     }
 
     #[test]

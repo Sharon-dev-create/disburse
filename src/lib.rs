@@ -1184,6 +1184,41 @@ mod tests {
     }
 
     #[test]
+    fn funding_message_rejects_ambiguous_invalid_and_trailing_json_without_side_effects() {
+        let (mut contract, campaign_id) = approved_funding_campaign(1_000, accounts(3));
+        let invalid_messages = [
+            "{}",
+            "{\"campaign_id\":0,\"campaign_id\":0}",
+            "{\"campaign_id\":0,\"campaign_id\":1}",
+            "{\"campaign_id\":0,\"unexpected\":true}",
+            "{\"campaign_id\":null}",
+            "{\"campaign_id\":\"0\"}",
+            "{\"campaign_id\":-0}",
+            "{\"campaign_id\":-1}",
+            "{\"campaign_id\":1.0}",
+            "{\"campaign_id\":1.5}",
+            "{\"campaign_id\":1e0}",
+            "{\"campaign_id\":18446744073709551616}",
+            "{\"campaign_id\":0} trailing",
+            "{\"campaign_id\":0}{\"campaign_id\":1}",
+            "[0]",
+            "null",
+            "\"0\"",
+            "not-json",
+        ];
+
+        for message in invalid_messages {
+            assert_rejected_funding_unchanged(&mut contract, campaign_id, accounts(3), 13, message);
+        }
+
+        let max_u64_message = format!("{{\"campaign_id\":{}}}", u64::MAX);
+        assert_eq!(
+            Disburse::decode_funding_message(&max_u64_message),
+            Some(u64::MAX)
+        );
+    }
+
+    #[test]
     fn deposits_exceeding_budget_or_overflowing_funded_are_rejected_unchanged() {
         let (mut contract, campaign_id) = approved_funding_campaign(100, accounts(3));
         assert_rejected_funding_unchanged(
