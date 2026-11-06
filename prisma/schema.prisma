@@ -32,11 +32,25 @@ enum LedgerType {
   RESERVED
   RELEASED
   DEPOSIT_OBSERVED
+  DEPOSIT_REVERSED
   SETTLEMENT_CONFIRMED
   REFUND_INITIATED
   REFUND_CONFIRMED
   FAILED
   ADJUSTMENT
+}
+
+enum EvmFundingState {
+  CREATED
+  AUTHORIZED
+  SIGNED
+  BROADCAST
+  CONFIRMING
+  CONFIRMED
+  REJECTED
+  FAILED
+  UNKNOWN
+  REORGED
 }
 
 model Campaign {
@@ -51,6 +65,7 @@ model Campaign {
   payouts        Payout[]
   ledger         LedgerEntry[]
   reservations   Reservation[]
+  evmFundingOperations EvmFundingOperation[]
 }
 
 model Payout {
@@ -70,6 +85,7 @@ model Payout {
   events            PayoutEvent[]
   ledger            LedgerEntry[]
   reservations      Reservation[]
+  evmFundingOperations EvmFundingOperation[]
   @@unique([campaignId, recipientId])
 }
 
@@ -96,6 +112,7 @@ model Attempt {
   payout          Payout       @relation(fields: [payoutId], references: [id], onDelete: Restrict)
   reservation     Reservation?
   ledgerEntries   LedgerEntry[]
+  evmFundingOperations EvmFundingOperation[]
   @@unique([payoutId, attemptNo])
 }
 
@@ -124,6 +141,7 @@ model Reservation {
   campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
   payout     Payout?  @relation(fields: [payoutId], references: [id], onDelete: Restrict)
   attempt    Attempt? @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  evmFundingOperation EvmFundingOperation?
 }
 
 model LedgerEntry {
@@ -144,4 +162,64 @@ model LedgerEntry {
   attempt     Attempt?  @relation(fields: [attemptId], references: [id], onDelete: Restrict)
   @@index([campaignId, createdAt])
   @@index([campaignId, attemptId, type])
+}
+
+model EvmFundingOperation {
+  id                   String          @id @default(cuid())
+  campaignId           String
+  payoutId             String
+  attemptId            String
+  reservationId        String          @unique
+  idempotencyKey       String          @unique
+  chainId              BigInt
+  sourceAssetId        String
+  sourceChain           String
+  sourceAddress        String
+  tokenAddress         String
+  tokenAmount          BigInt
+  tokenDecimals        Int
+  destinationAddress   String
+  quoteExpiresAt       DateTime
+  nonce                BigInt
+  gasLimit             BigInt
+  maxFeePerGas         BigInt
+  maxPriorityFeePerGas BigInt
+  maxGasLimit          BigInt
+  maxFeePerGasCap      BigInt
+  maxPriorityFeePerGasCap BigInt
+  maxNativeGasCost     BigInt
+  txHash               String?
+  signedTxCiphertext   String?
+  signedTxIv           String?
+  signedTxAuthTag      String?
+  state                EvmFundingState @default(CREATED)
+  failureReason        String?
+  lastObservedBlock    BigInt?
+  lastObservedBlockHash String?
+  createdAt            DateTime        @default(now())
+  authorizedAt         DateTime?
+  signedAt             DateTime?
+  broadcastAt          DateTime?
+  confirmedAt          DateTime?
+  reconciledAt         DateTime?
+  updatedAt            DateTime        @updatedAt
+  campaign             Campaign        @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  payout               Payout          @relation(fields: [payoutId], references: [id], onDelete: Restrict)
+  attempt              Attempt         @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  reservation          Reservation    @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+
+  @@unique([chainId, sourceAddress, nonce])
+  @@index([campaignId, state, createdAt])
+  @@index([payoutId, attemptId])
+  @@index([txHash])
+}
+
+model EvmNonceCursor {
+  id          String   @id @default(cuid())
+  chainId     BigInt
+  sourceAddress String
+  nextNonce   BigInt
+  updatedAt   DateTime @updatedAt
+
+  @@unique([chainId, sourceAddress])
 }

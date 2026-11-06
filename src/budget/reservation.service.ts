@@ -44,7 +44,7 @@ export class ReservationService {
       if(payout.activeExposure!==0n)throw new Error('Payout has unresolved exposure from another attempt');
       const [reservations,entries]=await Promise.all([
         tx.reservation.findMany({where:{campaignId,status:'ACTIVE'},select:{attemptId:true,payoutId:true,remainingAmount:true}}),
-        tx.ledgerEntry.findMany({where:{campaignId,type:{in:['DEPOSIT_OBSERVED','SETTLEMENT_CONFIRMED','REFUND_CONFIRMED']}},select:{attemptId:true,payoutId:true,type:true,amount:true}})
+        tx.ledgerEntry.findMany({where:{campaignId,type:{in:['DEPOSIT_OBSERVED','DEPOSIT_REVERSED','SETTLEMENT_CONFIRMED','REFUND_CONFIRMED']}},select:{attemptId:true,payoutId:true,type:true,amount:true}})
       ]);
       const committed=calculateAuthorizedExposure(reservations,entries as ExposureEntry[]);
       if(committed+amount>campaign.budget)throw new Error('Reservation exceeds remaining approved campaign budget');
@@ -62,6 +62,8 @@ export class ReservationService {
       await tx.$queryRaw`SELECT "id" FROM "Campaign" WHERE "id"=${initial.campaignId} FOR UPDATE`;
       await tx.$queryRaw`SELECT "id" FROM "Reservation" WHERE "id"=${reservationId} FOR UPDATE`;
       const r=await tx.reservation.findUnique({where:{id:reservationId}});if(!r||r.status!=='ACTIVE'||r.remainingAmount===0n)return;
+      const unresolvedFunding=await tx.evmFundingOperation.findFirst({where:{reservationId,state:{in:['AUTHORIZED','SIGNED','BROADCAST','CONFIRMING','UNKNOWN','REORGED']}}});
+      if(unresolvedFunding)throw new Error('Funding operation is unresolved; reservation exposure cannot be released');
       let payout=null;
       if(r.payoutId){payout=await tx.payout.findUnique({where:{id:r.payoutId}});if(!payout||payout.campaignId!==r.campaignId)throw new Error('Reservation payout/campaign ownership mismatch');}
       if(evidence.source==='PROVIDER_TERMINAL_NO_DEPOSIT'){
