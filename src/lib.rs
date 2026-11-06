@@ -1,12 +1,25 @@
 pub mod state;
 pub mod types;
 
+use near_contract_standards::fungible_token::receiver::FungibleTokenReceiver;
 use near_sdk::{
-    AccountId, PanicOnDefault, env, near, require,
+    AccountId, PanicOnDefault, PromiseOrValue, env,
+    json_types::U128,
+    near, require,
     store::{LookupMap, LookupSet},
 };
 use state::campaign::Campaign;
 use types::{role::UserRole, status::CampaignStatus};
+
+#[near(serializers = [json])]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CampaignFundingInfo {
+    pub campaign_id: u64,
+    pub token_id: AccountId,
+    pub budget: U128,
+    pub funded: U128,
+    pub remaining_budget: U128,
+}
 
 #[near(contract_state)]
 #[derive(PanicOnDefault)]
@@ -16,6 +29,7 @@ pub struct Disburse {
     next_campaign_id: u64,
     campaigns: LookupMap<u64, Campaign>,
     roles: LookupSet<(AccountId, UserRole)>,
+    accepted_tokens: LookupSet<AccountId>,
 }
 
 #[near]
@@ -28,6 +42,7 @@ impl Disburse {
             next_campaign_id: 0,
             campaigns: LookupMap::new(b"campaigns".to_vec()),
             roles: LookupSet::new(b"role-assignments".to_vec()),
+            accepted_tokens: LookupSet::new(b"accepted-ft-tokens".to_vec()),
         }
     }
 
@@ -67,6 +82,60 @@ impl Disburse {
 
     pub fn get_campaign_count(&self) -> u64 {
         self.next_campaign_id
+    }
+
+    /// Add a NEP-141 token contract to the funding allowlist. Duplicate additions are no-ops.
+    pub fn add_accepted_token(&mut self, token_id: AccountId) {
+        let actor_id = env::predecessor_account_id();
+        self.assert_owner();
+        if !self.accepted_tokens.insert(token_id.clone()) {
+            return;
+        }
+        self.emit_event(
+            "accepted_token_added",
+            near_sdk::serde_json::json!({
+                "token_id": token_id,
+                "actor_id": actor_id,
+            }),
+        );
+    }
+
+    /// Remove a token from future funding acceptance; campaign funding history is retained.
+    pub fn remove_accepted_token(&mut self, token_id: AccountId) {
+        let actor_id = env::predecessor_account_id();
+        self.assert_owner();
+        require!(
+            self.accepted_tokens.remove(&token_id),
+            "Token is not accepted"
+        );
+        self.emit_event(
+            "accepted_token_removed",
+            near_sdk::serde_json::json!({
+                "token_id": token_id,
+                "actor_id": actor_id,
+            }),
+        );
+    }
+
+    pub fn is_accepted_token(&self, token_id: AccountId) -> bool {
+        self.accepted_tokens.contains(&token_id)
+    }
+
+    /// Returns atomic amounts as JSON decimal strings via NEAR's `U128` wrapper.
+    pub fn get_campaign_funding(&self, campaign_id: u64) -> Option<CampaignFundingInfo> {
+        self.campaigns.get(&campaign_id).map(|campaign| {
+            let remaining_budget = campaign
+                .budget
+                .checked_sub(campaign.funded)
+                .unwrap_or_else(|| env::panic_str("Campaign funding invariant violated"));
+            CampaignFundingInfo {
+                campaign_id,
+                token_id: campaign.token_id.clone(),
+                budget: U128(campaign.budget),
+                funded: U128(campaign.funded),
+                remaining_budget: U128(remaining_budget),
+            }
+        })
     }
 
     /// Grant a non-owner role. The owner is the only grant authority and cannot self-grant.
@@ -320,12 +389,76 @@ impl Disburse {
             })
         ));
     }
+
+    fn decode_funding_message(msg: &str) -> Option<u64> {
+        let value = near_sdk::serde_json::from_str::<near_sdk::serde_json::Value>(msg).ok()?;
+        let object = value.as_object()?;
+        if object.len() != 1 {
+            return None;
+        }
+        object.get("campaign_id")?.as_u64()
+    }
+}
+
+#[near]
+impl FungibleTokenReceiver for Disburse {
+    /// Accept funding only from the allowlisted predecessor FT, for a matching campaign token.
+    /// Campaigns deliberately fund only while Approved; activation remains a separate action.
+    fn ft_on_transfer(
+        &mut self,
+        sender_id: AccountId,
+        amount: U128,
+        msg: String,
+    ) -> PromiseOrValue<U128> {
+        let token_id = env::predecessor_account_id();
+        let unused = || PromiseOrValue::Value(U128(amount.0));
+
+        if amount.0 == 0 || !self.accepted_tokens.contains(&token_id) {
+            return unused();
+        }
+
+        let Some(campaign_id) = Self::decode_funding_message(&msg) else {
+            return unused();
+        };
+        let Some(mut campaign) = self.campaigns.get(&campaign_id).cloned() else {
+            return unused();
+        };
+
+        if campaign.status != CampaignStatus::Approved || campaign.token_id != token_id {
+            return unused();
+        }
+
+        let Some(total_funded) = campaign.funded.checked_add(amount.0) else {
+            return unused();
+        };
+        if total_funded > campaign.budget {
+            return unused();
+        }
+
+        campaign.funded = total_funded;
+        self.campaigns.insert(campaign_id, campaign);
+        self.emit_event(
+            "campaign_funded",
+            near_sdk::serde_json::json!({
+                "campaign_id": campaign_id,
+                "sender_id": sender_id,
+                "token_id": token_id,
+                "amount": amount,
+                "total_funded": U128(total_funded),
+            }),
+        );
+        PromiseOrValue::Value(U128(0))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use near_sdk::test_utils::{VMContextBuilder, accounts};
+    use near_sdk::{
+        PromiseOrValue,
+        json_types::U128,
+        test_utils::{VMContextBuilder, accounts, get_logs},
+    };
     use near_sdk::testing_env;
     use std::panic::{AssertUnwindSafe, catch_unwind};
 
@@ -376,6 +509,57 @@ mod tests {
         let result = catch_unwind(AssertUnwindSafe(|| action(contract)));
         assert!(result.is_err());
         assert_eq!(contract.get_campaign(campaign_id), before);
+    }
+
+    fn approved_funding_campaign(budget: u128, campaign_token: AccountId) -> (Disburse, u64) {
+        let mut contract = new_contract();
+        contract.add_accepted_token(accounts(3));
+        set_context(accounts(2));
+        let campaign_id = contract.create_campaign("Funding campaign".to_string(), campaign_token, budget);
+        set_context(accounts(1));
+        contract.approve_campaign(campaign_id);
+        (contract, campaign_id)
+    }
+
+    fn receiver_unused(
+        contract: &mut Disburse,
+        token_contract: AccountId,
+        sender: AccountId,
+        amount: u128,
+        msg: &str,
+    ) -> u128 {
+        set_context(token_contract);
+        match FungibleTokenReceiver::ft_on_transfer(
+            contract,
+            sender,
+            U128(amount),
+            msg.to_string(),
+        ) {
+            PromiseOrValue::Value(U128(unused)) => unused,
+            PromiseOrValue::Promise(_) => panic!("funding receiver must be synchronous"),
+        }
+    }
+
+    fn assert_rejected_funding_unchanged(
+        contract: &mut Disburse,
+        campaign_id: u64,
+        token_contract: AccountId,
+        amount: u128,
+        msg: &str,
+    ) {
+        let before = contract.get_campaign(campaign_id).unwrap();
+        let unused = receiver_unused(contract, token_contract, accounts(4), amount, msg);
+        assert_eq!(unused, amount);
+
+        let after = contract.get_campaign(campaign_id).unwrap();
+        assert_eq!(after.funded, before.funded);
+        assert_eq!(after.budget, before.budget);
+        assert_eq!(after.reserved, before.reserved);
+        assert_eq!(after.spent, before.spent);
+        assert_eq!(after, before);
+        assert!(get_logs()
+            .iter()
+            .all(|log| !log.contains("\"event\":\"campaign_funded\"")));
     }
 
     #[test]
