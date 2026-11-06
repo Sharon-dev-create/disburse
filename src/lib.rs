@@ -9,7 +9,14 @@ use near_sdk::{
     store::{LookupMap, LookupSet},
 };
 use state::campaign::Campaign;
-use types::{role::UserRole, status::CampaignStatus};
+use state::payout::Payout;
+use types::{
+    amount::{TokenAmount, TokenId},
+    destination::PayoutDestination,
+    identifier::validate_identifier,
+    role::UserRole,
+    status::{CampaignStatus, PayoutStatus},
+};
 
 #[near(serializers = [json])]
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -19,6 +26,40 @@ pub struct CampaignFundingInfo {
     pub budget: U128,
     pub funded: U128,
     pub remaining_budget: U128,
+}
+
+#[near(serializers = [json])]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TokenAmountView {
+    pub token_id: TokenId,
+    pub atomic_amount: U128,
+    pub decimals: u8,
+}
+
+#[near(serializers = [json])]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PayoutView {
+    pub id: u64,
+    pub campaign_id: u64,
+    pub recipient_near_account_id: Option<AccountId>,
+    pub input_amount: TokenAmountView,
+    pub destination: PayoutDestination,
+    pub expected_output_amount: TokenAmountView,
+    pub status: PayoutStatus,
+    pub created_at_ns: u64,
+    pub execution_reference: Option<String>,
+    pub settlement_evidence_reference: Option<String>,
+}
+
+#[near(serializers = [json])]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CampaignPayoutAccounting {
+    pub campaign_id: u64,
+    pub budget: U128,
+    pub funded: U128,
+    pub reserved: U128,
+    pub spent: U128,
+    pub available: U128,
 }
 
 struct CampaignFundingMessage {
@@ -76,6 +117,9 @@ pub struct Disburse {
     campaigns: LookupMap<u64, Campaign>,
     roles: LookupSet<(AccountId, UserRole)>,
     accepted_tokens: LookupSet<AccountId>,
+    next_payout_id: u64,
+    payouts: LookupMap<u64, Payout>,
+    payout_idempotency: LookupMap<(u64, String), u64>,
 }
 
 #[near]
@@ -89,6 +133,9 @@ impl Disburse {
             campaigns: LookupMap::new(b"campaigns".to_vec()),
             roles: LookupSet::new(b"role-assignments".to_vec()),
             accepted_tokens: LookupSet::new(b"accepted-ft-tokens".to_vec()),
+            next_payout_id: 0,
+            payouts: LookupMap::new(b"payout-records".to_vec()),
+            payout_idempotency: LookupMap::new(b"payout-idempotency".to_vec()),
         }
     }
 
