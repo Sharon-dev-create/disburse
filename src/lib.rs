@@ -49,6 +49,24 @@ pub struct PayoutView {
     pub created_at_ns: u64,
     pub execution_reference: Option<String>,
     pub settlement_evidence_reference: Option<String>,
+    pub lifecycle_reason: Option<String>,
+}
+
+#[near(serializers = [json])]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExecutionFailureKind {
+    /// The transaction was conclusively rejected before any broadcast occurred.
+    RejectedBeforeSubmission,
+    /// The source-chain transaction has a terminal reverted/failed result.
+    TransactionReverted,
+}
+
+#[near(serializers = [json])]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExecutionFailureEvidence {
+    pub kind: ExecutionFailureKind,
+    pub evidence_reference: String,
+    pub reason: String,
 }
 
 #[near(serializers = [json])]
@@ -129,6 +147,8 @@ pub struct Disburse {
     next_payout_id: u64,
     payouts: LookupMap<u64, Payout>,
     payout_idempotency: LookupMap<(u64, String), u64>,
+    execution_references: LookupMap<String, u64>,
+    payout_lifecycle_reasons: LookupMap<u64, String>,
 }
 
 #[near]
@@ -145,6 +165,8 @@ impl Disburse {
             next_payout_id: 0,
             payouts: LookupMap::new(b"payout-records".to_vec()),
             payout_idempotency: LookupMap::new(b"payout-idempotency".to_vec()),
+            execution_references: LookupMap::new(b"payout-execution-references".to_vec()),
+            payout_lifecycle_reasons: LookupMap::new(b"payout-lifecycle-reasons".to_vec()),
         }
     }
 
@@ -356,14 +378,16 @@ impl Disburse {
     }
 
     pub fn get_payout(&self, payout_id: u64) -> Option<PayoutView> {
-        self.payouts.get(&payout_id).map(Self::payout_view)
+        self.payouts
+            .get(&payout_id)
+            .map(|payout| self.payout_view(payout))
     }
 
     pub fn get_campaign_payout(&self, campaign_id: u64, payout_id: u64) -> Option<PayoutView> {
         self.payouts
             .get(&payout_id)
             .filter(|payout| payout.campaign_id == campaign_id)
-            .map(Self::payout_view)
+            .map(|payout| self.payout_view(payout))
     }
 
     pub fn get_payout_by_idempotency(
@@ -374,7 +398,7 @@ impl Disburse {
         self.payout_idempotency
             .get(&(campaign_id, idempotency_key))
             .and_then(|id| self.payouts.get(id))
-            .map(Self::payout_view)
+            .map(|payout| self.payout_view(payout))
     }
 
     pub fn get_campaign_payout_accounting(
@@ -391,6 +415,169 @@ impl Disburse {
                 spent: U128(campaign.spent),
                 available: U128(Self::available_campaign_funds(campaign)),
             })
+    }
+
+    /// Begin the off-chain execution phase. No transaction is submitted by this contract.
+    pub fn start_payout_execution(&mut self, payout_id: u64, execution_reference: String) {
+        self.assert_campaign_operations_enabled();
+        let actor_id = self.assert_payout_operator_or_administrator();
+        require!(
+            validate_identifier(&execution_reference).is_ok(),
+            "Execution reference cannot be empty"
+        );
+        require!(
+            execution_reference.len() <= 256,
+            "Execution reference cannot exceed 256 bytes"
+        );
+        let mut payout = self.payout_or_panic(payout_id);
+        require!(
+            payout.status == PayoutStatus::Reserved,
+            "Payout must be Reserved to start execution"
+        );
+        if let Some(existing_id) = self.execution_references.get(&execution_reference) {
+            require!(
+                *existing_id == payout_id,
+                "Execution reference is already assigned to another payout"
+            );
+        }
+
+        let previous_status = payout.status;
+        payout.status = PayoutStatus::Executing;
+        payout.execution_reference = Some(execution_reference.clone());
+        self.payouts.insert(payout_id, payout.clone());
+        self.execution_references
+            .insert(execution_reference.clone(), payout_id);
+        self.emit_event(
+            "payout_execution_started",
+            near_sdk::serde_json::json!({
+                "payout_id": payout_id,
+                "campaign_id": payout.campaign_id,
+                "actor_id": actor_id,
+                "previous_status": Self::payout_status_name(previous_status),
+                "new_status": Self::payout_status_name(payout.status),
+                "execution_reference": execution_reference,
+            }),
+        );
+    }
+
+    /// Records that execution was submitted or acknowledged; it is not settlement evidence.
+    pub fn mark_payout_pending_verification(&mut self, payout_id: u64) {
+        self.assert_campaign_operations_enabled();
+        let actor_id = self.assert_payout_operator_or_administrator();
+        let mut payout = self.payout_or_panic(payout_id);
+        require!(
+            payout.status == PayoutStatus::Executing,
+            "Payout must be Executing before submission can be recorded"
+        );
+        let execution_reference = payout
+            .execution_reference
+            .clone()
+            .unwrap_or_else(|| env::panic_str("Execution reference is missing"));
+        require!(
+            self.execution_references.get(&execution_reference) == Some(&payout_id),
+            "Execution reference index is inconsistent"
+        );
+        let previous_status = payout.status;
+        payout.status = PayoutStatus::PendingVerification;
+        self.payouts.insert(payout_id, payout.clone());
+        self.emit_event(
+            "payout_pending_verification",
+            near_sdk::serde_json::json!({
+                "payout_id": payout_id,
+                "campaign_id": payout.campaign_id,
+                "actor_id": actor_id,
+                "previous_status": Self::payout_status_name(previous_status),
+                "new_status": Self::payout_status_name(payout.status),
+                "execution_reference": execution_reference,
+            }),
+        );
+    }
+
+    /// Records a terminal execution failure. The privileged caller attests the supplied evidence;
+    /// the contract does not independently query a source chain or verify the evidence reference.
+    pub fn mark_payout_failed(&mut self, payout_id: u64, evidence: ExecutionFailureEvidence) {
+        let actor_id = self.assert_payout_operator_or_administrator();
+        require!(
+            validate_identifier(&evidence.reason).is_ok(),
+            "Failure reason cannot be empty"
+        );
+        require!(
+            evidence.reason.len() <= 512,
+            "Failure reason cannot exceed 512 bytes"
+        );
+        require!(
+            validate_identifier(&evidence.evidence_reference).is_ok(),
+            "Failure evidence reference cannot be empty"
+        );
+        require!(
+            evidence.evidence_reference.len() <= 256,
+            "Failure evidence reference cannot exceed 256 bytes"
+        );
+        let mut payout = self.payout_or_panic(payout_id);
+        require!(
+            matches!(
+                payout.status,
+                PayoutStatus::Executing | PayoutStatus::PendingVerification
+            ),
+            "Only executing or pending payouts can be marked Failed"
+        );
+        let previous_status = payout.status;
+        payout.status = PayoutStatus::Failed;
+        self.payouts.insert(payout_id, payout.clone());
+        self.payout_lifecycle_reasons
+            .insert(payout_id, evidence.reason.clone());
+        self.emit_event(
+            "payout_execution_failed",
+            near_sdk::serde_json::json!({
+                "payout_id": payout_id,
+                "campaign_id": payout.campaign_id,
+                "actor_id": actor_id,
+                "previous_status": Self::payout_status_name(previous_status),
+                "new_status": Self::payout_status_name(payout.status),
+                "execution_reference": payout.execution_reference,
+                "failure_kind": evidence.kind,
+                "evidence_reference": evidence.evidence_reference,
+                "reason": evidence.reason,
+            }),
+        );
+    }
+
+    /// Paused contracts still allow an authorized operator to quarantine uncertain execution.
+    pub fn move_payout_to_manual_review(&mut self, payout_id: u64, reason: String) {
+        let actor_id = self.assert_payout_operator_or_administrator();
+        require!(
+            validate_identifier(&reason).is_ok(),
+            "Manual review reason cannot be empty"
+        );
+        require!(
+            reason.len() <= 512,
+            "Manual review reason cannot exceed 512 bytes"
+        );
+        let mut payout = self.payout_or_panic(payout_id);
+        require!(
+            matches!(
+                payout.status,
+                PayoutStatus::Executing | PayoutStatus::PendingVerification
+            ),
+            "Only executing or pending payouts can enter ManualReview"
+        );
+        let previous_status = payout.status;
+        payout.status = PayoutStatus::ManualReview;
+        self.payouts.insert(payout_id, payout.clone());
+        self.payout_lifecycle_reasons
+            .insert(payout_id, reason.clone());
+        self.emit_event(
+            "payout_manual_review",
+            near_sdk::serde_json::json!({
+                "payout_id": payout_id,
+                "campaign_id": payout.campaign_id,
+                "actor_id": actor_id,
+                "previous_status": Self::payout_status_name(previous_status),
+                "new_status": Self::payout_status_name(payout.status),
+                "execution_reference": payout.execution_reference,
+                "reason": reason,
+            }),
+        );
     }
 
     /// Grant a non-owner role. The owner is the only grant authority and cannot self-grant.
@@ -591,6 +778,22 @@ impl Disburse {
         require!(!self.paused, "Contract is paused");
     }
 
+    fn assert_payout_operator_or_administrator(&self) -> AccountId {
+        let actor_id = env::predecessor_account_id();
+        require!(
+            self.is_operator_or_administrator(&actor_id),
+            "Operator or administrator role required for payout lifecycle"
+        );
+        actor_id
+    }
+
+    fn payout_or_panic(&self, payout_id: u64) -> Payout {
+        self.payouts
+            .get(&payout_id)
+            .cloned()
+            .unwrap_or_else(|| env::panic_str("Payout not found"))
+    }
+
     fn campaign_or_panic(&self, campaign_id: u64) -> Campaign {
         self.campaigns
             .get(&campaign_id)
@@ -641,7 +844,7 @@ impl Disburse {
         }
     }
 
-    fn payout_view(payout: &Payout) -> PayoutView {
+    fn payout_view(&self, payout: &Payout) -> PayoutView {
         PayoutView {
             id: payout.id,
             campaign_id: payout.campaign_id,
@@ -653,6 +856,7 @@ impl Disburse {
             created_at_ns: payout.created_at_ns,
             execution_reference: payout.execution_reference.clone(),
             settlement_evidence_reference: payout.settlement_evidence_reference.clone(),
+            lifecycle_reason: self.payout_lifecycle_reasons.get(&payout.id).cloned(),
         }
     }
 
@@ -688,6 +892,21 @@ impl Disburse {
             UserRole::Administrator => "administrator",
             UserRole::Operator => "operator",
             UserRole::Verifier => "verifier",
+        }
+    }
+
+    fn payout_status_name(status: PayoutStatus) -> &'static str {
+        match status {
+            PayoutStatus::Created => "Created",
+            PayoutStatus::Authorized => "Authorized",
+            PayoutStatus::Reserved => "Reserved",
+            PayoutStatus::Executing => "Executing",
+            PayoutStatus::PendingVerification => "PendingVerification",
+            PayoutStatus::Succeeded => "Succeeded",
+            PayoutStatus::Failed => "Failed",
+            PayoutStatus::RefundPending => "RefundPending",
+            PayoutStatus::Refunded => "Refunded",
+            PayoutStatus::ManualReview => "ManualReview",
         }
     }
 
@@ -916,6 +1135,18 @@ mod tests {
             payout_amount(TokenId::near(accounts(3)), amount),
             payout_amount(TokenId::external("sol:usdc".to_string()).unwrap(), 95),
         )
+    }
+
+    fn reserve_test_payout(contract: &mut Disburse, campaign_id: u64, key: &str) -> u64 {
+        submit_test_payout(contract, campaign_id, key, 10)
+    }
+
+    fn definitive_failure(reference: &str) -> ExecutionFailureEvidence {
+        ExecutionFailureEvidence {
+            kind: ExecutionFailureKind::TransactionReverted,
+            evidence_reference: reference.to_string(),
+            reason: "Source transaction has a terminal reverted status".to_string(),
+        }
     }
 
     #[test]
