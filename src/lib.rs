@@ -21,6 +21,52 @@ pub struct CampaignFundingInfo {
     pub remaining_budget: U128,
 }
 
+struct CampaignFundingMessage {
+    campaign_id: u64,
+}
+
+impl<'de> near_sdk::serde::Deserialize<'de> for CampaignFundingMessage {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: near_sdk::serde::Deserializer<'de>,
+    {
+        struct FundingMessageVisitor;
+
+        impl<'de> near_sdk::serde::de::Visitor<'de> for FundingMessageVisitor {
+            type Value = CampaignFundingMessage;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                formatter.write_str("an object containing exactly one unsigned campaign_id")
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: near_sdk::serde::de::MapAccess<'de>,
+            {
+                let mut campaign_id = None;
+                while let Some(field) = map.next_key::<String>()? {
+                    if field != "campaign_id" {
+                        return Err(near_sdk::serde::de::Error::unknown_field(
+                            &field,
+                            &["campaign_id"],
+                        ));
+                    }
+                    if campaign_id.is_some() {
+                        return Err(near_sdk::serde::de::Error::duplicate_field("campaign_id"));
+                    }
+                    campaign_id = Some(map.next_value::<u64>()?);
+                }
+
+                let campaign_id = campaign_id
+                    .ok_or_else(|| near_sdk::serde::de::Error::missing_field("campaign_id"))?;
+                Ok(CampaignFundingMessage { campaign_id })
+            }
+        }
+
+        deserializer.deserialize_map(FundingMessageVisitor)
+    }
+}
+
 #[near(contract_state)]
 #[derive(PanicOnDefault)]
 pub struct Disburse {
@@ -392,14 +438,9 @@ impl Disburse {
     }
 
     fn decode_funding_message(msg: &str) -> Option<u64> {
-        // The only supported payload is `{ "campaign_id": <u64> }`; reject extra fields
-        // so caller-supplied token identities cannot look authoritative.
-        let value = near_sdk::serde_json::from_str::<near_sdk::serde_json::Value>(msg).ok()?;
-        let object = value.as_object()?;
-        if object.len() != 1 {
-            return None;
-        }
-        object.get("campaign_id")?.as_u64()
+        near_sdk::serde_json::from_str::<CampaignFundingMessage>(msg)
+            .ok()
+            .map(|message| message.campaign_id)
     }
 }
 
