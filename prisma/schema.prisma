@@ -126,6 +126,7 @@ model LedgerEntry {
   payoutId    String?
   type        LedgerType
   amount      BigInt
+  direction   String    @default("IN")
   assetId     String
   externalRef String?   @unique
   reason      String?

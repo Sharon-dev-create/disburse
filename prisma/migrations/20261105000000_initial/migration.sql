@@ -35,7 +35,7 @@ CREATE TABLE "Reservation" (
 );
 CREATE TABLE "LedgerEntry" (
   "id" TEXT PRIMARY KEY, "campaignId" TEXT NOT NULL, "payoutId" TEXT, "type" "LedgerType" NOT NULL,
-  "amount" BIGINT NOT NULL, "assetId" TEXT NOT NULL, "externalRef" TEXT UNIQUE, "reason" TEXT, "metadata" JSONB,
+  "amount" BIGINT NOT NULL, "direction" TEXT NOT NULL DEFAULT 'IN', "assetId" TEXT NOT NULL, "externalRef" TEXT UNIQUE, "reason" TEXT, "metadata" JSONB,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "LedgerEntry_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT "LedgerEntry_payoutId_fkey" FOREIGN KEY ("payoutId") REFERENCES "Payout"("id") ON DELETE RESTRICT ON UPDATE CASCADE

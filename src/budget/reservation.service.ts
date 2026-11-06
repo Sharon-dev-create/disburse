@@ -17,6 +17,7 @@ export class ReservationService {
         tx.ledgerEntry.aggregate({where:{campaignId,type:'REFUND_CONFIRMED'},_sum:{amount:true}})
       ]);
       const netSpent=(spent._sum.amount??0n)-(refunds._sum.amount??0n);
+      if(netSpent<0n)throw new Error('Confirmed refunds exceed recorded settlement expenditure');
       if(active+netSpent+amount>campaign.budget)throw new Error('Reservation exceeds remaining budget after settlements');
       await tx.reservation.create({data:{id:reservationId,campaignId,payoutId,attemptId:attempt.id,amount,status:'ACTIVE'}});
       await tx.ledgerEntry.create({data:{campaignId,payoutId,type:'RESERVED',amount,assetId:campaign.assetId,externalRef:`reserve:${reservationId}`}});

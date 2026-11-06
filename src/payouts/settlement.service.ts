@@ -1,6 +1,7 @@
 import { PrismaClient, type PayoutStatus } from '@prisma/client';
 import type { StatusResult } from '../intents/provider.interface.js';
 import { reconcile } from './recovery.service.js';
+import { canTransition, assertTransition, type PayoutStatus as DomainStatus } from '../domain/payout.js';
 /** Applies authoritative provider status and ledger changes atomically. External refs make repeated polls idempotent. */
 export class SettlementService {
   constructor(private readonly db:PrismaClient){}
@@ -12,6 +13,14 @@ export class SettlementService {
       const terminal=mapped.status==='SUCCESS'||mapped.status==='REFUNDED';
       const ext=`provider:${attempt.quoteId}:${mapped.status}`;
       const exists=await tx.ledgerEntry.findUnique({where:{externalRef:ext}}); if(exists)return;
+      const path:DomainStatus[]=[];let cursor=payout.status as DomainStatus;
+      for(let guard=0;cursor!==mapped.status&&guard<5;guard++){
+        if(canTransition(cursor,mapped.status)){path.push(mapped.status);cursor=mapped.status;break;}
+        const intermediate:DomainStatus|undefined=cursor==='RESERVED'?'COMMITTED':cursor==='COMMITTED'||cursor==='AWAITING_DEPOSIT'?'PROCESSING':undefined;
+        if(!intermediate||!canTransition(cursor,intermediate))throw new Error(`Unsafe provider status regression ${cursor} -> ${mapped.status}`);
+        assertTransition(cursor,intermediate);path.push(intermediate);cursor=intermediate;
+      }
+      if(cursor!==mapped.status)throw new Error(`Unable to reach provider status ${mapped.status}`);
       if(mapped.status==='SUCCESS'){
         await tx.ledgerEntry.create({data:{campaignId:payout.campaignId,payoutId,type:'SETTLEMENT_CONFIRMED',amount:mapped.settledInput!,assetId:attempt.inputAssetId,externalRef:ext,metadata:{txHashes:mapped.txHashes}}});
       } else if(mapped.status==='REFUNDED'){
@@ -27,8 +36,9 @@ export class SettlementService {
           await tx.ledgerEntry.create({data:{campaignId:payout.campaignId,payoutId,type:'RELEASED',amount:active.amount,assetId:attempt.inputAssetId,externalRef:`release:${active.id}`,reason:'Provider terminal result; actual expenditure/refund recorded separately'}});
         }
       }
-      await tx.payout.update({where:{id:payoutId},data:{status:mapped.status}});
-      await tx.payoutEvent.create({data:{payoutId,fromStatus:payout.status,toStatus:mapped.status,note:`Provider status ${result.status}`,providerRef:attempt.quoteId,txHash:mapped.txHashes[0]??null}});
+      if(path.length>0)await tx.payout.update({where:{id:payoutId},data:{status:mapped.status}});
+      let from=payout.status as DomainStatus;
+      for(const to of path){await tx.payoutEvent.create({data:{payoutId,fromStatus:from,toStatus:to,note:`Provider status ${result.status}`,providerRef:attempt.quoteId,txHash:mapped.txHashes[0]??null}});from=to;}
     },{isolationLevel:'Serializable'});
   }
 }

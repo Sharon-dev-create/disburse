@@ -5,6 +5,7 @@ export function reconcile(facts:PayoutFacts,result:StatusResult):{status:PayoutS
   if(result.status==='SUCCESS'){
     if(result.amountOut!==facts.promisedOutput)throw new Error('Settlement output does not equal promise');
     if(!result.amountIn)throw new Error('Successful settlement missing actual input amount');
+    if(result.amountIn>facts.reserved)throw new Error('Actual settlement input exceeds reserved maximum');
     return {status:'SUCCESS',releaseExposure:true,settledInput:result.amountIn,txHashes:result.destinationTxHashes};
   }
   if(result.status==='REFUNDED'){

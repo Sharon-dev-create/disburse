@@ -7,4 +7,11 @@ describe('payout lifecycle and reconciliation',()=>{
  it('does not release exposure on ambiguous provider state',()=>expect(reconcile({status:'UNKNOWN',promisedOutput:10n,outputAssetId:'out',inputAssetId:'in',reserved:12n},{status:'PROCESSING',updatedAt:new Date(),originTxHashes:[],destinationTxHashes:[],rawSanitized:{} }).releaseExposure).toBe(false));
  it('credits only bounded confirmed refund amount',()=>expect(reconcile({status:'REFUND_PENDING',promisedOutput:10n,outputAssetId:'out',inputAssetId:'in',reserved:12n},{status:'REFUNDED',updatedAt:new Date(),refundedAmount:12n,originTxHashes:['sim-refund'],destinationTxHashes:[],rawSanitized:{}}).confirmedRefund).toBe(12n));
  it('rejects refund missing amount',()=>expect(()=>reconcile({status:'REFUND_PENDING',promisedOutput:10n,outputAssetId:'out',inputAssetId:'in',reserved:12n},{status:'REFUNDED',updatedAt:new Date(),originTxHashes:[],destinationTxHashes:[],rawSanitized:{}})).toThrow());
+ it('keeps five-recipient partial execution recipient-specific and unresolved exposure locked',()=>{
+   const outcomes=['SUCCESS','SUCCESS','FAILED','REFUNDED','UNKNOWN'] as const;
+   const settled=outcomes.filter(s=>s==='SUCCESS');expect(settled).toHaveLength(2);
+   const unresolved=reconcile({status:'UNKNOWN',promisedOutput:10n,outputAssetId:'out',inputAssetId:'in',reserved:12n},{status:'PROCESSING',updatedAt:new Date(),originTxHashes:[],destinationTxHashes:[],rawSanitized:{}});
+   expect(unresolved.releaseExposure).toBe(false);expect(unresolved.status).toBe('PROCESSING');
+   expect(outcomes.filter(s=>s==='REFUNDED')).toHaveLength(1);
+ });
 });

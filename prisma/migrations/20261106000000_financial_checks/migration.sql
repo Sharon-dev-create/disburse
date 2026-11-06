@@ -5,3 +5,4 @@ ALTER TABLE "Payout" ADD CONSTRAINT "payout_exposure_nonnegative" CHECK ("active
 ALTER TABLE "Attempt" ADD CONSTRAINT "attempt_max_input_positive" CHECK ("maxAmountIn" IS NULL OR "maxAmountIn" > 0);
 ALTER TABLE "Reservation" ADD CONSTRAINT "reservation_amount_positive" CHECK ("amount" > 0);
 ALTER TABLE "LedgerEntry" ADD CONSTRAINT "ledger_amount_nonnegative" CHECK ("amount" >= 0);
+ALTER TABLE "LedgerEntry" ADD CONSTRAINT "ledger_direction_valid" CHECK ("direction" IN ('IN','OUT'));

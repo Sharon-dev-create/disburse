@@ -10,14 +10,19 @@ export class CampaignService {
     const fees=input.separatelyPayableFees??[];
     const exposure=calculateExposure({approved:input.budget,denomination:input.budgetAsset,quotes:input.recipients.map(r=>({atomic:r.maximumInput,asset:r.inputAsset})),separatelyPayableFees:fees});
     await this.db.$transaction(async tx=>{
-      await tx.campaign.create({data:{id:input.id,idempotencyKey:input.idempotencyKey,budget:input.budget,assetId:input.budgetAsset.assetId,decimals:input.budgetAsset.decimals,status:'APPROVED',payouts:{create:input.recipients.map(r=>({id:`${input.id}:${r.id}`,recipientId:r.id,recipientAddress:r.address,promisedAmount:r.amount,outputAssetId:r.outputAssetId,outputChain:r.outputChain,status:'RESERVED',activeExposure:r.maximumInput}))}}});
+      await tx.campaign.create({data:{id:input.id,idempotencyKey:input.idempotencyKey,budget:input.budget,assetId:input.budgetAsset.assetId,decimals:input.budgetAsset.decimals,status:'APPROVED',payouts:{create:input.recipients.map(r=>({id:`${input.id}:${r.id}`,recipientId:r.id,recipientAddress:r.address,promisedAmount:r.amount,outputAssetId:r.outputAssetId,outputChain:r.outputChain}))}}});
       await tx.ledgerEntry.create({data:{campaignId:input.id,type:'BUDGET_APPROVED',amount:input.budget,assetId:input.budgetAsset.assetId,externalRef:`budget:${input.id}`}});
       for(const r of input.recipients){
         const payoutId=`${input.id}:${r.id}`,attemptId=`${payoutId}:attempt:1`,reservationId=`${payoutId}:reservation:1`;
         await tx.attempt.create({data:{id:attemptId,payoutId,attemptNo:1,quoteId:r.quoteId,maxAmountIn:r.maximumInput,inputAssetId:r.inputAsset.assetId,inputChain:r.inputAsset.chain,outputAmount:r.amount,expiresAt:r.expiresAt,depositAddress:r.depositAddress,depositMemo:r.depositMemo??null,status:'COMMITTED',...(r.rawQuote?{providerJson:r.rawQuote}:{})}});
+        await tx.payout.update({where:{id:payoutId},data:{status:'QUOTED'}});
+        await tx.payoutEvent.create({data:{payoutId,fromStatus:'CREATED',toStatus:'QUOTED',note:'Provider quote validated',providerRef:r.quoteId}});
         await tx.reservation.create({data:{id:reservationId,campaignId:input.id,payoutId,attemptId,amount:r.maximumInput,status:'ACTIVE'}});
         await tx.ledgerEntry.create({data:{campaignId:input.id,payoutId,type:'RESERVED',amount:r.maximumInput,assetId:r.inputAsset.assetId,externalRef:`reserve:${reservationId}`}});
+        await tx.payout.update({where:{id:payoutId},data:{status:'RESERVED',activeExposure:r.maximumInput}});
         await tx.payoutEvent.create({data:{payoutId,fromStatus:'QUOTED',toStatus:'RESERVED',note:'Maximum input reserved for committed quote',providerRef:r.quoteId}});
+        await tx.payout.update({where:{id:payoutId},data:{status:'COMMITTED'}});
+        await tx.payoutEvent.create({data:{payoutId,fromStatus:'RESERVED',toStatus:'COMMITTED',note:'Committed quote address persisted; no deposit submitted',providerRef:r.quoteId}});
       }
       const feeTotal=fees.reduce((sum,f)=>sum+f.atomic,0n);
       if(feeTotal>0n){
