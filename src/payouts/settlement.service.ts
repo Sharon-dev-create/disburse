@@ -74,16 +74,6 @@ export class SettlementService {
         const existing=await tx.ledgerEntry.findFirst({where:{attemptId:attempt.id,type:'SETTLEMENT_CONFIRMED'}});
         if(existing&&existing.amount!==mapped.settledInput)throw new Error('Provider settlement amount changed; manual reconciliation required');
       }
-      /*
-      if(!exists){
-        if(mapped.status==='SUCCESS'){
-          const existing=await tx.ledgerEntry.findFirst({where:{attemptId:attempt.id,type:'SETTLEMENT_CONFIRMED'}});
-          if(existing&&existing.amount!==mapped.settledInput)throw new Error('Provider settlement amount changed; manual reconciliation required');
-          if(!existing)await tx.ledgerEntry.create({data:{campaignId:payout.campaignId,payoutId,attemptId:attempt.id,type:'SETTLEMENT_CONFIRMED',amount:mapped.settledInput!,assetId:attempt.inputAssetId,externalRef:ext,metadata:{txHashes:mapped.txHashes}}});
-        }else if(mapped.status==='FAILED'){
-          await tx.ledgerEntry.create({data:{campaignId:payout.campaignId,payoutId,attemptId:attempt.id,type:'FAILED',amount:0n,assetId:attempt.inputAssetId,externalRef:ext}});
-        }
-      }*/
 
       const path:DomainStatus[]=[];let cursor=payout.status as DomainStatus;
       const targetStatus:DomainStatus=mapped.status==='SUCCESS'&&!outputVerified?'PROCESSING':mapped.status==='REFUNDED'?'REFUND_PENDING':mapped.status;
@@ -98,11 +88,11 @@ export class SettlementService {
         if(cursor!==targetStatus)throw new Error(`Unable to reach provider status ${targetStatus}`);
       }
 
-      if(mapped.status==='SUCCESS'&&outputVerified&&result.depositedAmount!==undefined){
+      if(mapped.status==='SUCCESS'&&outputVerified){
         const deposited=(await tx.ledgerEntry.aggregate({where:{attemptId:attempt.id,type:'DEPOSIT_OBSERVED'},_sum:{amount:true}}))._sum.amount??0n;
         const settled=(await tx.ledgerEntry.aggregate({where:{attemptId:attempt.id,type:'SETTLEMENT_CONFIRMED'},_sum:{amount:true}}))._sum.amount??0n;
         const refunded=(await tx.ledgerEntry.aggregate({where:{attemptId:attempt.id,type:'REFUND_CONFIRMED'},_sum:{amount:true}}))._sum.amount??0n;
-        if(settled+refunded>deposited)throw new Error('Confirmed settlement and refunds exceed authoritative deposit');
+        if(deposited===0n||settled+refunded>deposited)throw new Error('Confirmed settlement and refunds exceed or lack independently observed source deposit');
         const unresolved=deposited-settled-refunded;
         const reservation=await tx.reservation.findFirst({where:{attemptId:attempt.id,status:'ACTIVE'}});
         const fundingUnresolved=reservation?await tx.evmFundingOperation.findFirst({where:{reservationId:reservation.id,state:{in:['AUTHORIZED','SIGNED','BROADCAST','CONFIRMING','UNKNOWN','REORGED']}}}):null;
@@ -118,7 +108,7 @@ export class SettlementService {
           if(update.count!==1)throw new Error('Payout exposure is inconsistent with reservation balance');
         }
       }
-      if(path.length>0)await tx.payout.update({where:{id:payoutId},data:{status:mapped.status}});
+      if(path.length>0)await tx.payout.update({where:{id:payoutId},data:{status:targetStatus}});
       let from=payout.status as DomainStatus;
       for(const to of path){await tx.payoutEvent.create({data:{payoutId,fromStatus:from,toStatus:to,note:`Provider status ${result.status}`,providerRef:attempt.quoteId,txHash:mapped.txHashes[0]??null}});from=to;}
     });
