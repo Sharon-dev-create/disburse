@@ -16,10 +16,10 @@ describe('PostgreSQL financial integrity',()=>{
     const payoutIds=Array.from({length:count},(_,i)=>`${id}:p${i}`);
     const attemptIds=payoutIds.map((p,i)=>`${p}:a${i}`);
     campaignIds.push(id);
-    await db.campaign.create({data:{id,idempotencyKey:id,budget,assetId:'usdc:test',decimals:6,status:'APPROVED',payouts:{create:payoutIds.map((p,i)=>({id:p,recipientId:`r${i}`,recipientAddress:`addr-${i}`,promisedAmount:1n,outputAssetId:'out:test',outputChain:'test',status:'QUOTED',attempts:{create:{id:attemptIds[i],attemptNo:1,quoteId:`${p}:quote`,maxAmountIn:each,inputAssetId:'usdc:test',expiresAt:new Date(Date.now()+60_000),timeWhenInactive:new Date(Date.now()+50_000),depositAddress:`deposit-${i}`,status:'QUOTED'}}}))}}});
+    await db.campaign.create({data:{id,idempotencyKey:id,budget,assetId:'usdc:test',decimals:6,status:'APPROVED',payouts:{create:payoutIds.map((p,i)=>({id:p,recipientId:`r${i}`,recipientAddress:`addr-${i}`,promisedAmount:1n,outputAssetId:'out:test',outputChain:'test',status:'QUOTED',attempts:{create:{id:attemptIds[i]!,attemptNo:1,quoteId:`${p}:quote`,maxAmountIn:each,inputAssetId:'usdc:test',expiresAt:new Date(Date.now()+60_000),timeWhenInactive:new Date(Date.now()+50_000),depositAddress:`deposit-${i}`,status:'QUOTED'}}}))}}});
     return {id,payoutIds,attemptIds};
   };
-  const reserve=async(index:number,amount=70n,reservationId=`${fixture.id}:res${index}`)=>reservations.reserve(fixture.id,fixture.payoutIds[index],fixture.attemptIds[index],reservationId,amount);
+  const reserve=async(index:number,amount=70n,reservationId=`${fixture.id}:res${index}`)=>reservations.reserve(fixture.id,fixture.payoutIds[index]!,fixture.attemptIds[index]!,reservationId,amount);
   beforeAll(async()=>{if(!process.env.DATABASE_URL)throw new Error('PostgreSQL integration tests require DATABASE_URL');await db.$connect();});
   beforeEach(async()=>{campaignIds=[];fixture=await makeFixture();});
   afterEach(async()=>{
@@ -50,11 +50,11 @@ describe('PostgreSQL financial integrity',()=>{
 
   it('rejects a payout belonging to a different campaign',async()=>{
     const other=await makeFixture(1,100n,70n);
-    await expect(reservations.reserve(fixture.id,other.payoutIds[0],other.attemptIds[0],`${fixture.id}:bad`,70n)).rejects.toThrow(/does not belong/);
+    await expect(reservations.reserve(fixture.id,other.payoutIds[0]!,other.attemptIds[0]!,`${fixture.id}:bad`,70n)).rejects.toThrow(/does not belong/);
   });
 
   it('rejects an attempt belonging to a different payout',async()=>{
-    await expect(reservations.reserve(fixture.id,fixture.payoutIds[0],fixture.attemptIds[1],`${fixture.id}:bad`,70n)).rejects.toThrow(/does not belong/);
+    await expect(reservations.reserve(fixture.id,fixture.payoutIds[0]!,fixture.attemptIds[1]!,`${fixture.id}:bad`,70n)).rejects.toThrow(/does not belong/);
   });
 
   it('requires reservation to equal the persisted quote maximum',async()=>{
@@ -64,7 +64,7 @@ describe('PostgreSQL financial integrity',()=>{
   });
 
   it('rejects expired attempts',async()=>{
-    await db.attempt.update({where:{id:fixture.attemptIds[0]},data:{expiresAt:new Date(Date.now()-1)}});
+    await db.attempt.update({where:{id:fixture.attemptIds[0]!},data:{expiresAt:new Date(Date.now()-1)}});
     await expect(reserve(0)).rejects.toThrow(/expired/);
   });
 
@@ -73,7 +73,7 @@ describe('PostgreSQL financial integrity',()=>{
     const evidence={source:'MANUAL_RECONCILIATION' as const,actor:'integration-test',reason:'Verified no remaining funds in the controlled fixture'};
     await Promise.all([reservations.release(`${fixture.id}:res0`,evidence),reservations.release(`${fixture.id}:res0`,evidence)]);
     await reservations.release(`${fixture.id}:res0`,evidence);
-    const payout=await db.payout.findUniqueOrThrow({where:{id:fixture.payoutIds[0]}});
+    const payout=await db.payout.findUniqueOrThrow({where:{id:fixture.payoutIds[0]!}});
     const row=await db.reservation.findUniqueOrThrow({where:{id:`${fixture.id}:res0`}});
     expect(payout.activeExposure).toBe(0n);
     expect(row.status).toBe('RELEASED');
@@ -91,33 +91,33 @@ describe('PostgreSQL financial integrity',()=>{
 
   it('does not double-count a deposit when it becomes a settlement',async()=>{
     await reserve(0);
-    await settlements.apply(fixture.payoutIds[0],{status:'SUCCESS',updatedAt:new Date(),amountIn:50n,amountOut:1n,depositedAmount:70n,refundAssetId:'usdc:test',outputAssetId:'out:test',recipient:'addr-0',originTxHashes:['origin'],destinationTxHashes:['destination'],rawSanitized:{}});
+    await settlements.apply(fixture.payoutIds[0]!,{status:'SUCCESS',updatedAt:new Date(),amountIn:50n,amountOut:1n,depositedAmount:70n,refundAssetId:'usdc:test',outputAssetId:'out:test',recipient:'addr-0',originTxHashes:['origin'],destinationTxHashes:['destination'],rawSanitized:{}});
     const reservation=await db.reservation.findUniqueOrThrow({where:{id:`${fixture.id}:res0`}});
-    const payout=await db.payout.findUniqueOrThrow({where:{id:fixture.payoutIds[0]}});
+    const payout=await db.payout.findUniqueOrThrow({where:{id:fixture.payoutIds[0]!}});
     expect(reservation.remainingAmount).toBe(20n);
     expect(payout.activeExposure).toBe(20n);
-    expect(await db.ledgerEntry.count({where:{attemptId:fixture.attemptIds[0],type:'SETTLEMENT_CONFIRMED'}})).toBe(1);
+    expect(await db.ledgerEntry.count({where:{attemptId:fixture.attemptIds[0]!,type:'SETTLEMENT_CONFIRMED'}})).toBe(1);
   });
 
   it('reduces exposure only by confirmed partial refund amounts',async()=>{
     await reserve(0);
-    await settlements.apply(fixture.payoutIds[0],{status:'SUCCESS',updatedAt:new Date(),amountIn:50n,amountOut:1n,depositedAmount:70n,refundedAmount:10n,refundAssetId:'usdc:test',outputAssetId:'out:test',recipient:'addr-0',originTxHashes:['origin'],destinationTxHashes:['destination'],rawSanitized:{}});
+    await settlements.apply(fixture.payoutIds[0]!,{status:'SUCCESS',updatedAt:new Date(),amountIn:50n,amountOut:1n,depositedAmount:70n,refundedAmount:10n,refundAssetId:'usdc:test',outputAssetId:'out:test',recipient:'addr-0',originTxHashes:['origin'],destinationTxHashes:['destination'],rawSanitized:{}});
     const reservation=await db.reservation.findUniqueOrThrow({where:{id:`${fixture.id}:res0`}});
     expect(reservation.remainingAmount).toBe(10n);
-    expect((await db.payout.findUniqueOrThrow({where:{id:fixture.payoutIds[0]}})).activeExposure).toBe(10n);
+    expect((await db.payout.findUniqueOrThrow({where:{id:fixture.payoutIds[0]!}})).activeExposure).toBe(10n);
   });
 
   it('retains exposure when deposits remain unresolved',async()=>{
     await reserve(0);
-    await settlements.apply(fixture.payoutIds[0],{status:'PROCESSING',updatedAt:new Date(),depositedAmount:70n,refundAssetId:'usdc:test',outputAssetId:'out:test',recipient:'addr-0',originTxHashes:['origin'],destinationTxHashes:[],rawSanitized:{}});
+    await settlements.apply(fixture.payoutIds[0]!,{status:'PROCESSING',updatedAt:new Date(),depositedAmount:70n,refundAssetId:'usdc:test',outputAssetId:'out:test',recipient:'addr-0',originTxHashes:['origin'],destinationTxHashes:[],rawSanitized:{}});
     await expect(reservations.release(`${fixture.id}:res0`,{source:'PROVIDER_TERMINAL_NO_DEPOSIT',actor:'provider',reason:'Provider reported terminal no deposit'})).rejects.toThrow(/evidence/);
-    expect((await db.payout.findUniqueOrThrow({where:{id:fixture.payoutIds[0]}})).activeExposure).toBe(70n);
+    expect((await db.payout.findUniqueOrThrow({where:{id:fixture.payoutIds[0]!}})).activeExposure).toBe(70n);
   });
 
   it('retains exposure for failed attempts with unknown provider deposit amount',async()=>{
     await reserve(0);
-    await settlements.apply(fixture.payoutIds[0],{status:'FAILED',updatedAt:new Date(),refundAssetId:'usdc:test',outputAssetId:'out:test',recipient:'addr-0',originTxHashes:[],destinationTxHashes:[],rawSanitized:{}});
+    await settlements.apply(fixture.payoutIds[0]!,{status:'FAILED',updatedAt:new Date(),refundAssetId:'usdc:test',outputAssetId:'out:test',recipient:'addr-0',originTxHashes:[],destinationTxHashes:[],rawSanitized:{}});
     await expect(reservations.release(`${fixture.id}:res0`,{source:'PROVIDER_TERMINAL_NO_DEPOSIT',actor:'provider',reason:'Provider reported terminal no deposit'})).rejects.toThrow(/evidence/);
-    expect((await db.payout.findUniqueOrThrow({where:{id:fixture.payoutIds[0]}})).activeExposure).toBe(70n);
+    expect((await db.payout.findUniqueOrThrow({where:{id:fixture.payoutIds[0]!}})).activeExposure).toBe(70n);
   });
 });

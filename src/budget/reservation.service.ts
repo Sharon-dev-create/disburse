@@ -10,9 +10,16 @@ export class ReservationService {
 
   private async serializable<T>(work:(tx:Prisma.TransactionClient)=>Promise<T>):Promise<T>{
     let last:unknown;
-    for(let attempt=0;attempt<3;attempt++){
+    for(let attempt=0;attempt<10;attempt++){
       try{return await this.db.$transaction(work,{isolationLevel:'Serializable'});}
-      catch(error){last=error;if(!(error instanceof Prisma.PrismaClientKnownRequestError)||error.code!=='P2034'||attempt===2)throw error;await new Promise(resolve=>setTimeout(resolve,10*(attempt+1)));}
+      catch(error){
+        last=error;
+        const metaCode=error instanceof Prisma.PrismaClientKnownRequestError?String(error.meta?.code??''):'';
+        const message=error instanceof Error?error.message:'';
+        const retryable=error instanceof Prisma.PrismaClientKnownRequestError&&(error.code==='P2034'||error.code==='P2010'&&['40001','40P01'].includes(metaCode))||/could not serialize access|deadlock detected/i.test(message);
+        if(!retryable||attempt===9)throw error;
+        await new Promise(resolve=>setTimeout(resolve,Math.min(20*(attempt+1),200)));
+      }
     }
     throw last;
   }
