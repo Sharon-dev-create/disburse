@@ -147,8 +147,6 @@ pub struct Disburse {
     next_payout_id: u64,
     payouts: LookupMap<u64, Payout>,
     payout_idempotency: LookupMap<(u64, String), u64>,
-    execution_references: LookupMap<String, u64>,
-    payout_lifecycle_reasons: LookupMap<u64, String>,
 }
 
 #[near]
@@ -165,8 +163,6 @@ impl Disburse {
             next_payout_id: 0,
             payouts: LookupMap::new(b"payout-records".to_vec()),
             payout_idempotency: LookupMap::new(b"payout-idempotency".to_vec()),
-            execution_references: LookupMap::new(b"payout-execution-references".to_vec()),
-            payout_lifecycle_reasons: LookupMap::new(b"payout-lifecycle-reasons".to_vec()),
         }
     }
 
@@ -434,7 +430,7 @@ impl Disburse {
             payout.status == PayoutStatus::Reserved,
             "Payout must be Reserved to start execution"
         );
-        if let Some(existing_id) = self.execution_references.get(&execution_reference) {
+        if let Some(existing_id) = Self::execution_references().get(&execution_reference) {
             require!(
                 *existing_id == payout_id,
                 "Execution reference is already assigned to another payout"
@@ -445,8 +441,7 @@ impl Disburse {
         payout.status = PayoutStatus::Executing;
         payout.execution_reference = Some(execution_reference.clone());
         self.payouts.insert(payout_id, payout.clone());
-        self.execution_references
-            .insert(execution_reference.clone(), payout_id);
+        Self::execution_references().insert(execution_reference.clone(), payout_id);
         self.emit_event(
             "payout_execution_started",
             near_sdk::serde_json::json!({
@@ -474,7 +469,7 @@ impl Disburse {
             .clone()
             .unwrap_or_else(|| env::panic_str("Execution reference is missing"));
         require!(
-            self.execution_references.get(&execution_reference) == Some(&payout_id),
+            Self::execution_references().get(&execution_reference) == Some(&payout_id),
             "Execution reference index is inconsistent"
         );
         let previous_status = payout.status;
@@ -521,11 +516,15 @@ impl Disburse {
             ),
             "Only executing or pending payouts can be marked Failed"
         );
+        require!(
+            payout.status != PayoutStatus::PendingVerification
+                || evidence.kind != ExecutionFailureKind::RejectedBeforeSubmission,
+            "A submitted payout cannot use pre-submission rejection evidence"
+        );
         let previous_status = payout.status;
         payout.status = PayoutStatus::Failed;
         self.payouts.insert(payout_id, payout.clone());
-        self.payout_lifecycle_reasons
-            .insert(payout_id, evidence.reason.clone());
+        Self::payout_lifecycle_reasons().insert(payout_id, evidence.reason.clone());
         self.emit_event(
             "payout_execution_failed",
             near_sdk::serde_json::json!({
@@ -564,8 +563,7 @@ impl Disburse {
         let previous_status = payout.status;
         payout.status = PayoutStatus::ManualReview;
         self.payouts.insert(payout_id, payout.clone());
-        self.payout_lifecycle_reasons
-            .insert(payout_id, reason.clone());
+        Self::payout_lifecycle_reasons().insert(payout_id, reason.clone());
         self.emit_event(
             "payout_manual_review",
             near_sdk::serde_json::json!({
@@ -794,6 +792,14 @@ impl Disburse {
             .unwrap_or_else(|| env::panic_str("Payout not found"))
     }
 
+    fn execution_references() -> LookupMap<String, u64> {
+        LookupMap::new(b"payout-execution-references".to_vec())
+    }
+
+    fn payout_lifecycle_reasons() -> LookupMap<u64, String> {
+        LookupMap::new(b"payout-lifecycle-reasons".to_vec())
+    }
+
     fn campaign_or_panic(&self, campaign_id: u64) -> Campaign {
         self.campaigns
             .get(&campaign_id)
@@ -856,7 +862,7 @@ impl Disburse {
             created_at_ns: payout.created_at_ns,
             execution_reference: payout.execution_reference.clone(),
             settlement_evidence_reference: payout.settlement_evidence_reference.clone(),
-            lifecycle_reason: self.payout_lifecycle_reasons.get(&payout.id).cloned(),
+            lifecycle_reason: Self::payout_lifecycle_reasons().get(&payout.id).cloned(),
         }
     }
 
@@ -2357,9 +2363,7 @@ mod tests {
         );
         // A duplicate index entry for the same payout is not treated as another payout's claim.
         let third = reserve_test_payout(&mut contract, campaign_id, "reference-third");
-        contract
-            .execution_references
-            .insert("same-owner-ref".into(), third);
+        Disburse::execution_references().insert("same-owner-ref".into(), third);
         contract.start_payout_execution(third, "same-owner-ref".into());
         assert_eq!(
             contract
@@ -2475,6 +2479,17 @@ mod tests {
         let before_pending = contract.get_campaign(campaign_id).unwrap();
         contract.start_payout_execution(pending, "tx:reverted-b".into());
         contract.mark_payout_pending_verification(pending);
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| contract.mark_payout_failed(
+                pending,
+                ExecutionFailureEvidence {
+                    kind: ExecutionFailureKind::RejectedBeforeSubmission,
+                    evidence_reference: "provider:rejected".into(),
+                    reason: "Pre-submission rejection".into(),
+                }
+            )))
+            .is_err()
+        );
         contract.mark_payout_failed(pending, definitive_failure("receipt:reverted-b"));
         assert_eq!(
             contract.get_payout(pending).unwrap().status,
