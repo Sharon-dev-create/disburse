@@ -49,8 +49,7 @@ describe('Anvil EVM funding integration (disposable local chain only)',()=>{
       expect(await db.ledgerEntry.findUnique({where:{externalRef:`evm-deposit:${first.id}`} })).not.toBeNull();
       expect((await service.authorizeAndSubmit({reservationId,idempotencyKey:`evm-op-${suffix}`})).id).toBe(first.id);
     }finally{
-      await db.evmFundingOperation.deleteMany({where:{reservationId}}).catch(()=>undefined);
-      await db.ledgerEntry.deleteMany({where:{campaignId}});await db.reservation.deleteMany({where:{campaignId}});await db.attempt.deleteMany({where:{payoutId}});await db.payout.deleteMany({where:{campaignId}});await db.campaign.deleteMany({where:{id:campaignId}});
+      try{await db.evmFundingOperation.deleteMany({where:{reservationId}});await db.ledgerEntry.deleteMany({where:{campaignId}});await db.reservation.deleteMany({where:{campaignId}});await db.attempt.deleteMany({where:{payoutId}});await db.payout.deleteMany({where:{campaignId}});await db.campaign.deleteMany({where:{id:campaignId}});}catch{/* Database outage is reported by the test body; never mask it during cleanup. */}
     }
   },60_000);
 });

@@ -61,9 +61,7 @@ describe('single payout lifecycle on Anvil + PostgreSQL + deterministic provider
       expect(await chainClient.readContract({address:outputToken,abi:tokenAbi,functionName:'balanceOf',args:[getAddress(recipient)]})).toBe(1_000_000n);
       const active=(await db.reservation.findFirst({where:{payoutId:created.id,status:'ACTIVE'}}))?.remainingAmount??0n;expect(active).toBe(0n);
     }finally{
-      const payout=await db.payout.findUnique({where:{id:`${campaignId}:recipient-1`}});
-      if(payout){await db.payoutWorkItem.deleteMany({where:{payoutId:payout.id}});await db.evmFundingOperation.deleteMany({where:{payoutId:payout.id}});await db.ledgerEntry.deleteMany({where:{payoutId:payout.id}});await db.payoutEvent.deleteMany({where:{payoutId:payout.id}});await db.reservation.deleteMany({where:{payoutId:payout.id}});await db.attempt.deleteMany({where:{payoutId:payout.id}});await db.payout.delete({where:{id:payout.id}});}
-      await db.ledgerEntry.deleteMany({where:{campaignId}});await db.campaign.deleteMany({where:{id:campaignId}});
+      try{const payout=await db.payout.findUnique({where:{id:`${campaignId}:recipient-1`}});if(payout){await db.payoutWorkItem.deleteMany({where:{payoutId:payout.id}});await db.evmFundingOperation.deleteMany({where:{payoutId:payout.id}});await db.ledgerEntry.deleteMany({where:{payoutId:payout.id}});await db.payoutEvent.deleteMany({where:{payoutId:payout.id}});await db.reservation.deleteMany({where:{payoutId:payout.id}});await db.attempt.deleteMany({where:{payoutId:payout.id}});await db.payout.delete({where:{id:payout.id}});}await db.ledgerEntry.deleteMany({where:{campaignId}});await db.campaign.deleteMany({where:{id:campaignId}});}catch{/* Database outage is reported by the test body; never mask it during cleanup. */}
     }
   },60_000);
 });
