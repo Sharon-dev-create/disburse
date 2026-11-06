@@ -14,7 +14,7 @@ export class PayoutOrchestrator {
     const current=payout.status as PayoutStatus; assertTransition(current,'QUOTED');
     const attemptNo=await this.db.attempt.count({where:{payoutId}})+1;
     await this.db.$transaction(async tx=>{
-      await tx.attempt.create({data:{id:`${payoutId}:attempt:${attemptNo}`,payoutId,attemptNo,quoteId:quote.correlationId,maxAmountIn:quote.maxAmountIn,inputAssetId:request.originAsset,outputAmount:quote.amountOut,expiresAt:quote.deadline,depositAddress:quote.depositAddress,depositMemo:quote.depositMemo??null,status:'QUOTED',providerJson:quote.rawSanitized as object}});
+      await tx.attempt.create({data:{id:`${payoutId}:attempt:${attemptNo}`,payoutId,attemptNo,quoteId:quote.correlationId,maxAmountIn:quote.maxAmountIn,inputAssetId:request.originAsset,outputAmount:quote.amountOut,expiresAt:quote.deadline,depositAddress:quote.depositAddress??null,depositMemo:quote.depositMemo??null,status:'QUOTED',providerJson:quote.rawSanitized as object}});
       await tx.payout.update({where:{id:payoutId},data:{status:'QUOTED'}});
       await tx.payoutEvent.create({data:{payoutId,fromStatus:current,toStatus:'QUOTED',note:'Committed quote obtained; no deposit submitted',providerRef:quote.correlationId}});
     });

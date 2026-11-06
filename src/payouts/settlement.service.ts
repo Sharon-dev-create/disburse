@@ -27,7 +27,7 @@ export class SettlementService {
         }
       }
       await tx.payout.update({where:{id:payoutId},data:{status:mapped.status,activeExposure:terminal?0n:payout.activeExposure}});
-      await tx.payoutEvent.create({data:{payoutId,fromStatus:payout.status,toStatus:mapped.status,note:`Provider status ${result.status}`,providerRef:attempt.quoteId,txHash:mapped.txHashes[0]}});
+      await tx.payoutEvent.create({data:{payoutId,fromStatus:payout.status,toStatus:mapped.status,note:`Provider status ${result.status}`,providerRef:attempt.quoteId,txHash:mapped.txHashes[0]??null}});
     },{isolationLevel:'Serializable'});
   }
 }

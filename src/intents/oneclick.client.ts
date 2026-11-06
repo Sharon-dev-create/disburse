@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { IntentsProvider, QuoteRequest, ValidatedQuote, StatusResult, ProviderStatus } from './provider.interface.js';
 
 const quoteSchema=z.object({correlationId:z.string().min(1),timestamp:z.string(),quoteRequest:z.record(z.unknown()),quote:z.object({amountIn:z.string(),minAmountIn:z.string().optional(),maxAmountIn:z.string(),amountOut:z.string(),deadline:z.string(),depositAddress:z.string().optional(),depositMemo:z.string().nullable().optional()}).passthrough()}).passthrough();
-const statusSchema=z.object({correlationId:z.string(),status:z.enum(['PENDING_DEPOSIT','KNOWN_DEPOSIT_TX','PROCESSING','SUCCESS','INCOMPLETE_DEPOSIT','REFUNDED','FAILED']),updatedAt:z.string(),swapDetails:z.object({amountIn:z.string().optional(),amountOut:z.string().optional(),depositedAmount:z.string().optional(),refundedAmount:z.string().optional(),originChainTxHashes:z.array(z.object({hash:z.string()}).passthrough()).optional(),destinationChainTxHashes:z.array(z.object({hash:z.string()}).passthrough()).optional()}).passthrough(),quoteResponse:z.unknown()}).passthrough();
+const statusSchema=z.object({correlationId:z.string(),status:z.enum(['PENDING_DEPOSIT','KNOWN_DEPOSIT_TX','PROCESSING','SUCCESS','INCOMPLETE_DEPOSIT','REFUNDED','FAILED']),updatedAt:z.string(),swapDetails:z.object({amountIn:z.string().optional(),amountOut:z.string().optional(),depositedAmount:z.string().optional(),refundedAmount:z.string().optional(),originChainTxHashes:z.array(z.object({hash:z.string()}).passthrough()).optional(),destinationChainTxHashes:z.array(z.object({hash:z.string()}).passthrough()).optional()}).passthrough(),quoteResponse:quoteSchema}).passthrough();
 const positive=(s:string)=>{if(!/^[1-9]\d*$/.test(s))throw new Error('Provider returned invalid atomic amount');return BigInt(s)};
 function sanitize(v:unknown):unknown { if(Array.isArray(v))return v.map(sanitize); if(v&&typeof v==='object'){const out:Record<string,unknown>={}; for(const [k,val] of Object.entries(v)) out[k]=/authorization|token|secret|key/i.test(k)?'[REDACTED]':sanitize(val); return out;} return v; }
 export class OneClickClient implements IntentsProvider {
@@ -26,6 +26,8 @@ export class OneClickClient implements IntentsProvider {
     const res=await this.fetcher(u,{headers:this.config.jwt?{Authorization:`Bearer ${this.config.jwt}`}:{}}); if(!res.ok)throw new Error(`1Click status HTTP ${res.status}`);
     const d=statusSchema.parse(await res.json()); const s=d.swapDetails; const optional=(x?:string)=>x===undefined?undefined:positive(x);
     const amountIn=optional(s.amountIn),amountOut=optional(s.amountOut),depositedAmount=optional(s.depositedAmount),refundedAmount=optional(s.refundedAmount);
-    return {status:d.status as ProviderStatus,updatedAt:new Date(d.updatedAt),...(amountIn!==undefined?{amountIn}:{}),...(amountOut!==undefined?{amountOut}:{}),...(depositedAmount!==undefined?{depositedAmount}:{}),...(refundedAmount!==undefined?{refundedAmount}:{}),originTxHashes:(s.originChainTxHashes??[]).map(x=>x.hash),destinationTxHashes:(s.destinationChainTxHashes??[]).map(x=>x.hash),rawSanitized:sanitize(d)};
+    const refundAssetId=d.quoteResponse.quoteRequest.originAsset;
+    if(typeof refundAssetId!=='string'||refundAssetId.length===0)throw new Error('Status response missing original quote originAsset');
+    return {status:d.status as ProviderStatus,updatedAt:new Date(d.updatedAt),...(amountIn!==undefined?{amountIn}:{}),...(amountOut!==undefined?{amountOut}:{}),...(depositedAmount!==undefined?{depositedAmount}:{}),...(refundedAmount!==undefined?{refundedAmount}:{}),refundAssetId,originTxHashes:(s.originChainTxHashes??[]).map(x=>x.hash),destinationTxHashes:(s.destinationChainTxHashes??[]).map(x=>x.hash),rawSanitized:sanitize(d)};
   }
 }
