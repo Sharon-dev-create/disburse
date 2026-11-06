@@ -17,6 +17,8 @@ export interface EvmGasPolicy {
   readonly maxNativeGasCost:bigint;
 }
 
+export const LOCAL_ANVIL_CHAIN_ID=31337;
+
 export function anvilChain(chainId:number,rpcUrl:string):Chain {
   return defineChain({id:chainId,name:'Local Anvil',nativeCurrency:{name:'Anvil Ether',symbol:'ETH',decimals:18},rpcUrls:{default:{http:[rpcUrl]}}});
 }
@@ -28,7 +30,7 @@ export class EvmChainAdapter {
   }
 
   async assertChainAndToken():Promise<void>{
-    if(await this.publicClient.getChainId()!==this.token.chainId||this.chain.id!==this.token.chainId)throw new Error('RPC chain ID does not match approved token configuration');
+    if(this.token.chainId!==LOCAL_ANVIL_CHAIN_ID||await this.publicClient.getChainId()!==LOCAL_ANVIL_CHAIN_ID||this.chain.id!==LOCAL_ANVIL_CHAIN_ID)throw new Error('EVM funding spike is restricted to local Anvil chain ID 31337');
     const decimals=await this.publicClient.readContract({address:this.token.tokenAddress,abi:erc20FundingAbi,functionName:'decimals'});
     if(Number(decimals)!==this.token.decimals)throw new Error('ERC-20 decimals do not match approved token configuration');
   }

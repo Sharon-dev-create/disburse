@@ -1,10 +1,12 @@
 import { Prisma, PrismaClient, type EvmFundingOperation } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 import { decodeEventLog, getAddress, keccak256, parseTransaction, recoverTransactionAddress, type Address, type Hex } from 'viem';
 import type { EvmChainAdapter, EvmGasPolicy, EvmTokenConfig } from './evm-chain-adapter.js';
 import { erc20FundingAbi } from './erc20.js';
 import { assertAuthorizedErc20Transfer, type EvmFundingOperationContext, type EvmUnsignedTransfer } from './policy.js';
 import type { EvmSigner } from './signer.js';
 import type { SignedTransactionCipher } from './signed-tx-cipher.js';
+import { localAnvilCapabilities, type FundingAdapterCapabilities } from './capabilities.js';
 
 export interface AuthorizeEvmFundingInput { readonly reservationId:string; readonly idempotencyKey:string; }
 export interface EvmFundingSummary { readonly id:string;readonly state:string;readonly txHash:string|null;readonly chainId:string;readonly nonce:string;readonly tokenAmount:string; }
@@ -14,7 +16,8 @@ const publicSelect={id:true,state:true,txHash:true,chainId:true,nonce:true,token
 function summary(op:Pick<EvmFundingOperation,'id'|'state'|'txHash'|'chainId'|'nonce'|'tokenAmount'>):EvmFundingSummary{return{id:op.id,state:op.state,txHash:op.txHash,chainId:op.chainId.toString(),nonce:op.nonce.toString(),tokenAmount:op.tokenAmount.toString()};}
 
 export class EvmFundingService {
-  constructor(private readonly db:PrismaClient,private readonly chain:EvmChainAdapter,private readonly signer:EvmSigner,private readonly cipher:SignedTransactionCipher,private readonly policy:EvmFundingPolicy){}
+  readonly capabilities:FundingAdapterCapabilities;
+  constructor(private readonly db:PrismaClient,private readonly chain:EvmChainAdapter,private readonly signer:EvmSigner,private readonly cipher:SignedTransactionCipher,private readonly policy:EvmFundingPolicy){this.capabilities=localAnvilCapabilities(policy.token.chainId,policy.token.sourceChain);}
 
   async authorizeAndSubmit(input:AuthorizeEvmFundingInput):Promise<EvmFundingSummary>{
     if(!input.idempotencyKey.trim())throw new Error('An idempotency key is required');
@@ -40,9 +43,12 @@ export class EvmFundingService {
       await db.$queryRaw`SELECT "id" FROM "Reservation" WHERE "id"=${input.reservationId} FOR UPDATE`;
       const fresh=await db.reservation.findUnique({where:{id:input.reservationId},include:{campaign:true,payout:true,attempt:true}});
       if(!fresh||!fresh.payout||!fresh.attempt||fresh.status!=='ACTIVE'||fresh.remainingAmount!==fresh.amount||fresh.amount!==ctx.reservation.amount||fresh.attempt.expiresAt===null||fresh.attempt.expiresAt<=new Date())throw new Error('Reservation changed before authorization');
-      let cursor=await db.evmNonceCursor.findUnique({where:{chainId_sourceAddress:{chainId:BigInt(this.policy.token.chainId),sourceAddress:this.policy.signerAddress.toLowerCase()}}});
-      if(!cursor)cursor=await db.evmNonceCursor.create({data:{chainId:BigInt(this.policy.token.chainId),sourceAddress:this.policy.signerAddress.toLowerCase(),nextNonce:BigInt(pending)}});
-      const nonce=Number(cursor.nextNonce>BigInt(pending)?cursor.nextNonce:BigInt(pending));
+      const chainId=BigInt(this.policy.token.chainId);const sourceAddress=this.policy.signerAddress.toLowerCase();
+      await db.$executeRaw`INSERT INTO "EvmNonceCursor" ("id","chainId","sourceAddress","nextNonce","updatedAt") VALUES (${randomUUID()},${chainId},${sourceAddress},${BigInt(pending)},NOW()) ON CONFLICT ("chainId","sourceAddress") DO NOTHING`;
+      const cursors=await db.$queryRaw<Array<{id:string;nextNonce:bigint}>>`SELECT "id","nextNonce" FROM "EvmNonceCursor" WHERE "chainId"=${chainId} AND "sourceAddress"=${sourceAddress} FOR UPDATE`;
+      const cursor=cursors[0];if(!cursor)throw new Error('Unable to lock source nonce cursor');
+      const currentPending=await this.chain.getPendingNonce(this.policy.signerAddress);
+      const nonce=Number(cursor.nextNonce>BigInt(currentPending)?cursor.nextNonce:BigInt(currentPending));
       if(!Number.isSafeInteger(nonce))throw new Error('Source nonce exceeds safe transaction range');
       const actualTx=nonce===tx.nonce?tx:await this.chain.buildUnsignedTransfer({from:this.policy.signerAddress,to:getAddress(fresh.attempt.depositAddress!),amount:fresh.amount,nonce,gasPolicy:this.policy.gas});
       const made=await db.evmFundingOperation.create({data:{campaignId:fresh.campaignId,payoutId:fresh.payoutId!,attemptId:fresh.attemptId!,reservationId:fresh.id,idempotencyKey:input.idempotencyKey,chainId:BigInt(this.policy.token.chainId),sourceAssetId:this.policy.token.assetId,sourceChain:this.policy.token.sourceChain,sourceAddress:this.policy.signerAddress.toLowerCase(),tokenAddress:this.policy.token.tokenAddress.toLowerCase(),tokenAmount:fresh.amount,tokenDecimals:this.policy.token.decimals,destinationAddress:getAddress(fresh.attempt.depositAddress!),quoteExpiresAt:fresh.attempt.expiresAt!,nonce:BigInt(nonce),gasLimit:actualTx.gas,maxFeePerGas:actualTx.maxFeePerGas,maxPriorityFeePerGas:actualTx.maxPriorityFeePerGas,maxGasLimit:this.policy.gas.maxGasLimit,maxFeePerGasCap:this.policy.gas.maxFeePerGas,maxPriorityFeePerGasCap:this.policy.gas.maxPriorityFeePerGas,maxNativeGasCost:this.policy.gas.maxNativeGasCost,state:'AUTHORIZED',authorizedAt:new Date()}});
@@ -68,6 +74,9 @@ export class EvmFundingService {
       op=await this.db.evmFundingOperation.update({where:{id:op.id,state:'AUTHORIZED'},data:{signedTxCiphertext:encrypted.ciphertext,signedTxIv:encrypted.iv,signedTxAuthTag:encrypted.authTag,txHash:hash,state:'SIGNED',signedAt:new Date()}});
     }
     const raw=this.cipher.decrypt({ciphertext:op.signedTxCiphertext!,iv:op.signedTxIv!,authTag:op.signedTxAuthTag!});
+    const latestContext=await this.loadContext(op.id);const authorizedTx=this.toTx(latestContext);assertAuthorizedErc20Transfer(latestContext,authorizedTx,new Date());
+    const serialized=parseTransaction(raw as `0x02${string}`);const signedBy=await recoverTransactionAddress({serializedTransaction:raw as `0x02${string}`});
+    if(keccak256(raw).toLowerCase()!==op.txHash?.toLowerCase()||getAddress(signedBy)!==getAddress(op.sourceAddress)||serialized.chainId!==Number(op.chainId)||serialized.nonce!==Number(op.nonce)||!serialized.to||getAddress(serialized.to)!==getAddress(op.tokenAddress)||(serialized.value??0n)!==0n||(serialized.data??'0x').toLowerCase()!==authorizedTx.data.toLowerCase()||(serialized.gas??0n)!==op.gasLimit||(serialized.maxFeePerGas??0n)>op.maxFeePerGasCap||(serialized.maxPriorityFeePerGas??0n)>op.maxPriorityFeePerGasCap||((serialized.maxPriorityFeePerGas??0n)>(serialized.maxFeePerGas??0n))||(serialized.gas??0n)*(serialized.maxFeePerGas??0n)>op.maxNativeGasCost||serialized.accessList?.length)throw new Error('Persisted signed transaction no longer matches its authorization or hash');
     try{const hash=await this.chain.broadcast(raw);if(hash.toLowerCase()!==op.txHash?.toLowerCase())throw new Error('Broadcast hash differs from persisted signed transaction');op=await this.db.evmFundingOperation.update({where:{id:op.id},data:{state:'BROADCAST',broadcastAt:op.broadcastAt??new Date(),failureReason:null}});}
     catch(error){const known=op.txHash?await this.chain.publicClient.getTransaction({hash:op.txHash as Hex}).catch(()=>null):null;if(known){op=await this.db.evmFundingOperation.update({where:{id:op.id},data:{state:'BROADCAST',broadcastAt:op.broadcastAt??new Date(),failureReason:null}});}else{op=await this.db.evmFundingOperation.update({where:{id:op.id},data:{state:'UNKNOWN',failureReason:error instanceof Error?error.message:'Broadcast outcome unknown'}});}}
     return summary(op);
@@ -80,7 +89,7 @@ export class EvmFundingService {
     if(!tx){if(op.state==='CONFIRMED'){await this.reverseIfPreviouslyObserved(op,op.lastObservedBlockHash??'unknown');return summary(await this.db.evmFundingOperation.update({where:{id},data:{state:'REORGED',failureReason:'Previously confirmed transaction is no longer available from the chain RPC',reconciledAt:new Date()}}));}return summary(await this.db.evmFundingOperation.update({where:{id},data:{state:'UNKNOWN',reconciledAt:new Date()}}));}
     if(!receipt){if(op.state==='CONFIRMED'){await this.reverseIfPreviouslyObserved(op,op.lastObservedBlockHash??'unknown');return summary(await this.db.evmFundingOperation.update({where:{id},data:{state:'REORGED',failureReason:'Previously confirmed transaction no longer has a receipt',reconciledAt:new Date()}}));}return summary(await this.db.evmFundingOperation.update({where:{id},data:{state:'CONFIRMING',reconciledAt:new Date()}}));}
     const ctx: EvmFundingOperationContext={operation:op,campaign:op.campaign,payout:op.payout,attempt:op.attempt,reservation:op.reservation};const expected=this.toTx(ctx);
-    if(tx.chainId!==Number(op.chainId)||getAddress(tx.from)!==getAddress(op.sourceAddress)||!tx.to||getAddress(tx.to)!==getAddress(op.tokenAddress)||tx.input.toLowerCase()!==expected.data.toLowerCase()||tx.value!==0n||tx.nonce!==Number(op.nonce))throw new Error('Chain transaction evidence does not match funding authorization');
+    if(tx.chainId!==Number(op.chainId)||getAddress(tx.from)!==getAddress(op.sourceAddress)||!tx.to||getAddress(tx.to)!==getAddress(op.tokenAddress)||tx.input.toLowerCase()!==expected.data.toLowerCase()||tx.value!==0n||tx.nonce!==Number(op.nonce)||tx.gas!==op.gasLimit||tx.maxFeePerGas>op.maxFeePerGasCap||tx.maxPriorityFeePerGas>op.maxPriorityFeePerGasCap||tx.gas*tx.maxFeePerGas>op.maxNativeGasCost||tx.accessList.length!==0)throw new Error('Chain transaction evidence does not match funding authorization');
     if(receipt.status!=='success')return summary(await this.db.evmFundingOperation.update({where:{id},data:{state:'FAILED',failureReason:'Source-chain transaction reverted',reconciledAt:new Date()}}));
     const transfers=receipt.logs.filter(log=>getAddress(log.address)===getAddress(op.tokenAddress)).flatMap(log=>{try{const decoded=decodeEventLog({abi:erc20FundingAbi,eventName:'Transfer',data:log.data,topics:log.topics});return decoded.args.from&&decoded.args.to&&decoded.args.value!==undefined?[decoded.args]:[];}catch{return[];}});
     if(transfers.length!==1||getAddress(transfers[0]!.from)!==getAddress(op.sourceAddress)||getAddress(transfers[0]!.to)!==getAddress(op.destinationAddress)||transfers[0]!.value!==op.tokenAmount)throw new Error('Receipt lacks exactly one matching ERC-20 Transfer event');
