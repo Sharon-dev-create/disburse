@@ -5,6 +5,7 @@ export interface RecipientSpec { id:string; address:string; amount:bigint; quote
 export class CampaignService {
   constructor(private readonly db:PrismaClient,private readonly now:()=>Date=()=>new Date()){}
   async createAndApprove(input:{id:string;idempotencyKey:string;budget:bigint;budgetAsset:Asset;recipients:RecipientSpec[];separatelyPayableFees?:Amount[]}):Promise<bigint>{
+    if(!input.id.trim()||!input.idempotencyKey.trim())throw new Error('Campaign ID and idempotency key are required');
     if(input.recipients.length===0)throw new Error('Campaign requires recipients');
     for(const r of input.recipients){if(r.amount<=0n||r.maximumInput<=0n||r.quotedOutput!==r.amount||!r.quoteId||!r.depositAddress)throw new Error('Recipient quote is incomplete or does not guarantee promised output');if(r.expiresAt<=this.now())throw new Error('Expired quote cannot be approved');}
     const fees=input.separatelyPayableFees??[];

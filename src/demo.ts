@@ -12,8 +12,13 @@ for(const c of cases){try{const total=calculateExposure({approved:c.budget,denom
 const statuses=['SUCCESS','SUCCESS','FAILED','REFUNDED','UNKNOWN'] as const;
 console.log('C Partial execution (simulated only):');
 statuses.forEach((status,i)=>console.log(`  recipient-${i+1}: ${status}${status==='SUCCESS'?' exact promised output':status==='UNKNOWN'?' exposure retained':''}`));
-console.log('D Concurrent reservation attack: max 100 USDC, requests 70 + 70 => one success, one rejected (PostgreSQL row-lock assertion in integration suite).');
 const provider=new MockProvider();
 const lifecycle=new PayoutLifecycle(); lifecycle.transition('QUOTED','sim quote'); lifecycle.transition('RESERVED','sim reserve'); lifecycle.transition('COMMITTED','mock accepted'); lifecycle.transition('UNKNOWN','simulated client timeout after acceptance');
-console.log(`E Duplicate retry: ${lifecycle.status}; both retry submissions resolve to same logical payout; no second attempt while outcome unknown.`);
-void provider;
+let available=100n*million;
+const simulatedReserve=async(amount:bigint)=>{await Promise.resolve();if(amount>available)return false;available-=amount;return true;};
+const concurrent=await Promise.all([simulatedReserve(70n*million),simulatedReserve(70n*million)]);
+console.log(`D Concurrent reservation attack (in-process illustration only): ${concurrent.filter(Boolean).length} accepted, ${concurrent.filter(x=>!x).length} rejected; database guarantee is covered only by the PostgreSQL integration test.`);
+const retries=new Map<string,string>();
+const retry=async(key:string)=>{const existing=retries.get(key);if(existing)return existing;const quote=await provider.quote({dry:false,swapType:'EXACT_OUTPUT',originAsset:'sim:usdc',destinationAsset:'sim:out',amount:'100',recipient:'sim:recipient',refundTo:'sim:refund'});retries.set(key,quote.correlationId);return quote.correlationId;};
+await retry('same-retry-request');await retry('same-retry-request');
+console.log(`E Duplicate retry: ${lifecycle.status}; mock idempotency key reused once and uncertain outcome remains locked (simulated only).`);

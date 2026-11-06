@@ -6,13 +6,14 @@ const statusSchema=z.object({correlationId:z.string(),status:z.enum(['PENDING_DE
 const positive=(s:string)=>{if(!/^[1-9]\d*$/.test(s))throw new Error('Provider returned invalid atomic amount');return BigInt(s)};
 function sanitize(v:unknown):unknown { if(Array.isArray(v))return v.map(sanitize); if(v&&typeof v==='object'){const out:Record<string,unknown>={}; for(const [k,val] of Object.entries(v)) out[k]=/authorization|token|secret|key/i.test(k)?'[REDACTED]':sanitize(val); return out;} return v; }
 export class OneClickClient implements IntentsProvider {
-  constructor(private readonly config:{baseUrl?:string;jwt?:string;fetchImpl?:typeof fetch}={}){}
+  constructor(private readonly config:{baseUrl?:string;jwt?:string;timeoutMs?:number;fetchImpl?:typeof fetch}={}){}
   private get base(){return (this.config.baseUrl??'https://1click.chaindefuser.com').replace(/\/$/,'');}
   private get fetcher(){return this.config.fetchImpl??fetch;}
   async quote(request:QuoteRequest):Promise<ValidatedQuote>{
     if(request.swapType!=='EXACT_OUTPUT')throw new Error('Only EXACT_OUTPUT is supported');
+    if(!/^[1-9]\d*$/.test(request.amount)||![request.originAsset,request.destinationAsset,request.recipient,request.refundTo].every(x=>typeof x==='string'&&x.length>0))throw new Error('Invalid exact-output quote request');
     const headers:Record<string,string>={'content-type':'application/json'}; if(this.config.jwt)headers.Authorization=`Bearer ${this.config.jwt}`;
-    const res=await this.fetcher(`${this.base}/v0/quote`,{method:'POST',headers,body:JSON.stringify(request)}); if(!res.ok)throw new Error(`1Click quote HTTP ${res.status}`);
+    const res=await this.fetcher(`${this.base}/v0/quote`,{method:'POST',headers,body:JSON.stringify(request),signal:AbortSignal.timeout(this.config.timeoutMs??15_000)}); if(!res.ok)throw new Error(`1Click quote HTTP ${res.status}`);
     const parsed=quoteSchema.safeParse(await res.json()); if(!parsed.success)throw new Error(`Invalid 1Click quote response: ${parsed.error.message}`);
     const q=parsed.data.quote; const min=q.minAmountIn??q.amountIn; const deadline=new Date(q.deadline); if(!Number.isFinite(deadline.getTime()))throw new Error('Invalid provider deadline');
     if(parsed.data.quoteRequest.swapType!=='EXACT_OUTPUT'||parsed.data.quoteRequest.amount!==request.amount||parsed.data.quoteRequest.originAsset!==request.originAsset||parsed.data.quoteRequest.destinationAsset!==request.destinationAsset||parsed.data.quoteRequest.recipient!==request.recipient||parsed.data.quoteRequest.refundTo!==request.refundTo)throw new Error('Provider quote does not match exact-output request');
@@ -22,8 +23,9 @@ export class OneClickClient implements IntentsProvider {
     return {correlationId:parsed.data.correlationId,amountIn:positive(q.amountIn),minAmountIn:positive(min),maxAmountIn:positive(q.maxAmountIn),amountOut:positive(q.amountOut),deadline,...(q.depositAddress?{depositAddress:q.depositAddress}:{}),...(q.depositMemo!==undefined?{depositMemo:q.depositMemo}:{}),rawSanitized:sanitize(parsed.data)};
   }
   async status(depositAddress:string):Promise<StatusResult>{
+    if(typeof depositAddress!=='string'||depositAddress.length===0)throw new Error('Invalid deposit address');
     const u=new URL(`${this.base}/v0/status`); u.searchParams.set('depositAddress',depositAddress);
-    const res=await this.fetcher(u,{headers:this.config.jwt?{Authorization:`Bearer ${this.config.jwt}`}:{}}); if(!res.ok)throw new Error(`1Click status HTTP ${res.status}`);
+    const res=await this.fetcher(u,{headers:this.config.jwt?{Authorization:`Bearer ${this.config.jwt}`}:{},signal:AbortSignal.timeout(this.config.timeoutMs??15_000)}); if(!res.ok)throw new Error(`1Click status HTTP ${res.status}`);
     const d=statusSchema.parse(await res.json()); const s=d.swapDetails; const optional=(x?:string)=>x===undefined?undefined:positive(x);
     const amountIn=optional(s.amountIn),amountOut=optional(s.amountOut),depositedAmount=optional(s.depositedAmount),refundedAmount=optional(s.refundedAmount);
     const refundAssetId=d.quoteResponse.quoteRequest.originAsset;

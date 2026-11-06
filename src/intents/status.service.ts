@@ -16,7 +16,7 @@ export class StatusService {
   async refreshAllUnresolved():Promise<Array<{payoutId:string;error?:string}>>{
     const payouts=await this.db.payout.findMany({where:{status:{in:['COMMITTED','AWAITING_DEPOSIT','PROCESSING','UNKNOWN','REFUND_PENDING']}},select:{id:true}});
     const results:Array<{payoutId:string;error?:string}>=[];
-    for(const p of payouts){try{await this.refresh(p.id);results.push({payoutId:p.id});}catch(e){results.push({payoutId:p.id,error:(e as Error).message});}}
+    for(const p of payouts){try{await this.refresh(p.id);results.push({payoutId:p.id});}catch{results.push({payoutId:p.id,error:'Provider status unavailable or invalid; exposure retained'});}}
     return results;
   }
 }
