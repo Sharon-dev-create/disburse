@@ -8,8 +8,8 @@ pub struct Payout {
     pub id: u64,
     pub campaign_id: u64,
     pub recipient_near_account_id: Option<AccountId>,
-    pub amount: TokenAmount,
-    pub input_token_id: AccountId,
+    /// The token identity is carried by this amount, avoiding a duplicate token field.
+    pub input_amount: TokenAmount,
     pub destination: PayoutDestination,
     pub expected_output_amount: TokenAmount,
     pub status: PayoutStatus,
