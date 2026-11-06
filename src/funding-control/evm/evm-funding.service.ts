@@ -62,9 +62,9 @@ export class EvmFundingService {
       const raw=await this.signer.sign(op.id,tx);
       const parsed=parseTransaction(raw as `0x02${string}`);
       const recovered=await recoverTransactionAddress({serializedTransaction:raw as `0x02${string}`});
-      if(!parsed.to||getAddress(recovered)!==getAddress(op.sourceAddress)||parsed.chainId!==Number(op.chainId)||parsed.nonce!==Number(op.nonce)||getAddress(parsed.to)!==getAddress(op.tokenAddress)||parsed.value!==0n||(parsed.data??'0x').toLowerCase()!==tx.data.toLowerCase())throw new Error('Signer produced a transaction that differs from persisted authorization');
+      if(!parsed.to||getAddress(recovered)!==getAddress(op.sourceAddress)||parsed.chainId!==Number(op.chainId)||parsed.nonce!==Number(op.nonce)||getAddress(parsed.to)!==getAddress(op.tokenAddress)||(parsed.value??0n)!==0n||(parsed.data??'0x').toLowerCase()!==tx.data.toLowerCase())throw new Error('Signer produced a transaction that differs from persisted authorization');
       const encrypted=this.cipher.encrypt(raw);const hash=keccak256(raw);
-      op=await this.db.evmFundingOperation.update({where:{id:op.id,state:'AUTHORIZED'},data:{...encrypted,txHash:hash,state:'SIGNED',signedAt:new Date()}});
+      op=await this.db.evmFundingOperation.update({where:{id:op.id,state:'AUTHORIZED'},data:{signedTxCiphertext:encrypted.ciphertext,signedTxIv:encrypted.iv,signedTxAuthTag:encrypted.authTag,txHash:hash,state:'SIGNED',signedAt:new Date()}});
     }
     const raw=this.cipher.decrypt({ciphertext:op.signedTxCiphertext!,iv:op.signedTxIv!,authTag:op.signedTxAuthTag!});
     try{const hash=await this.chain.broadcast(raw);if(hash.toLowerCase()!==op.txHash?.toLowerCase())throw new Error('Broadcast hash differs from persisted signed transaction');op=await this.db.evmFundingOperation.update({where:{id:op.id},data:{state:'BROADCAST',broadcastAt:op.broadcastAt??new Date(),failureReason:null}});}
