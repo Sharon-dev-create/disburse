@@ -69,7 +69,7 @@ model Payout {
   attempts          Attempt[]
   events            PayoutEvent[]
   ledger            LedgerEntry[]
-  reservation       Reservation?
+  reservations      Reservation[]
   @@unique([campaignId, recipientId])
 }
 
@@ -89,6 +89,7 @@ model Attempt {
   providerJson    Json?
   createdAt       DateTime     @default(now())
   payout          Payout       @relation(fields: [payoutId], references: [id], onDelete: Restrict)
+  reservation     Reservation?
   @@unique([payoutId, attemptNo])
 }
 
@@ -107,13 +108,15 @@ model PayoutEvent {
 model Reservation {
   id         String   @id
   campaignId String
-  payoutId   String   @unique
+  payoutId   String?
+  attemptId  String?  @unique
   amount     BigInt
   status     String   @default("ACTIVE")
   createdAt  DateTime @default(now())
   releasedAt DateTime?
   campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
-  payout     Payout   @relation(fields: [payoutId], references: [id], onDelete: Restrict)
+  payout     Payout?  @relation(fields: [payoutId], references: [id], onDelete: Restrict)
+  attempt    Attempt? @relation(fields: [attemptId], references: [id], onDelete: Restrict)
 }
 
 model LedgerEntry {

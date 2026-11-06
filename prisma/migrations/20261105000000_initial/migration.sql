@@ -27,10 +27,11 @@ CREATE TABLE "PayoutEvent" (
   CONSTRAINT "PayoutEvent_payoutId_fkey" FOREIGN KEY ("payoutId") REFERENCES "Payout"("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 CREATE TABLE "Reservation" (
-  "id" TEXT PRIMARY KEY, "campaignId" TEXT NOT NULL, "payoutId" TEXT NOT NULL UNIQUE, "amount" BIGINT NOT NULL,
+  "id" TEXT PRIMARY KEY, "campaignId" TEXT NOT NULL, "payoutId" TEXT, "attemptId" TEXT UNIQUE, "amount" BIGINT NOT NULL,
   "status" TEXT NOT NULL DEFAULT 'ACTIVE', "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "releasedAt" TIMESTAMP(3),
   CONSTRAINT "Reservation_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT "Reservation_payoutId_fkey" FOREIGN KEY ("payoutId") REFERENCES "Payout"("id") ON DELETE RESTRICT ON UPDATE CASCADE
+  CONSTRAINT "Reservation_payoutId_fkey" FOREIGN KEY ("payoutId") REFERENCES "Payout"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT "Reservation_attemptId_fkey" FOREIGN KEY ("attemptId") REFERENCES "Attempt"("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 CREATE TABLE "LedgerEntry" (
   "id" TEXT PRIMARY KEY, "campaignId" TEXT NOT NULL, "payoutId" TEXT, "type" "LedgerType" NOT NULL,

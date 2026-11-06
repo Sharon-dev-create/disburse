@@ -5,9 +5,10 @@ export function balances(lines:LedgerLine[]):Balances {
   const approved=sum('APPROVED')+sum('ADJUSTMENT');
   const reserved=sum('RESERVED')-sum('RELEASED')-sum('SETTLED','FAILED','REFUNDED');
   const deposited=sum('DEPOSITED'); const settled=sum('SETTLED'); const refunded=sum('REFUNDED');
-  const unresolved=reserved+deposited-settled-refunded;
-  // Reserved exposure already represents possible outflow; deposited exposure is folded into it at reservation time.
-  const available=approved-reserved;
+  const observedResidual=deposited-settled-refunded;
+  // During execution the active reservation and observed deposit describe overlapping exposure; retain the larger.
+  const unresolved=reserved>observedResidual?reserved:observedResidual;
+  const available=approved-reserved-settled+refunded;
   if(available<0n||unresolved<0n)throw new Error('Ledger does not reconcile');
   return {approved,reserved,deposited,settled,refunded,unresolved,available};
 }

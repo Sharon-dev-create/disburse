@@ -20,13 +20,14 @@ export class SettlementService {
         await tx.ledgerEntry.create({data:{campaignId:payout.campaignId,payoutId,type:'FAILED',amount:0n,assetId:attempt.inputAssetId,externalRef:ext}});
       }
       if(terminal){
-        const active=await tx.reservation.findUnique({where:{payoutId}});
+        const active=await tx.reservation.findFirst({where:{attemptId:attempt.id,status:'ACTIVE'}});
         if(active?.status==='ACTIVE'){
-          await tx.reservation.update({where:{payoutId},data:{status:'RELEASED',releasedAt:new Date()}});
+          await tx.reservation.update({where:{id:active.id},data:{status:'RELEASED',releasedAt:new Date()}});
+          await tx.payout.update({where:{id:payoutId},data:{activeExposure:{decrement:active.amount}}});
           await tx.ledgerEntry.create({data:{campaignId:payout.campaignId,payoutId,type:'RELEASED',amount:active.amount,assetId:attempt.inputAssetId,externalRef:`release:${active.id}`,reason:'Provider terminal result; actual expenditure/refund recorded separately'}});
         }
       }
-      await tx.payout.update({where:{id:payoutId},data:{status:mapped.status,activeExposure:terminal?0n:payout.activeExposure}});
+      await tx.payout.update({where:{id:payoutId},data:{status:mapped.status}});
       await tx.payoutEvent.create({data:{payoutId,fromStatus:payout.status,toStatus:mapped.status,note:`Provider status ${result.status}`,providerRef:attempt.quoteId,txHash:mapped.txHashes[0]??null}});
     },{isolationLevel:'Serializable'});
   }
