@@ -13,6 +13,7 @@ export function calculateAuthorizedExposure(reservations:ExposureReservation[], 
   for(const g of groups.values()){
     const gross=g.hasDeposit?g.deposit:(g.settlement>g.refund?g.settlement:g.refund);
     if(g.refund>gross)throw new Error('Confirmed refunds exceed recorded deposits or source outflow');
+    if(g.hasDeposit&&g.settlement+g.refund>g.deposit)throw new Error('Confirmed settlement and refunds exceed recorded deposits');
     const net=gross-g.refund;
     const observed=g.reserved>net?g.reserved:net;
     total+=observed;

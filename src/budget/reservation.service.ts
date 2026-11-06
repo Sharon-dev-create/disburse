@@ -31,10 +31,11 @@ export class ReservationService {
       const campaign=rows[0];if(!campaign||campaign.status!=='APPROVED')throw new Error('Campaign is not approved');
       const payout=await tx.payout.findUnique({where:{id:payoutId}});
       if(!payout||payout.campaignId!==campaignId)throw new Error('Payout does not belong to supplied campaign');
+      if(payout.status!=='QUOTED')throw new Error('Payout is not in a reservable quoted state');
       const attempt=await tx.attempt.findUnique({where:{id:attemptId}});
       if(!attempt||attempt.payoutId!==payoutId)throw new Error('Selected attempt does not belong to payout');
-      if(!['QUOTED','COMMITTED'].includes(attempt.status)||!attempt.maxAmountIn||!attempt.inputAssetId||!attempt.depositAddress)throw new Error('Attempt is not eligible for reservation');
-      if(attempt.expiresAt&&attempt.expiresAt<=this.now()||attempt.timeWhenInactive&&attempt.timeWhenInactive<=this.now())throw new Error('Attempt quote has expired');
+      if(!['QUOTED','COMMITTED'].includes(attempt.status)||!attempt.maxAmountIn||!attempt.inputAssetId||attempt.inputAssetId!==campaign.assetId||!attempt.depositAddress||attempt.outputAmount!==payout.promisedAmount)throw new Error('Attempt is not eligible for reservation or does not match campaign denomination/payout promise');
+      if(!attempt.expiresAt||attempt.expiresAt<=this.now()||attempt.timeWhenInactive&&attempt.timeWhenInactive<=this.now())throw new Error('Attempt quote has expired or is missing an expiry');
       if(amount!==attempt.maxAmountIn)throw new Error('Reservation must equal persisted quote maximum input');
       const existingById=await tx.reservation.findUnique({where:{id:reservationId}});
       if(existingById){if(existingById.campaignId===campaignId&&existingById.payoutId===payoutId&&existingById.attemptId===attemptId&&existingById.amount===amount&&existingById.status==='ACTIVE')return;throw new Error('Reservation id already exists with different or released data');}

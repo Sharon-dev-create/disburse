@@ -1,11 +1,11 @@
-export interface LedgerLine { type:'APPROVED'|'RESERVED'|'RELEASED'|'DEPOSITED'|'SETTLED'|'REFUND_PENDING'|'REFUNDED'|'FAILED'|'ADJUSTMENT'; amount:bigint; reference:string; confirmed:boolean; direction?:'IN'|'OUT'; payoutId?:string }
+export interface LedgerLine { type:'APPROVED'|'RESERVED'|'RELEASED'|'DEPOSITED'|'SETTLED'|'REFUND_PENDING'|'REFUNDED'|'FAILED'|'ADJUSTMENT'; amount:bigint; reference:string; confirmed:boolean; direction?:'IN'|'OUT'; payoutId?:string; attemptId?:string }
 export interface Balances { approved:bigint; reserved:bigint; deposited:bigint; settled:bigint; refunded:bigint; unresolved:bigint; available:bigint }
 export function balances(lines:LedgerLine[]):Balances {
   const sum=(...types:LedgerLine['type'][])=>(lines.filter(l=>types.includes(l.type)&&l.confirmed).reduce((s,l)=>s+l.amount,0n));
   const approved=sum('APPROVED')+lines.filter(l=>l.type==='ADJUSTMENT'&&l.confirmed&&l.direction!=='OUT').reduce((s,l)=>s+l.amount,0n)-lines.filter(l=>l.type==='ADJUSTMENT'&&l.confirmed&&l.direction==='OUT').reduce((s,l)=>s+l.amount,0n);
   const groups=new Map<string,{reserved:bigint;deposited:bigint;settled:bigint;refunded:bigint;hasDeposit:boolean}>();
   const group=(id:string)=>{let g=groups.get(id);if(!g){g={reserved:0n,deposited:0n,settled:0n,refunded:0n,hasDeposit:false};groups.set(id,g);}return g;};
-  for(const l of lines){if(!l.confirmed)continue;const g=group(l.payoutId??'__campaign__');if(l.type==='RESERVED')g.reserved+=l.amount;else if(l.type==='RELEASED')g.reserved-=l.amount;else if(l.type==='DEPOSITED'){g.deposited+=l.amount;g.hasDeposit=true;}else if(l.type==='SETTLED')g.settled+=l.amount;else if(l.type==='REFUNDED')g.refunded+=l.amount;}
+  for(const l of lines){if(!l.confirmed)continue;const g=group(l.attemptId??l.payoutId??'__campaign__');if(l.type==='RESERVED')g.reserved+=l.amount;else if(l.type==='RELEASED')g.reserved-=l.amount;else if(l.type==='DEPOSITED'){g.deposited+=l.amount;g.hasDeposit=true;}else if(l.type==='SETTLED')g.settled+=l.amount;else if(l.type==='REFUNDED')g.refunded+=l.amount;}
   let reserved=0n,deposited=0n,settled=0n,refunded=0n,exposure=0n,unresolved=0n;
   for(const g of groups.values()){
     const gross=g.hasDeposit?g.deposited:(g.settled>g.refunded?g.settled:g.refunded);const net=gross-g.refunded;
