@@ -61,7 +61,7 @@ export class SettlementService {
       const exists=await tx.ledgerEntry.findUnique({where:{externalRef:ext}});
       if(mapped.status==='SUCCESS'&&!outputVerified){
         await tx.ledgerEntry.createMany({data:[{campaignId:payout.campaignId,payoutId,attemptId:attempt.id,type:'PROVIDER_SETTLEMENT_REPORTED',amount:mapped.settledInput!,assetId:attempt.inputAssetId,externalRef:`provider:${attempt.quoteId}:success-reported:${result.updatedAt.toISOString()}`,metadata:{destinationTxHashes:mapped.txHashes,amountOut:result.amountOut?.toString(),requiresIndependentOutputVerification:true}}],skipDuplicates:true});
-        await tx.payout.update({where:{id:payoutId},data:{recipientOutputState:'PENDING'}});
+        if(payout.recipientOutputState==='NOT_CHECKED')await tx.payout.update({where:{id:payoutId},data:{recipientOutputState:'PENDING'}});
       }
       if(mapped.status==='SUCCESS'&&outputVerified){
         await tx.ledgerEntry.createMany({data:[{campaignId:payout.campaignId,payoutId,attemptId:attempt.id,type:'RECIPIENT_OUTPUT_VERIFIED',amount:payout.promisedAmount,assetId:payout.outputAssetId,externalRef:`output-verified:${outputEvidence.transactionHash}`,metadata:{chain:outputEvidence.chain,blockNumber:outputEvidence.blockNumber.toString(),blockHash:outputEvidence.blockHash}},{campaignId:payout.campaignId,payoutId,attemptId:attempt.id,type:'SETTLEMENT_CONFIRMED',amount:mapped.settledInput!,assetId:attempt.inputAssetId,externalRef:ext,metadata:{txHashes:mapped.txHashes,sourceFundingOperationId:sourceFunding!.id}}],skipDuplicates:true});
