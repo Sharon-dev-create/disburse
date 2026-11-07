@@ -3119,6 +3119,17 @@ mod tests {
         evidence.destination_transaction_reference = "x".repeat(257);
         variants.push(evidence);
         let mut evidence = original.clone();
+        evidence.destination_chain_id = types::destination::ChainId::new("c".repeat(129)).unwrap();
+        variants.push(evidence);
+        let mut evidence = original.clone();
+        evidence.recipient_address =
+            types::destination::RecipientAddress::new("r".repeat(257)).unwrap();
+        variants.push(evidence);
+        let mut evidence = original.clone();
+        evidence.output_amount =
+            TokenAmount::new(TokenId::external("t".repeat(257)).unwrap(), 95, 6);
+        variants.push(evidence);
+        let mut evidence = original.clone();
         evidence.transaction_event_identifier = Some(" ".into());
         variants.push(evidence);
         let mut evidence = original.clone();
