@@ -67,13 +67,17 @@ CREATE TABLE provider_references (
     event_identifier_key TEXT NOT NULL DEFAULT '',
     first_observed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     last_observed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (
+    UNIQUE (provider_id, provider_execution_reference)
+);
+
+CREATE UNIQUE INDEX provider_external_identity_uq
+    ON provider_references (
         provider_id,
         destination_chain_id,
         transaction_reference,
         event_identifier_key
     )
-);
+    WHERE destination_chain_id IS NOT NULL AND transaction_reference IS NOT NULL;
 
 CREATE TABLE job_leases (
     job_id BIGINT PRIMARY KEY REFERENCES execution_jobs(job_id),
@@ -106,6 +110,8 @@ CREATE TABLE settlement_submission_attempts (
     settlement_attempt_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     job_id BIGINT NOT NULL REFERENCES execution_jobs(job_id),
     attempt_id BIGINT REFERENCES execution_attempts(attempt_id),
+    network_id TEXT NOT NULL,
+    contract_id TEXT NOT NULL,
     signer_account_id TEXT NOT NULL,
     settlement_evidence_reference TEXT NOT NULL,
     content_hash TEXT NOT NULL,
@@ -115,7 +121,8 @@ CREATE TABLE settlement_submission_attempts (
     )),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (job_id, settlement_evidence_reference)
+    UNIQUE (job_id, settlement_evidence_reference),
+    UNIQUE (network_id, contract_id, settlement_evidence_reference)
 );
 
 CREATE TABLE processing_errors (

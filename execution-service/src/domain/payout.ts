@@ -40,6 +40,7 @@ export interface ContractEventIdentity {
   readonly contractId: AccountId;
   readonly transactionHash: string;
   readonly eventIndex: number;
+  readonly blockHeight: string;
 }
 
 export interface PayoutReservedEvent {
