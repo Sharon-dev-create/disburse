@@ -3043,10 +3043,10 @@ mod tests {
         set_context(accounts(5));
         contract.settle_payout(payout_id, settlement_evidence(payout_id, accounts(5)));
 
-        let both_roles = pending_test_payout(&mut contract, campaign_id, "settle-dual-role");
         set_context(accounts(1));
         contract.grant_role(accounts(2), UserRole::Verifier);
         set_context(accounts(2));
+        let both_roles = pending_test_payout(&mut contract, campaign_id, "settle-dual-role");
         contract.settle_payout(both_roles, settlement_evidence(both_roles, accounts(2)));
     }
 
