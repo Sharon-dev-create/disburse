@@ -19,20 +19,29 @@ export class MockNearEventSource implements NearEventSource {
     this.entries = [...events];
   }
 
-  async readAfter(cursor: string | null, limit: number): Promise<NearEventPage> {
-    const index = cursor === null ? 0 : this.entries.findIndex((event) => event.cursor === cursor) + 1;
+  async readAfter(
+    cursor: string | null,
+    limit: number,
+  ): Promise<NearEventPage> {
+    const index =
+      cursor === null
+        ? 0
+        : this.entries.findIndex((event) => event.cursor === cursor) + 1;
     if (index < 0) throw new Error("Unknown event cursor");
     return this.page(index, limit);
   }
 
   async readFrom(startPosition: string, limit: number): Promise<NearEventPage> {
-    const index = this.entries.findIndex((event) => event.cursor === startPosition);
+    const index = this.entries.findIndex(
+      (event) => event.cursor === startPosition,
+    );
     if (index < 0) throw new Error("Unknown historical start position");
     return this.page(index, limit);
   }
 
   private page(index: number, limit: number): NearEventPage {
-    if (!Number.isSafeInteger(limit) || limit <= 0) throw new Error("Page limit must be positive");
+    if (!Number.isSafeInteger(limit) || limit <= 0)
+      throw new Error("Page limit must be positive");
     const events = this.entries.slice(index, index + limit);
     return {
       events,

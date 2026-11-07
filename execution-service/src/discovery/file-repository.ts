@@ -27,7 +27,9 @@ interface SerializedState {
   readonly cursors: readonly (readonly [string, string])[];
   readonly events: readonly (readonly [string, IndexedEventRecord])[];
   readonly observations: readonly (readonly [string, DiscoveryObservation])[];
-  readonly discrepancies: readonly (DiscoveryDiscrepancy & { payoutKey: string | null })[];
+  readonly discrepancies: readonly (DiscoveryDiscrepancy & {
+    payoutKey: string | null;
+  })[];
   readonly jobs: readonly (readonly [string, ExecutionJobRecord])[];
   readonly failures: readonly (readonly [string, DiscoveryFailure])[];
 }
@@ -40,12 +42,16 @@ interface SerializedState {
 export class DurableFileDiscoveryRepository implements DiscoveryRepository {
   private state: FileState;
   private queue: Promise<void> = Promise.resolve();
+  private readonly path: string;
+  private readonly beforeCommit: () => void | Promise<void>;
 
   private constructor(
-    private readonly path: string,
+    path: string,
     state: FileState,
-    private readonly beforeCommit: () => void | Promise<void> = () => {},
+    beforeCommit: () => void | Promise<void> = () => {},
   ) {
+    this.path = path;
+    this.beforeCommit = beforeCommit;
     this.state = state;
   }
 
@@ -59,19 +65,27 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
     } catch (error) {
       if (!isMissingFile(error)) throw error;
     }
-    return new DurableFileDiscoveryRepository(path, state, options.beforeCommit);
+    return new DurableFileDiscoveryRepository(
+      path,
+      state,
+      options.beforeCommit,
+    );
   }
 
   async getCursor(sourceKey: string): Promise<string | null> {
     return this.state.cursors.get(sourceKey) ?? null;
   }
 
-  async commitEvent(commit: DiscoveryEventCommit): Promise<{ readonly duplicate: boolean }> {
+  async commitEvent(
+    commit: DiscoveryEventCommit,
+  ): Promise<{ readonly duplicate: boolean }> {
     return this.exclusive(async () => {
       const eventKey = nearEventKey(commit.event);
       const existing = this.state.events.get(eventKey);
       if (existing && !sameEventContent(existing.event, commit.event)) {
-        throw new Error("A stable NEAR event identity was received with conflicting content");
+        throw new Error(
+          "A stable NEAR event identity was received with conflicting content",
+        );
       }
       const next = cloneState(this.state);
       if (!existing) {
@@ -82,10 +96,16 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
         });
       }
       const identity = commit.event.identity;
-      const payoutKey = "payoutId" in commit.event
-        ? nearPayoutKey(identity.networkId, identity.contractId, commit.event.payoutId)
-        : null;
-      if (commit.observation && payoutKey) next.observations.set(payoutKey, commit.observation);
+      const payoutKey =
+        "payoutId" in commit.event
+          ? nearPayoutKey(
+              identity.networkId,
+              identity.contractId,
+              commit.event.payoutId,
+            )
+          : null;
+      if (commit.observation && payoutKey)
+        next.observations.set(payoutKey, commit.observation);
       if (commit.discrepancy) {
         next.discrepancies.push({ ...commit.discrepancy, payoutKey });
       }
@@ -146,11 +166,18 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
         sourceKey,
         eventIdentity: event.identity,
         stage: "contract-view",
-        classification: error instanceof Error && "kind" in error ? String(error.kind) : "unknown",
+        classification:
+          error instanceof Error && "kind" in error
+            ? String(error.kind)
+            : "unknown",
         retryable: true,
         attempts,
-        nextRetryAtMs: nowMs + Math.min(60_000, 1_000 * 2 ** Math.min(attempts - 1, 6)),
-        message: error instanceof Error ? error.message : "Unknown contract view failure",
+        nextRetryAtMs:
+          nowMs + Math.min(60_000, 1_000 * 2 ** Math.min(attempts - 1, 6)),
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unknown contract view failure",
         occurredAtMs: nowMs,
       });
       await this.persist(next);
@@ -185,7 +212,9 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
   private async exclusive<T>(operation: () => Promise<T>): Promise<T> {
     const previous = this.queue;
     let release!: () => void;
-    this.queue = new Promise<void>((resolve) => { release = resolve; });
+    this.queue = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     await previous;
     try {
       return await operation();
@@ -196,7 +225,14 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
 }
 
 function emptyState(): FileState {
-  return { cursors: new Map(), events: new Map(), observations: new Map(), discrepancies: [], jobs: new Map(), failures: new Map() };
+  return {
+    cursors: new Map(),
+    events: new Map(),
+    observations: new Map(),
+    discrepancies: [],
+    jobs: new Map(),
+    failures: new Map(),
+  };
 }
 
 function cloneState(state: FileState): FileState {
@@ -224,7 +260,8 @@ function serialize(state: FileState): SerializedState {
 
 function deserialize(text: string): FileState {
   const value: unknown = JSON.parse(text);
-  if (!isRecord(value) || value.version !== 1) throw new Error("Unsupported discovery file version");
+  if (!isRecord(value) || value.version !== 1)
+    throw new Error("Unsupported discovery file version");
   return {
     cursors: mapFrom(value.cursors),
     events: mapFrom(value.events),
@@ -236,10 +273,15 @@ function deserialize(text: string): FileState {
 }
 
 function mapFrom<K extends string, V>(value: unknown): Map<K, V> {
-  if (!Array.isArray(value)) throw new Error("Corrupt discovery repository map");
+  if (!Array.isArray(value))
+    throw new Error("Corrupt discovery repository map");
   const result = new Map<K, V>();
   for (const pair of value) {
-    if (!Array.isArray(pair) || pair.length !== 2 || typeof pair[0] !== "string") {
+    if (
+      !Array.isArray(pair) ||
+      pair.length !== 2 ||
+      typeof pair[0] !== "string"
+    ) {
       throw new Error("Corrupt discovery repository entry");
     }
     result.set(pair[0] as K, pair[1] as V);
@@ -248,19 +290,28 @@ function mapFrom<K extends string, V>(value: unknown): Map<K, V> {
 }
 
 function arrayOf<T>(value: unknown): T[] {
-  if (!Array.isArray(value)) throw new Error("Corrupt discovery repository array");
+  if (!Array.isArray(value))
+    throw new Error("Corrupt discovery repository array");
   return value as T[];
 }
 
 function isMissingFile(error: unknown): boolean {
-  return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "ENOENT"
+  );
 }
 
 function sameEventContent(
   left: IndexedEventRecord["event"],
   right: IndexedEventRecord["event"],
 ): boolean {
-  return JSON.stringify({ ...left, cursor: "" }) === JSON.stringify({ ...right, cursor: "" });
+  return (
+    JSON.stringify({ ...left, cursor: "" }) ===
+    JSON.stringify({ ...right, cursor: "" })
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

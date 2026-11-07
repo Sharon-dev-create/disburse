@@ -16,24 +16,33 @@ export interface NearRpcTransport {
 }
 
 export class NearRpcError extends Error {
+  readonly kind: "timeout" | "unavailable" | "rpc" | "malformed";
+
   constructor(
-    readonly kind: "timeout" | "unavailable" | "rpc" | "malformed",
+    kind: "timeout" | "unavailable" | "rpc" | "malformed",
     message: string,
   ) {
     super(message);
     this.name = "NearRpcError";
+    this.kind = kind;
   }
 }
 
 /** JSON-RPC transport for read-only NEAR `call_function` requests. */
 export class HttpNearRpcTransport implements NearRpcTransport {
   private requestId = 0;
+  private readonly endpoint: string;
+  private readonly timeoutMs: number;
+  private readonly fetchImpl: typeof fetch;
 
   constructor(
-    private readonly endpoint: string,
-    private readonly timeoutMs = 10_000,
-    private readonly fetchImpl: typeof fetch = fetch,
+    endpoint: string,
+    timeoutMs = 10_000,
+    fetchImpl: typeof fetch = fetch,
   ) {
+    this.endpoint = endpoint;
+    this.timeoutMs = timeoutMs;
+    this.fetchImpl = fetchImpl;
     const url = new URL(endpoint);
     if (url.protocol !== "https:" && url.protocol !== "http:") {
       throw new Error("NEAR RPC endpoint must use HTTP or HTTPS");
@@ -64,7 +73,9 @@ export class HttpNearRpcTransport implements NearRpcTransport {
             finality: "final",
             account_id: contractId,
             method_name: methodName,
-          args_base64: Buffer.from(serializeNearArgs(args)).toString("base64"),
+            args_base64: Buffer.from(serializeNearArgs(args)).toString(
+              "base64",
+            ),
           },
         }),
       });
@@ -81,24 +92,40 @@ export class HttpNearRpcTransport implements NearRpcTransport {
         throw new NearRpcError("malformed", "NEAR RPC returned invalid JSON");
       }
       if (!isRecord(body)) {
-        throw new NearRpcError("malformed", "NEAR RPC response is not an object");
+        throw new NearRpcError(
+          "malformed",
+          "NEAR RPC response is not an object",
+        );
       }
       if ("error" in body) {
         throw new NearRpcError("rpc", "NEAR RPC returned a query error");
       }
       const result = body.result;
       if (!isRecord(result) || !Array.isArray(result.result)) {
-        throw new NearRpcError("malformed", "NEAR RPC response has no result bytes");
+        throw new NearRpcError(
+          "malformed",
+          "NEAR RPC response has no result bytes",
+        );
       }
       const bytes = result.result;
-      if (!bytes.every((byte) => Number.isInteger(byte) && byte >= 0 && byte <= 255)) {
-        throw new NearRpcError("malformed", "NEAR RPC result contains invalid bytes");
+      if (
+        !bytes.every(
+          (byte) => Number.isInteger(byte) && byte >= 0 && byte <= 255,
+        )
+      ) {
+        throw new NearRpcError(
+          "malformed",
+          "NEAR RPC result contains invalid bytes",
+        );
       }
       const json = Buffer.from(bytes).toString("utf8");
       try {
         return JSON.parse(preserveU64Lexemes(json)) as unknown;
       } catch {
-        throw new NearRpcError("malformed", "Contract view returned malformed JSON");
+        throw new NearRpcError(
+          "malformed",
+          "Contract view returned malformed JSON",
+        );
       }
     } catch (error) {
       if (error instanceof NearRpcError) throw error;
@@ -119,17 +146,34 @@ export class HttpNearRpcTransport implements NearRpcTransport {
         method: "POST",
         headers: { "content-type": "application/json" },
         signal: controller.signal,
-        body: JSON.stringify({ jsonrpc: "2.0", id: ++this.requestId, method: "status", params: [] }),
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: ++this.requestId,
+          method: "status",
+          params: [],
+        }),
       });
-      if (!response.ok) throw new NearRpcError("unavailable", `NEAR RPC returned HTTP ${response.status}`);
+      if (!response.ok)
+        throw new NearRpcError(
+          "unavailable",
+          `NEAR RPC returned HTTP ${response.status}`,
+        );
       const body: unknown = await response.json();
-      if (!isRecord(body) || !isRecord(body.result) || typeof body.result.chain_id !== "string") {
-        throw new NearRpcError("malformed", "NEAR status response has no chain ID");
+      if (
+        !isRecord(body) ||
+        !isRecord(body.result) ||
+        typeof body.result.chain_id !== "string"
+      ) {
+        throw new NearRpcError(
+          "malformed",
+          "NEAR status response has no chain ID",
+        );
       }
       return body.result.chain_id;
     } catch (error) {
       if (error instanceof NearRpcError) throw error;
-      if (controller.signal.aborted) throw new NearRpcError("timeout", "NEAR status request timed out");
+      if (controller.signal.aborted)
+        throw new NearRpcError("timeout", "NEAR status request timed out");
       throw new NearRpcError("unavailable", "NEAR status request failed");
     } finally {
       clearTimeout(timeout);
@@ -144,10 +188,12 @@ export interface NearContractReaderConfig {
 
 /** Concrete, read-only reader for the view methods present in the contract ABI. */
 export class NearContractReader implements ContractReader {
-  constructor(
-    readonly config: NearContractReaderConfig,
-    private readonly rpc: NearRpcTransport,
-  ) {
+  readonly config: NearContractReaderConfig;
+  private readonly rpc: NearRpcTransport;
+
+  constructor(config: NearContractReaderConfig, rpc: NearRpcTransport) {
+    this.config = config;
+    this.rpc = rpc;
     if (!config.networkId.trim() || !config.contractId.trim()) {
       throw new Error("NEAR network and contract identifiers are required");
     }
@@ -155,15 +201,23 @@ export class NearContractReader implements ContractReader {
 
   async getPayout(payoutId: PayoutId): Promise<NearPayoutView | null> {
     return parseNullablePayout(
-      await this.call("get_payout", { payout_id: nearU64(payoutId, "payout ID") }),
+      await this.call("get_payout", {
+        payout_id: nearU64(payoutId, "payout ID"),
+      }),
     );
   }
 
   async verifyNetwork(): Promise<void> {
-    if (!this.rpc.getNetworkId) throw new Error("RPC transport cannot verify its configured NEAR network");
+    if (!this.rpc.getNetworkId)
+      throw new Error(
+        "RPC transport cannot verify its configured NEAR network",
+      );
     const actual = await this.rpc.getNetworkId();
     if (actual !== this.config.networkId) {
-      throw new NearRpcError("rpc", `Configured NEAR network ${this.config.networkId} does not match RPC network ${actual}`);
+      throw new NearRpcError(
+        "rpc",
+        `Configured NEAR network ${this.config.networkId} does not match RPC network ${actual}`,
+      );
     }
   }
 
@@ -199,7 +253,8 @@ export class NearContractReader implements ContractReader {
       campaign_id: nearU64(campaignId, "campaign ID"),
     });
     if (value === null) return null;
-    if (!isRecord(value)) throw malformed("Invalid campaign accounting response");
+    if (!isRecord(value))
+      throw malformed("Invalid campaign accounting response");
     const parsed = {
       campaignId: asU64String(value.campaign_id, "campaign ID"),
       budget: asU128(value.budget, "budget"),
@@ -209,7 +264,9 @@ export class NearContractReader implements ContractReader {
       available: asU128(value.available, "available"),
     };
     if (parsed.campaignId !== campaignId) {
-      throw malformed("Campaign accounting response does not match the request");
+      throw malformed(
+        "Campaign accounting response does not match the request",
+      );
     }
     return parsed;
   }
@@ -244,7 +301,8 @@ function parseNullablePayout(value: unknown): NearPayoutView | null {
   if (recipient !== null && typeof recipient !== "string") {
     throw malformed("Invalid NEAR recipient account");
   }
-  if (!isRecord(value.destination)) throw malformed("Invalid payout destination");
+  if (!isRecord(value.destination))
+    throw malformed("Invalid payout destination");
   const destination = {
     chainId: nonEmptyString(value.destination.chain_id, "destination chain"),
     recipientAddress: nonEmptyString(
@@ -262,13 +320,28 @@ function parseNullablePayout(value: unknown): NearPayoutView | null {
     inputAmount: parseTokenAmount(value.input_amount),
     destination,
     expectedOutputAmount: parseTokenAmount(value.expected_output_amount),
-    status: enumValue(value.status, [
-      "Created", "Authorized", "Reserved", "Executing", "PendingVerification",
-      "Succeeded", "Failed", "RefundPending", "Refunded", "ManualReview",
-      "ReservationReleased",
-    ] as const, "payout status"),
+    status: enumValue(
+      value.status,
+      [
+        "Created",
+        "Authorized",
+        "Reserved",
+        "Executing",
+        "PendingVerification",
+        "Succeeded",
+        "Failed",
+        "RefundPending",
+        "Refunded",
+        "ManualReview",
+        "ReservationReleased",
+      ] as const,
+      "payout status",
+    ),
     createdAtNs: asU64String(value.created_at_ns, "creation timestamp"),
-    executionReference: nullableString(value.execution_reference, "execution reference"),
+    executionReference: nullableString(
+      value.execution_reference,
+      "execution reference",
+    ),
     settlementEvidenceReference: nullableString(
       value.settlement_evidence_reference,
       "settlement evidence reference",
@@ -285,12 +358,23 @@ function parseTokenAmount(value: unknown) {
     throw malformed("Invalid token amount response");
   }
   const tokenKeys = Object.keys(value.token_id);
-  if (tokenKeys.length !== 1 || !["Near", "External"].includes(tokenKeys[0] ?? "")) {
+  if (
+    tokenKeys.length !== 1 ||
+    !["Near", "External"].includes(tokenKeys[0] ?? "")
+  ) {
     throw malformed("Invalid token identity response");
   }
-  const variant = tokenKeys[0] as "Near" | "External";
-  const tokenId = { [variant]: nonEmptyString(value.token_id[variant], "token ID") };
-  if (!Number.isInteger(value.decimals) || Number(value.decimals) < 0 || Number(value.decimals) > 255) {
+  const tokenValue = nonEmptyString(
+    value.token_id[tokenKeys[0] ?? ""],
+    "token ID",
+  );
+  const tokenId =
+    tokenKeys[0] === "Near" ? { Near: tokenValue } : { External: tokenValue };
+  if (
+    !Number.isInteger(value.decimals) ||
+    Number(value.decimals) < 0 ||
+    Number(value.decimals) > 255
+  ) {
     throw malformed("Invalid token decimals");
   }
   return {
@@ -309,7 +393,8 @@ function preserveU64Lexemes(json: string): string {
 
 function nearU64(value: string, label: string): string {
   const normalized = asU64String(value, label);
-  if (BigInt(normalized) > 18_446_744_073_709_551_615n) throw new Error(`${label} exceeds u64`);
+  if (BigInt(normalized) > 18_446_744_073_709_551_615n)
+    throw new Error(`${label} exceeds u64`);
   return `__DISBURSE_U64_${normalized}__`;
 }
 
@@ -323,19 +408,28 @@ function asU64String(value: unknown, label: string): string {
   }
   const text = String(value);
   if (!/^\d+$/.test(text)) throw malformed(`Invalid ${label}`);
-  if (BigInt(text) > 18_446_744_073_709_551_615n) throw malformed(`${label} exceeds u64`);
+  if (BigInt(text) > 18_446_744_073_709_551_615n)
+    throw malformed(`${label} exceeds u64`);
   return text;
 }
 
 function asU128(value: unknown, label: string): string {
-  const text = typeof value === "string" ? value : isRecord(value) ? value.value : value;
-  if (typeof text !== "string" || !/^\d+$/.test(text)) throw malformed(`Invalid ${label}`);
-  if (BigInt(text) > (1n << 128n) - 1n) throw malformed(`${label} exceeds u128`);
+  const text =
+    typeof value === "string" ? value : isRecord(value) ? value.value : value;
+  if (typeof text !== "string" || !/^\d+$/.test(text))
+    throw malformed(`Invalid ${label}`);
+  if (BigInt(text) > (1n << 128n) - 1n)
+    throw malformed(`${label} exceeds u128`);
   return text;
 }
 
-function enumValue<const T extends readonly string[]>(value: unknown, allowed: T, label: string): T[number] {
-  if (typeof value !== "string" || !allowed.includes(value)) throw malformed(`Invalid ${label}`);
+function enumValue<const T extends readonly string[]>(
+  value: unknown,
+  allowed: T,
+  label: string,
+): T[number] {
+  if (typeof value !== "string" || !allowed.includes(value))
+    throw malformed(`Invalid ${label}`);
   return value;
 }
 
@@ -345,7 +439,8 @@ function nullableString(value: unknown, label: string): string | null {
 }
 
 function nonEmptyString(value: unknown, label: string): string {
-  if (typeof value !== "string" || !value.trim()) throw malformed(`Invalid ${label}`);
+  if (typeof value !== "string" || !value.trim())
+    throw malformed(`Invalid ${label}`);
   return value;
 }
 

@@ -21,8 +21,18 @@ export class NearDiscoveryCoordinator {
     reader: ContractReader,
     repository: DiscoveryRepository,
   ) {
-    this.processor = new PayoutDiscoveryProcessor(config, source, reader, repository);
-    this.reconciler = new PayoutReconciler(config.networkId, config.contractId, reader, repository);
+    this.processor = new PayoutDiscoveryProcessor(
+      config,
+      source,
+      reader,
+      repository,
+    );
+    this.reconciler = new PayoutReconciler(
+      config.networkId,
+      config.contractId,
+      reader,
+      repository,
+    );
   }
 
   discover(nowMs: number) {

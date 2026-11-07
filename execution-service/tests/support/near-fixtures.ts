@@ -1,14 +1,24 @@
 import type { NearPayoutView } from "../../src/near/clients.ts";
 import type { RawNearEvent } from "../../src/discovery/events.ts";
 
-export function makePayout(overrides: Partial<NearPayoutView> = {}): NearPayoutView {
+export function makePayout(
+  overrides: Partial<NearPayoutView> = {},
+): NearPayoutView {
   return {
     id: "42",
     campaignId: "7",
     recipientNearAccountId: null,
-    inputAmount: { tokenId: { Near: "token.testnet" }, atomicAmount: "100", decimals: 6 },
+    inputAmount: {
+      tokenId: { Near: "token.testnet" },
+      atomicAmount: "100",
+      decimals: 6,
+    },
     destination: { chainId: "evm:11155111", recipientAddress: "0xabc123" },
-    expectedOutputAmount: { tokenId: { External: "erc20:0x123" }, atomicAmount: "90", decimals: 18 },
+    expectedOutputAmount: {
+      tokenId: { External: "erc20:0x123" },
+      atomicAmount: "90",
+      decimals: 18,
+    },
     status: "Reserved",
     createdAtNs: "1700000000000000000",
     executionReference: null,
@@ -25,13 +35,23 @@ export function makeRawEvent(
   name: string,
   cursor: string,
   eventIndex = 0,
-  overrides: { readonly payoutId?: string; readonly campaignId?: string; readonly fields?: Readonly<Record<string, unknown>> } = {},
+  overrides: {
+    readonly payoutId?: string;
+    readonly campaignId?: string;
+    readonly fields?: Readonly<Record<string, unknown>>;
+  } = {},
 ): RawNearEvent {
   const payoutId = overrides.payoutId ?? "42";
   const campaignId = overrides.campaignId ?? "7";
   const defaultFields: Record<string, unknown> = {
-    payout_id: BigInt(payoutId) <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(payoutId) : payoutId,
-    campaign_id: BigInt(campaignId) <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(campaignId) : campaignId,
+    payout_id:
+      BigInt(payoutId) <= BigInt(Number.MAX_SAFE_INTEGER)
+        ? Number(payoutId)
+        : payoutId,
+    campaign_id:
+      BigInt(campaignId) <= BigInt(Number.MAX_SAFE_INTEGER)
+        ? Number(campaignId)
+        : campaignId,
     actor_id: "operator.testnet",
     input_token_id: "token.testnet",
     input_amount: "100",

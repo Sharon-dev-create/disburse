@@ -58,20 +58,29 @@ export interface DiscoveryStateSnapshot {
   readonly cursors: ReadonlyMap<string, string>;
   readonly events: ReadonlyMap<string, IndexedEventRecord>;
   readonly observations: ReadonlyMap<string, DiscoveryObservation>;
-  readonly discrepancies: readonly (DiscoveryDiscrepancy & { readonly payoutKey: string | null })[];
+  readonly discrepancies: readonly (DiscoveryDiscrepancy & {
+    readonly payoutKey: string | null;
+  })[];
   readonly jobs: ReadonlyMap<string, ExecutionJobRecord>;
   readonly failures: ReadonlyMap<string, DiscoveryFailure>;
 }
 
 export interface DiscoveryRepository {
   getCursor(sourceKey: string): Promise<string | null>;
-  commitEvent(commit: DiscoveryEventCommit): Promise<{ readonly duplicate: boolean }>;
+  commitEvent(
+    commit: DiscoveryEventCommit,
+  ): Promise<{ readonly duplicate: boolean }>;
   recordReconciliation(
     payoutKey: string,
     observation: DiscoveryObservation | null,
     discrepancy: DiscoveryDiscrepancy | null,
   ): Promise<void>;
-  recordFailure(event: DecodedNearEvent, sourceKey: string, error: unknown, nowMs: number): Promise<void>;
+  recordFailure(
+    event: DecodedNearEvent,
+    sourceKey: string,
+    error: unknown,
+    nowMs: number,
+  ): Promise<void>;
   getSnapshot(): Promise<DiscoveryStateSnapshot>;
 }
 
@@ -87,6 +96,10 @@ export function nearEventKey(event: DecodedNearEvent): string {
   ]);
 }
 
-export function nearPayoutKey(networkId: string, contractId: string, payoutId: string): string {
+export function nearPayoutKey(
+  networkId: string,
+  contractId: string,
+  payoutId: string,
+): string {
   return JSON.stringify([networkId, contractId, payoutId]);
 }
