@@ -3,14 +3,18 @@ import {
   validatePayoutSnapshot,
   type ExecutionJobKey,
   type PayoutReservedEvent,
-  type PayoutSnapshot
+  type PayoutSnapshot,
 } from "../domain/payout.ts";
-import { assertTransition, type JobState, type TransitionEvidence } from "../state-machine/state.ts";
+import {
+  assertTransition,
+  type JobState,
+  type TransitionEvidence,
+} from "../state-machine/state.ts";
 import type {
   ExecutionAttempt,
   ExecutionJobRecord,
   JobRepository,
-  Lease
+  Lease,
 } from "./repository.ts";
 
 export interface MemoryPersistenceState {
@@ -33,22 +37,29 @@ export class InMemoryJobRepository implements JobRepository {
   async enqueueDiscovered(
     event: PayoutReservedEvent,
     payout: PayoutSnapshot,
-    nowMs: number
+    nowMs: number,
   ): Promise<{ readonly job: ExecutionJobRecord; readonly created: boolean }> {
     validatePayoutSnapshot(payout);
-    if (event.payoutId !== payout.payoutId || event.campaignId !== payout.campaignId) {
-      throw new Error("Discovery event does not identify the supplied on-chain payout");
+    if (
+      event.payoutId !== payout.payoutId ||
+      event.campaignId !== payout.campaignId
+    ) {
+      throw new Error(
+        "Discovery event does not identify the supplied on-chain payout",
+      );
     }
     const key: ExecutionJobKey = {
       networkId: event.identity.networkId,
       contractId: event.identity.contractId,
-      payoutId: payout.payoutId
+      payoutId: payout.payoutId,
     };
     const storageKey = executionJobKeyString(key);
     const existing = this.storage.jobs.get(storageKey);
     if (existing) {
       if (JSON.stringify(existing.payout) !== JSON.stringify(payout)) {
-        throw new Error("Duplicate payout discovery conflicts with the persisted payout snapshot");
+        throw new Error(
+          "Duplicate payout discovery conflicts with the persisted payout snapshot",
+        );
       }
       return { job: existing, created: false };
     }
@@ -61,17 +72,25 @@ export class InMemoryJobRepository implements JobRepository {
       createdAtMs: nowMs,
       updatedAtMs: nowMs,
       lease: null,
-      attempts: []
+      attempts: [],
     };
     this.storage.jobs.set(storageKey, job);
     return { job, created: true };
   }
 
-  async claimNext(workerId: string, nowMs: number, ttlMs: number): Promise<ExecutionJobRecord | null> {
-    if (!workerId || ttlMs <= 0) throw new Error("A worker ID and positive lease duration are required");
+  async claimNext(
+    workerId: string,
+    nowMs: number,
+    ttlMs: number,
+  ): Promise<ExecutionJobRecord | null> {
+    if (!workerId || ttlMs <= 0)
+      throw new Error("A worker ID and positive lease duration are required");
     const candidate = [...this.storage.jobs.values()].find((job) => {
-      const leaseAvailable = job.lease === null || job.lease.expiresAtMs <= nowMs;
-      return leaseAvailable && (job.state === "Queued" || job.state === "Leased");
+      const leaseAvailable =
+        job.lease === null || job.lease.expiresAtMs <= nowMs;
+      return (
+        leaseAvailable && (job.state === "Queued" || job.state === "Leased")
+      );
     });
     if (!candidate) return null;
 
@@ -79,7 +98,8 @@ export class InMemoryJobRepository implements JobRepository {
     if (candidate.state === "Queued") {
       assertTransition("Queued", "Leased");
     }
-    const fencingToken = (this.storage.nextFencingToken.get(storageKey) ?? 0) + 1;
+    const fencingToken =
+      (this.storage.nextFencingToken.get(storageKey) ?? 0) + 1;
     this.storage.nextFencingToken.set(storageKey, fencingToken);
     const lease: Lease = { workerId, fencingToken, expiresAtMs: nowMs + ttlMs };
     const claimed: ExecutionJobRecord = {
@@ -87,7 +107,7 @@ export class InMemoryJobRepository implements JobRepository {
       state: "Leased",
       version: candidate.version + 1,
       updatedAtMs: nowMs,
-      lease
+      lease,
     };
     this.storage.jobs.set(storageKey, claimed);
     return claimed;
@@ -97,10 +117,14 @@ export class InMemoryJobRepository implements JobRepository {
     key: ExecutionJobKey,
     lease: Lease,
     nowMs: number,
-    ttlMs: number
+    ttlMs: number,
   ): Promise<Lease | null> {
     const current = this.storage.jobs.get(executionJobKeyString(key));
-    if (!current?.lease || !sameLease(current.lease, lease) || current.lease.expiresAtMs <= nowMs) {
+    if (
+      !current?.lease ||
+      !sameLease(current.lease, lease) ||
+      current.lease.expiresAtMs <= nowMs
+    ) {
       return null;
     }
     if (ttlMs <= 0) throw new Error("Lease duration must be positive");
@@ -109,7 +133,7 @@ export class InMemoryJobRepository implements JobRepository {
       ...current,
       version: current.version + 1,
       updatedAtMs: nowMs,
-      lease: renewed
+      lease: renewed,
     });
     return renewed;
   }
@@ -120,16 +144,25 @@ export class InMemoryJobRepository implements JobRepository {
     next: JobState,
     evidence: TransitionEvidence,
     lease: Lease | null,
-    nowMs: number
+    nowMs: number,
   ): Promise<ExecutionJobRecord> {
     const storageKey = executionJobKeyString(key);
     const current = this.storage.jobs.get(storageKey);
     if (!current) throw new Error("Execution job not found");
-    if (current.version !== expectedVersion) throw new Error("Execution job version conflict");
-    if (lease && (!current.lease || !sameLease(current.lease, lease) || lease.expiresAtMs <= nowMs)) {
+    if (current.version !== expectedVersion)
+      throw new Error("Execution job version conflict");
+    if (
+      lease &&
+      (!current.lease ||
+        !sameLease(current.lease, lease) ||
+        lease.expiresAtMs <= nowMs)
+    ) {
       throw new Error("Worker lease is stale or expired");
     }
-    if ((current.state === "Leased" || isWorkerState(current.state)) && !lease) {
+    if (
+      (current.state === "Leased" || isWorkerState(current.state)) &&
+      !lease
+    ) {
       throw new Error("A live worker lease is required for this transition");
     }
     assertTransition(current.state, next, evidence);
@@ -138,7 +171,10 @@ export class InMemoryJobRepository implements JobRepository {
       state: next,
       version: current.version + 1,
       updatedAtMs: nowMs,
-      lease: next === "Queued" || next === "Completed" || next === "Abandoned" ? null : current.lease
+      lease:
+        next === "Queued" || next === "Completed" || next === "Abandoned"
+          ? null
+          : current.lease,
     };
     this.storage.jobs.set(storageKey, updated);
     return updated;
@@ -148,14 +184,22 @@ export class InMemoryJobRepository implements JobRepository {
     key: ExecutionJobKey,
     lease: Lease,
     attempt: ExecutionAttempt,
-    nowMs: number
+    nowMs: number,
   ): Promise<ExecutionJobRecord> {
     const storageKey = executionJobKeyString(key);
     const current = this.storage.jobs.get(storageKey);
-    if (!current?.lease || !sameLease(current.lease, lease) || lease.expiresAtMs <= nowMs) {
-      throw new Error("A current worker lease is required to persist an attempt");
+    if (
+      !current?.lease ||
+      !sameLease(current.lease, lease) ||
+      lease.expiresAtMs <= nowMs
+    ) {
+      throw new Error(
+        "A current worker lease is required to persist an attempt",
+      );
     }
-    if (current.attempts.some((item) => item.attemptKey === attempt.attemptKey)) {
+    if (
+      current.attempts.some((item) => item.attemptKey === attempt.attemptKey)
+    ) {
       throw new Error("Duplicate execution attempt key");
     }
     if (attempt.sequence !== current.attempts.length + 1) {
@@ -165,7 +209,7 @@ export class InMemoryJobRepository implements JobRepository {
       ...current,
       attempts: [...current.attempts, attempt],
       version: current.version + 1,
-      updatedAtMs: nowMs
+      updatedAtMs: nowMs,
     };
     this.storage.jobs.set(storageKey, updated);
     return updated;
@@ -177,7 +221,9 @@ export class InMemoryJobRepository implements JobRepository {
 }
 
 function sameLease(left: Lease, right: Lease): boolean {
-  return left.workerId === right.workerId && left.fencingToken === right.fencingToken;
+  return (
+    left.workerId === right.workerId && left.fencingToken === right.fencingToken
+  );
 }
 
 function isWorkerState(state: JobState): boolean {
@@ -191,6 +237,6 @@ function isWorkerState(state: JobState): boolean {
     "SettlementReady",
     "SettlementSubmitted",
     "RetryableFailure",
-    "ManualReview"
+    "ManualReview",
   ].includes(state);
 }

@@ -66,13 +66,22 @@ export function validatePayoutSnapshot(payout: PayoutSnapshot): void {
     throw new Error("Payout and campaign IDs must be decimal strings");
   }
   if (payout.contractStatus !== "Reserved") {
-    throw new Error("Only an on-chain Reserved payout can be enqueued for execution");
+    throw new Error(
+      "Only an on-chain Reserved payout can be enqueued for execution",
+    );
   }
   for (const amount of [payout.inputAmount, payout.expectedOutput]) {
-    if (!/^\d+$/.test(amount.atomicAmount) || BigInt(amount.atomicAmount) <= 0n) {
+    if (
+      !/^\d+$/.test(amount.atomicAmount) ||
+      BigInt(amount.atomicAmount) <= 0n
+    ) {
       throw new Error("Payout atomic amounts must be positive decimal strings");
     }
-    if (!Number.isInteger(amount.decimals) || amount.decimals < 0 || amount.decimals > 255) {
+    if (
+      !Number.isInteger(amount.decimals) ||
+      amount.decimals < 0 ||
+      amount.decimals > 255
+    ) {
       throw new Error("Token decimals must fit an unsigned byte");
     }
   }

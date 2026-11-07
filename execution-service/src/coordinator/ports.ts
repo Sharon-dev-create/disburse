@@ -1,5 +1,9 @@
 import type { PayoutReservedEvent, PayoutSnapshot } from "../domain/payout.ts";
-import type { ExecutionJobRecord, JobRepository, Lease } from "../persistence/repository.ts";
+import type {
+  ExecutionJobRecord,
+  JobRepository,
+  Lease,
+} from "../persistence/repository.ts";
 import type { ExecutionProviderAdapter } from "../providers/adapter.ts";
 import type { SettlementVerifier } from "../verification/verifier.ts";
 
@@ -22,5 +26,7 @@ export interface CoordinatorDependencies {
   readonly jobs: JobRepository;
   readonly provider: ExecutionProviderAdapter;
   readonly verifier: SettlementVerifier;
-  readonly reservedPayoutReader: (event: PayoutReservedEvent) => Promise<PayoutSnapshot | null>;
+  readonly reservedPayoutReader: (
+    event: PayoutReservedEvent,
+  ) => Promise<PayoutSnapshot | null>;
 }

@@ -28,14 +28,23 @@ export interface ProviderExecutionReference {
 }
 
 export type ProviderSubmissionResult =
-  | { readonly kind: "accepted"; readonly reference: ProviderExecutionReference }
+  | {
+      readonly kind: "accepted";
+      readonly reference: ProviderExecutionReference;
+    }
   | { readonly kind: "definitively-not-accepted"; readonly reasonCode: string }
   | { readonly kind: "unknown"; readonly reasonCode: string };
 
 export type ProviderStatus =
   | { readonly kind: "pending"; readonly reference: ProviderExecutionReference }
-  | { readonly kind: "succeeded"; readonly reference: ProviderExecutionReference }
-  | { readonly kind: "reverted"; readonly reference: ProviderExecutionReference }
+  | {
+      readonly kind: "succeeded";
+      readonly reference: ProviderExecutionReference;
+    }
+  | {
+      readonly kind: "reverted";
+      readonly reference: ProviderExecutionReference;
+    }
   | { readonly kind: "not-found" }
   | { readonly kind: "unknown"; readonly reasonCode: string };
 
@@ -64,22 +73,28 @@ export interface ExecutionProviderAdapter {
   readonly capabilities: ProviderCapabilities;
   validate(request: ExecutionRequest): Promise<void>;
   quote(request: ExecutionRequest): Promise<ExecutionQuote>;
-  prepare(request: ExecutionRequest, quote: ExecutionQuote): Promise<PreparedExecution>;
+  prepare(
+    request: ExecutionRequest,
+    quote: ExecutionQuote,
+  ): Promise<PreparedExecution>;
   submit(
     request: ExecutionRequest,
-    prepared: PreparedExecution
+    prepared: PreparedExecution,
   ): Promise<ProviderSubmissionResult>;
   getStatus(executionReference: string): Promise<ProviderStatus>;
   getEvidence(executionReference: string): Promise<ProviderEvidenceClaims>;
 }
 
-export type RestartAction = "continue-before-submit" | "reconcile-only" | "manual-review";
+export type RestartAction =
+  "continue-before-submit" | "reconcile-only" | "manual-review";
 
 /** Never chooses a blind resubmission after an intent may have reached a provider. */
 export function restartAction(
   state: "Preparing" | "SubmissionStarted" | "SubmissionUnknown",
-  capabilities: ProviderCapabilities
+  capabilities: ProviderCapabilities,
 ): RestartAction {
   if (state === "Preparing") return "continue-before-submit";
-  return capabilities.lookupByExecutionReference ? "reconcile-only" : "manual-review";
+  return capabilities.lookupByExecutionReference
+    ? "reconcile-only"
+    : "manual-review";
 }

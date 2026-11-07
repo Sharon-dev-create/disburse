@@ -1,4 +1,8 @@
-import type { PayoutId, PayoutSnapshot, TokenAmount } from "../domain/payout.ts";
+import type {
+  PayoutId,
+  PayoutSnapshot,
+  TokenAmount,
+} from "../domain/payout.ts";
 
 export interface CampaignAccountingSnapshot {
   readonly campaignId: string;
@@ -17,10 +21,18 @@ export interface NearTransactionResult {
 /** Read-only contract calls. JSON decoding must preserve uint64 IDs exactly. */
 export interface ContractReader {
   getPayout(payoutId: PayoutId): Promise<PayoutSnapshot | null>;
-  getCampaignPayout(campaignId: string, payoutId: PayoutId): Promise<PayoutSnapshot | null>;
-  getCampaignPayoutAccounting(campaignId: string): Promise<CampaignAccountingSnapshot | null>;
+  getCampaignPayout(
+    campaignId: string,
+    payoutId: PayoutId,
+  ): Promise<PayoutSnapshot | null>;
+  getCampaignPayoutAccounting(
+    campaignId: string,
+  ): Promise<CampaignAccountingSnapshot | null>;
   isPaused(): Promise<boolean>;
-  hasRole(accountId: string, role: "Operator" | "Administrator" | "Verifier"): Promise<boolean>;
+  hasRole(
+    accountId: string,
+    role: "Operator" | "Administrator" | "Verifier",
+  ): Promise<boolean>;
 }
 
 export interface SettlementEvidenceInput {
@@ -65,29 +77,37 @@ export interface FailureEvidenceInput {
 export interface OperatorContractWriter {
   startPayoutExecution(
     payoutId: PayoutId,
-    executionReference: string
+    executionReference: string,
   ): Promise<NearTransactionResult>;
-  markPayoutPendingVerification(payoutId: PayoutId): Promise<NearTransactionResult>;
-  markPayoutFailed(payoutId: PayoutId, evidence: FailureEvidenceInput): Promise<NearTransactionResult>;
-  movePayoutToManualReview(payoutId: PayoutId, reason: string): Promise<NearTransactionResult>;
+  markPayoutPendingVerification(
+    payoutId: PayoutId,
+  ): Promise<NearTransactionResult>;
+  markPayoutFailed(
+    payoutId: PayoutId,
+    evidence: FailureEvidenceInput,
+  ): Promise<NearTransactionResult>;
+  movePayoutToManualReview(
+    payoutId: PayoutId,
+    reason: string,
+  ): Promise<NearTransactionResult>;
 }
 
 /** Explicit Verifier signing capability; never provided by the Operator client. */
 export interface VerifierContractWriter {
   settlePayout(
     payoutId: PayoutId,
-    evidence: SettlementEvidenceInput
+    evidence: SettlementEvidenceInput,
   ): Promise<NearTransactionResult>;
   releaseFailedPayoutReservation(
     payoutId: PayoutId,
-    evidence: ResolutionEvidenceInput
+    evidence: ResolutionEvidenceInput,
   ): Promise<NearTransactionResult>;
   confirmManualReviewExecution(
     payoutId: PayoutId,
-    evidence: ResolutionEvidenceInput
+    evidence: ResolutionEvidenceInput,
   ): Promise<NearTransactionResult>;
   releaseManualReviewReservation(
     payoutId: PayoutId,
-    evidence: ResolutionEvidenceInput
+    evidence: ResolutionEvidenceInput,
   ): Promise<NearTransactionResult>;
 }

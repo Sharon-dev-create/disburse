@@ -14,5 +14,8 @@ export type VerificationResult =
 
 /** Must validate evidence independently; a provider status response is not sufficient. */
 export interface SettlementVerifier {
-  verify(payout: PayoutSnapshot, claims: ProviderEvidenceClaims): Promise<VerificationResult>;
+  verify(
+    payout: PayoutSnapshot,
+    claims: ProviderEvidenceClaims,
+  ): Promise<VerificationResult>;
 }

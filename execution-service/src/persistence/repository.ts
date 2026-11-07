@@ -1,4 +1,8 @@
-import type { ExecutionJobKey, PayoutReservedEvent, PayoutSnapshot } from "../domain/payout.ts";
+import type {
+  ExecutionJobKey,
+  PayoutReservedEvent,
+  PayoutSnapshot,
+} from "../domain/payout.ts";
 import type { JobState, TransitionEvidence } from "../state-machine/state.ts";
 
 export interface Lease {
@@ -10,10 +14,18 @@ export interface Lease {
 export interface ExecutionAttempt {
   readonly attemptKey: string;
   readonly sequence: number;
-  readonly phase: "validate" | "quote" | "prepare" | "submit" | "confirm" | "verify" | "settle";
+  readonly phase:
+    | "validate"
+    | "quote"
+    | "prepare"
+    | "submit"
+    | "confirm"
+    | "verify"
+    | "settle";
   readonly idempotencyKey: string;
   readonly startedAtMs: number;
-  readonly outcome: "started" | "accepted" | "rejected" | "unknown" | "verified" | "failed";
+  readonly outcome:
+    "started" | "accepted" | "rejected" | "unknown" | "verified" | "failed";
 }
 
 export interface ExecutionJobRecord {
@@ -33,14 +45,18 @@ export interface JobRepository {
   enqueueDiscovered(
     event: PayoutReservedEvent,
     payout: PayoutSnapshot,
-    nowMs: number
+    nowMs: number,
   ): Promise<{ readonly job: ExecutionJobRecord; readonly created: boolean }>;
-  claimNext(workerId: string, nowMs: number, ttlMs: number): Promise<ExecutionJobRecord | null>;
+  claimNext(
+    workerId: string,
+    nowMs: number,
+    ttlMs: number,
+  ): Promise<ExecutionJobRecord | null>;
   renewLease(
     key: ExecutionJobKey,
     lease: Lease,
     nowMs: number,
-    ttlMs: number
+    ttlMs: number,
   ): Promise<Lease | null>;
   transition(
     key: ExecutionJobKey,
@@ -48,13 +64,13 @@ export interface JobRepository {
     next: JobState,
     evidence: TransitionEvidence,
     lease: Lease | null,
-    nowMs: number
+    nowMs: number,
   ): Promise<ExecutionJobRecord>;
   appendAttempt(
     key: ExecutionJobKey,
     lease: Lease,
     attempt: ExecutionAttempt,
-    nowMs: number
+    nowMs: number,
   ): Promise<ExecutionJobRecord>;
   get(key: ExecutionJobKey): Promise<ExecutionJobRecord | null>;
 }
