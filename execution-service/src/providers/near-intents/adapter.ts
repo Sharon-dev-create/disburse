@@ -29,8 +29,10 @@ const DECIMAL_INTEGER = /^(0|[1-9][0-9]*)$/;
 export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
   readonly providerId = "near-intents-1click";
   private readonly now: () => number;
+  private readonly config: NearIntentsAdapterConfig;
 
-  constructor(private readonly config: NearIntentsAdapterConfig) {
+  constructor(config: NearIntentsAdapterConfig) {
+    this.config = config;
     if (!Number.isInteger(config.maxQuoteAgeMs) || config.maxQuoteAgeMs <= 0) {
       throw invalid("max-quote-age", "Quote freshness window must be positive");
     }

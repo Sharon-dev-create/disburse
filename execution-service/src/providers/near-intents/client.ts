@@ -33,14 +33,21 @@ export type NearIntentsFailureKind =
   | "unsupported-capability";
 
 export class NearIntentsError extends Error {
+  readonly kind: NearIntentsFailureKind;
+  readonly code: string;
+  readonly retryAfterSeconds: number | null;
+
   constructor(
-    readonly kind: NearIntentsFailureKind,
-    readonly code: string,
+    kind: NearIntentsFailureKind,
+    code: string,
     message: string,
-    readonly retryAfterSeconds: number | null = null,
+    retryAfterSeconds: number | null = null,
   ) {
     super(message);
     this.name = "NearIntentsError";
+    this.kind = kind;
+    this.code = code;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -52,8 +59,10 @@ export interface NearIntentsClientConfig {
 
 export class NearIntentsClient {
   private readonly fetchImpl: typeof fetch;
+  private readonly config: NearIntentsClientConfig;
 
-  constructor(private readonly config: NearIntentsClientConfig) {
+  constructor(config: NearIntentsClientConfig) {
+    this.config = config;
     if (!config.apiKey.trim() || config.apiKey.startsWith("replace-with")) {
       throw new NearIntentsError(
         "configuration-or-authentication",
@@ -117,7 +126,8 @@ export class NearIntentsClient {
       }
       if (response.status === 429) {
         const retryAfterHeader = response.headers.get("retry-after");
-        const retryAfter = retryAfterHeader === null ? Number.NaN : Number(retryAfterHeader);
+        const retryAfter =
+          retryAfterHeader === null ? Number.NaN : Number(retryAfterHeader);
         throw new NearIntentsError(
           "rate-limited",
           "http-429",
