@@ -3779,15 +3779,17 @@ mod tests {
         assert!(event.contains("failed_payout_reservation_released"));
         assert!(event.contains("\"released_input_amount\":\"10\""));
 
+        let missing_evidence_payout =
+            failed_test_payout(&mut contract, campaign_id, "recover-missing-failure-evidence");
         let resolution = resolution_evidence(
-            payout_id,
+            missing_evidence_payout,
             accounts(5),
             PayoutResolutionOutcome::NonSettlementConfirmed,
             "recover:missing-failure",
         );
-        Disburse::payout_failure_evidence().remove(&payout_id);
+        Disburse::payout_failure_evidence().remove(&missing_evidence_payout);
         assert!(catch_unwind(AssertUnwindSafe(|| {
-            contract.release_failed_payout_reservation(payout_id, resolution)
+            contract.release_failed_payout_reservation(missing_evidence_payout, resolution)
         }))
         .is_err());
     }
@@ -3810,7 +3812,7 @@ mod tests {
         assert_eq!(pending.status, PayoutStatus::PendingVerification);
         assert_eq!(pending.execution_reference, Some("execution:recover-executed".into()));
         assert_eq!(pending.resolution_evidence, Some(evidence));
-        let after_resolution = contract.get_campaign(campaign_id).unwrap();
+        let after_resolution = contract.get_campaign_payout_accounting(campaign_id).unwrap();
         assert_eq!(after_resolution.reserved, before.reserved);
         assert_eq!(after_resolution.spent, before.spent);
         assert!(get_logs().last().unwrap().contains("manual_review_execution_confirmed"));
@@ -3820,7 +3822,7 @@ mod tests {
             contract.get_payout(payout_id).unwrap().status,
             PayoutStatus::Succeeded
         );
-        let settled = contract.get_campaign(campaign_id).unwrap();
+        let settled = contract.get_campaign_payout_accounting(campaign_id).unwrap();
         assert_eq!(settled.reserved, before.reserved - 10);
         assert_eq!(settled.spent, before.spent + 10);
     }
@@ -3829,7 +3831,7 @@ mod tests {
     fn manual_review_non_settlement_releases_only_reserved_funds() {
         let (mut contract, campaign_id) = funded_active_campaign(100);
         let payout_id = manual_review_test_payout(&mut contract, campaign_id, "recover-not-executed");
-        let before = contract.get_campaign(campaign_id).unwrap();
+        let before = contract.get_campaign_payout_accounting(campaign_id).unwrap();
         grant_verifier(&mut contract, accounts(5));
         let evidence = resolution_evidence(
             payout_id,
