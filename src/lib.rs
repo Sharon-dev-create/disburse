@@ -13,7 +13,10 @@ use state::payout::Payout;
 use types::{
     amount::{TokenAmount, TokenId},
     destination::PayoutDestination,
-    evidence::SettlementEvidence,
+    evidence::{
+        ExternalExecutionIdentity, PayoutResolutionEvidence, PayoutResolutionOutcome,
+        SettlementEvidence,
+    },
     identifier::validate_identifier,
     role::UserRole,
     status::{CampaignStatus, PayoutStatus},
@@ -53,6 +56,7 @@ pub struct PayoutView {
     pub lifecycle_reason: Option<String>,
     pub failure_evidence: Option<ExecutionFailureEvidence>,
     pub settlement_evidence: Option<SettlementEvidence>,
+    pub resolution_evidence: Option<PayoutResolutionEvidence>,
 }
 
 #[near(serializers = [json, borsh])]
@@ -582,6 +586,114 @@ impl Disburse {
         );
     }
 
+    /// Release a Failed payout's reservation after explicit verifier attestation of
+    /// non-settlement. Existing failure evidence is required as the basis for review.
+    pub fn release_failed_payout_reservation(
+        &mut self,
+        payout_id: u64,
+        evidence: PayoutResolutionEvidence,
+    ) {
+        let actor_id = self.assert_verifier();
+        let payout = self.payout_or_panic(payout_id);
+        require!(
+            payout.status == PayoutStatus::Failed,
+            "Only Failed payouts can use failed-payout recovery"
+        );
+        require!(
+            Self::payout_failure_evidence().get(&payout_id).is_some(),
+            "Failure evidence is required before releasing a Failed payout"
+        );
+        let execution_key = Self::validate_resolution_evidence(
+            payout_id,
+            &actor_id,
+            &evidence,
+            PayoutResolutionOutcome::NonSettlementConfirmed,
+        );
+        self.assert_recovery_evidence_available(&evidence, execution_key.as_ref());
+        self.release_reservation_with_evidence(
+            payout,
+            evidence,
+            execution_key,
+            "failed_payout_reservation_released",
+        );
+    }
+
+    /// Reconcile ManualReview as an executed payout and return it to the normal
+    /// PendingVerification → Succeeded settlement path without moving accounting.
+    pub fn confirm_manual_review_execution(
+        &mut self,
+        payout_id: u64,
+        evidence: PayoutResolutionEvidence,
+    ) {
+        let actor_id = self.assert_verifier();
+        let mut payout = self.payout_or_panic(payout_id);
+        require!(
+            payout.status == PayoutStatus::ManualReview,
+            "Only ManualReview payouts can be confirmed executed"
+        );
+        let execution_reference = payout
+            .execution_reference
+            .clone()
+            .unwrap_or_else(|| env::panic_str("Execution reference is missing"));
+        require!(
+            Self::execution_references().get(&execution_reference) == Some(&payout_id),
+            "Execution reference index is inconsistent"
+        );
+        let execution_key = Self::validate_resolution_evidence(
+            payout_id,
+            &actor_id,
+            &evidence,
+            PayoutResolutionOutcome::ExecutionConfirmed,
+        );
+        self.assert_recovery_evidence_available(&evidence, execution_key.as_ref());
+
+        let previous_status = payout.status;
+        payout.status = PayoutStatus::PendingVerification;
+        self.payouts.insert(payout_id, payout.clone());
+        Self::payout_resolution_evidence().insert(payout_id, evidence.clone());
+        self.index_resolution_evidence(&evidence, execution_key);
+        self.emit_event(
+            "manual_review_execution_confirmed",
+            near_sdk::serde_json::json!({
+                "payout_id": payout_id,
+                "campaign_id": payout.campaign_id,
+                "verifier_id": actor_id,
+                "previous_status": Self::payout_status_name(previous_status),
+                "new_status": Self::payout_status_name(payout.status),
+                "execution_reference": execution_reference,
+                "evidence_reference": evidence.evidence_reference,
+            }),
+        );
+    }
+
+    /// Release a ManualReview payout only after structured verifier attestation that it
+    /// definitely did not settle. Uncertain outcomes must remain reserved for review.
+    pub fn release_manual_review_reservation(
+        &mut self,
+        payout_id: u64,
+        evidence: PayoutResolutionEvidence,
+    ) {
+        let actor_id = self.assert_verifier();
+        let payout = self.payout_or_panic(payout_id);
+        require!(
+            payout.status == PayoutStatus::ManualReview,
+            "Only ManualReview payouts can be resolved as non-settled"
+        );
+        let execution_key = Self::validate_resolution_evidence(
+            payout_id,
+            &actor_id,
+            &evidence,
+            PayoutResolutionOutcome::NonSettlementConfirmed,
+        );
+        self.assert_recovery_evidence_available(&evidence, execution_key.as_ref());
+        self.release_reservation_with_evidence(
+            payout,
+            evidence,
+            execution_key,
+            "manual_review_non_settlement_confirmed",
+        );
+    }
+
     /// Settle only a pending payout based on an explicit trusted-verifier attestation.
     /// Settlement remains available while globally paused so already-submitted external
     /// executions can be reconciled. The contract matches normalized claims and updates
@@ -674,18 +786,25 @@ impl Disburse {
             "Evidence output amount does not match payout"
         );
 
-        let execution_key = (
-            evidence.provider_id.clone(),
-            evidence.destination_chain_id.as_str().to_string(),
-            evidence.destination_transaction_reference.clone(),
-            evidence.transaction_event_identifier.clone(),
-        );
-        require!(
-            Self::settlement_execution_index()
-                .get(&execution_key)
-                .is_none(),
-            "Settlement execution evidence has already been used"
-        );
+        let execution_key = Self::settlement_execution_key(&evidence);
+        if let Some(existing_payout_id) =
+            Self::settlement_execution_index().get(&execution_key)
+        {
+            require!(
+                *existing_payout_id == payout_id,
+                "Settlement execution evidence has already been used"
+            );
+            let resolution = Self::payout_resolution_evidence().get(&payout_id);
+            require!(
+                resolution.is_some_and(|resolution| {
+                    resolution.outcome == PayoutResolutionOutcome::ExecutionConfirmed
+                        && resolution.external_execution.as_ref().is_some_and(|identity| {
+                            Self::external_execution_key(identity) == execution_key
+                        })
+                }),
+                "Execution identity is reserved by a different payout resolution"
+            );
+        }
         require!(
             Self::settlement_reference_index()
                 .get(&evidence_reference)

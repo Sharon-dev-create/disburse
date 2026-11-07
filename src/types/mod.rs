@@ -5,6 +5,8 @@ pub mod identifier;
 pub mod role;
 pub mod status;
 
+pub use evidence::{ExternalExecutionIdentity, PayoutResolutionEvidence, PayoutResolutionOutcome};
+
 #[cfg(test)]
 mod tests {
     use near_sdk::{borsh, serde_json, test_utils::accounts};

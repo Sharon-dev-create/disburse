@@ -25,4 +25,6 @@ pub enum PayoutStatus {
     RefundPending,
     Refunded,
     ManualReview,
+    // Appended to preserve the Borsh discriminants of existing payout states.
+    ReservationReleased,
 }
