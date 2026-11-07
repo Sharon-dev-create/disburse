@@ -18,6 +18,7 @@ const config: FastNearNearDataConfig = {
   network: "testnet",
   contractId: "disburse.testnet",
   startBlockHeight: "10",
+  firstBlockHeight: "10",
   endpoint: "https://fixture.invalid",
   retryAttempts: 1,
 };
@@ -65,7 +66,7 @@ void test("FastNear source filters by executor, keeps receipt identity, and deco
     eventsRetrieved: 1,
     blocksScanned: 1,
     pagesRead: 1,
-    requests: 2,
+    requests: 3,
     lastSuccessfulPollAtMs: source.getDiagnostics().lastSuccessfulPollAtMs,
   });
 });
@@ -202,6 +203,8 @@ void test("empty finalized ranges advance a durable block cursor", async () => {
     { ...config, maxBlocksPerPage: 2 },
     async (input) => {
       const path = new URL(String(input)).pathname;
+      if (path.endsWith("first_block"))
+        return jsonResponse(block(10, "hash-10", "hash-9", []));
       if (path.endsWith("last_block/final"))
         return jsonResponse(block(12, "hash-12", "hash-11", []));
       const height = Number(path.split("/").at(-1));
@@ -218,6 +221,42 @@ void test("empty finalized ranges advance a durable block cursor", async () => {
   const next = await source.readAfter(page.nextCursor, 1);
   assert.equal(next.events.length, 0);
   assert.equal(next.hasMore, false);
+});
+
+void test("parent discontinuity and missing historical heights stop before returning a cursor", async () => {
+  const discontinuous = new FastNearNearDataEventSource(
+    { ...config, maxBlocksPerPage: 2 },
+    async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("first_block"))
+        return jsonResponse(block(10, "hash-10", "hash-9", []));
+      if (path.endsWith("last_block/final"))
+        return jsonResponse(block(11, "hash-11", "hash-10", []));
+      if (path.endsWith("/10"))
+        return jsonResponse(block(10, "hash-10", "hash-9", []));
+      return jsonResponse(block(11, "hash-11", "wrong-parent", []));
+    },
+  );
+  await assert.rejects(
+    discontinuous.readFrom("10", 10),
+    (error: unknown) =>
+      error instanceof NearDataProviderError &&
+      error.kind === "block-continuity-failure",
+  );
+
+  const missing = new FastNearNearDataEventSource(config, async (input) => {
+    const path = new URL(String(input)).pathname;
+    if (path.endsWith("first_block"))
+      return jsonResponse(block(10, "hash-10", "hash-9", []));
+    if (path.endsWith("/10")) return jsonResponse(null);
+    return jsonResponse(block(10, "hash-10", "hash-9", []));
+  });
+  await assert.rejects(
+    missing.readFrom("10", 1),
+    (error: unknown) =>
+      error instanceof NearDataProviderError &&
+      error.kind === "missing-history",
+  );
 });
 
 void test("resuming a partially read block rejects a changed finalized block hash", async () => {
@@ -245,7 +284,7 @@ void test("resuming a partially read block rejects a changed finalized block has
     source.readAfter(first.nextCursor, 1),
     (error: unknown) =>
       error instanceof NearDataProviderError &&
-      error.kind === "network-mismatch",
+      error.kind === "block-continuity-failure",
   );
 });
 
@@ -261,7 +300,7 @@ void test("provider retries rate limits with bounded backoff and validates respo
   );
   const page = await source.readFrom("10", 1);
   assert.equal(page.events.length, 0);
-  assert.equal(calls, 3); // the head request is retried once
+  assert.equal(calls, 4); // the first-block identity request is retried once
 
   const malformed = new FastNearNearDataEventSource(config, async () =>
     jsonResponse(

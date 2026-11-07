@@ -29,12 +29,21 @@ reconciliation or ManualReview rather than automatic resubmission.
 
 `DurableFileDiscoveryRepository` supports a single local indexer/worker process and implements the
 existing `JobRepository` interface, so discovered jobs flow into the operational state machine. Its
-atomic snapshot contains events, observations, jobs, leases, discrepancies, failures, and cursors.
+atomic snapshot contains block/event archives, incidents, recovery runs, observations, jobs, leases,
+discrepancies, failures, and cursors.
 Use a transactional database adapter for multiple workers/indexers. The live provider implementation
 is read-only and currently has no configured Disburse testnet deployment to ingest. See
 [`../docs/near-event-provider-integration.md`](../docs/near-event-provider-integration.md) for
 setup and [`../docs/near-payout-discovery.md`](../docs/near-payout-discovery.md) for discovery
 limits.
+
+Milestone 10.1 archives block observations and exact matching event logs, records conflicting
+historical responses without replacing originals, pauses normal ingestion on integrity incidents,
+and supports bounded recovery with its own durable cursor. Recovery reconciles current contract
+views and never creates/deletes jobs. FastNear has no documented historical retention SLA; archive
+backup and operator investigation remain necessary. See
+[`../docs/near-discovery-integrity.md`](../docs/near-discovery-integrity.md) for the operator
+procedure and precise limits.
 
 ## Commands
 

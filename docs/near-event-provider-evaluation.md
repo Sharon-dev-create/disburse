@@ -4,6 +4,25 @@
 the adapter's deterministic HTTP tests. A successful testnet Disburse ingestion has not been
 observed because this repository has no configured deployed Disburse account.
 
+### FastNear historical availability classification
+
+- **Documented guarantee:** the block endpoint is documented as returning finalized block data by
+  height when available; the response includes block headers/shards and receipt execution outcomes.
+  `/v0/first_block` identifies the provider's earliest available block at the time of the query.
+- **Observed behavior:** a read-only testnet check retrieved old numbered blocks and the live
+  finalized head during this evaluation. That is a point-in-time observation, not a retention SLA.
+- **Undocumented:** no formal retention duration, availability/uptime SLA, or separate retention
+  guarantee for headers versus matching receipt outcomes/logs was found in the official material.
+  The API reference describes current/recent block data and can return null for an unavailable
+  height; the server README describes sequential historical traversal. Those statements establish
+  API capability, not a stable promise that arbitrary old data remains hosted.
+- **Unverified assumption:** mainnet and testnet may have different practical retention or archival
+  completeness. No duration is assumed, and missing historical data is treated as an incident rather
+  than an empty block.
+
+See [`near-discovery-integrity.md`](near-discovery-integrity.md) for recovery implications and the
+operator runbook.
+
 ## Candidates
 
 | Candidate | Testnet and historical replay | Receipt logs and identity | Finality, reorgs, and operations | Decision |
@@ -42,6 +61,12 @@ finality, and cursor guarantees. Do not change `PayoutDiscoveryProcessor` to add
 parsing.
 
 ## Sources
+
+- [FastNear NEAR Data block endpoint](https://docs.fastnear.com/neardata/block)
+- [FastNear NEAR Data first-block endpoint](https://docs.fastnear.com/neardata/first-block)
+- [FastNear NEAR Data server README](https://github.com/fastnear/neardata-server)
+- [FastNear NEAR Data API reference](https://docs.fastnear.com/neardata)
+- [FastNear RPC and archival RPC descriptions](https://docs.fastnear.com/rpc)
 
 - [FastNear NEAR Data server documentation](https://github.com/fastnear/neardata-server)
 - [FastNear NEAR Data API reference](https://docs.fastnear.com/neardata)

@@ -68,9 +68,17 @@ export class MockNearEventSource implements NearEventSource {
     const start = BigInt(startBlockHeight);
     const end = BigInt(endBlockHeight);
     if (end < start) throw new Error("Recovery range end precedes start");
-    let index = cursor === null ? 0 : this.entries.findIndex((event) => event.cursor === cursor) + 1;
-    if (cursor !== null && index === 0) throw new Error("Unknown recovery cursor");
-    while (index < this.entries.length && BigInt(this.entries[index]!.identity.blockHeight) < start) index += 1;
+    let index =
+      cursor === null
+        ? 0
+        : this.entries.findIndex((event) => event.cursor === cursor) + 1;
+    if (cursor !== null && index === 0)
+      throw new Error("Unknown recovery cursor");
+    while (
+      index < this.entries.length &&
+      BigInt(this.entries[index]!.identity.blockHeight) < start
+    )
+      index += 1;
     const selected: RawNearEvent[] = [];
     while (index < this.entries.length && selected.length < limit) {
       const event = this.entries[index]!;
@@ -83,7 +91,9 @@ export class MockNearEventSource implements NearEventSource {
       events: selected,
       blocks: [],
       nextCursor,
-      hasMore: index < this.entries.length && BigInt(this.entries[index]!.identity.blockHeight) <= end,
+      hasMore:
+        index < this.entries.length &&
+        BigInt(this.entries[index]!.identity.blockHeight) <= end,
     };
   }
 

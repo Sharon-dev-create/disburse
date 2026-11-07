@@ -17,6 +17,7 @@ import type {
   DiscoveryRepository,
 } from "./repository.ts";
 import type { NearEventSource } from "./source.ts";
+import { PayoutReconciler } from "./reconciler.ts";
 
 export interface DiscoveryProcessorConfig {
   readonly networkId: string;
@@ -66,7 +67,11 @@ export class PayoutDiscoveryProcessor {
   }
 
   async processNextPage(nowMs: number): Promise<DiscoveryRunResult> {
-    await this.verifyNetwork();
+    await this.repository.assertSourceReady(
+      this.config.networkId,
+      this.config.contractId,
+    );
+    await this.verifyNetwork(nowMs);
     const savedCursor = await this.repository.getCursor(this.sourceKey);
     let page: Awaited<ReturnType<NearEventSource["readAfter"]>>;
     try {
@@ -86,7 +91,11 @@ export class PayoutDiscoveryProcessor {
   ): Promise<DiscoveryRunResult> {
     if (!startPosition.trim())
       throw new Error("Historical start position is required");
-    await this.verifyNetwork();
+    await this.verifyNetwork(nowMs);
+    await this.repository.assertSourceReady(
+      this.config.networkId,
+      this.config.contractId,
+    );
     const backfillKey = JSON.stringify([
       this.config.networkId,
       this.config.contractId,
@@ -108,12 +117,176 @@ export class PayoutDiscoveryProcessor {
     return this.processPage(backfillKey, savedCursor, page, nowMs);
   }
 
-  private async verifyNetwork(): Promise<void> {
+  /** Replays a bounded historical block range without creating or deleting execution jobs. */
+  async recoverRange(
+    startBlockHeight: string,
+    endBlockHeight: string,
+    nowMs: number,
+  ): Promise<DiscoveryRunResult> {
+    if (
+      !/^\d+$/.test(startBlockHeight) ||
+      !/^\d+$/.test(endBlockHeight) ||
+      BigInt(endBlockHeight) < BigInt(startBlockHeight)
+    ) {
+      throw new Error("Recovery block range is invalid");
+    }
+    await this.verifyNetwork(nowMs);
+    const recoverySnapshot = await this.repository.getSnapshot();
+    const previousRecoveries = [...recoverySnapshot.recoveries.values()]
+      .filter(
+        (item) =>
+          item.networkId === this.config.networkId &&
+          item.contractId === this.config.contractId &&
+          item.startBlockHeight === startBlockHeight &&
+          item.endBlockHeight === endBlockHeight &&
+          item.status !== "validated",
+      )
+      .sort((left, right) => right.updatedAtMs - left.updatedAtMs);
+    const existingRecovery = previousRecoveries[0];
+    let recoveryId = existingRecovery?.recoveryId;
+    if (recoveryId === undefined) {
+      let attempt = 0;
+      do {
+        recoveryId = JSON.stringify([
+          this.config.networkId,
+          this.config.contractId,
+          startBlockHeight,
+          endBlockHeight,
+          nowMs,
+          attempt,
+        ]);
+        attempt += 1;
+      } while (recoverySnapshot.recoveries.has(recoveryId));
+    }
+    const recoverySourceKey = JSON.stringify([
+      this.config.networkId,
+      this.config.contractId,
+      "recovery",
+      recoveryId,
+    ]);
+    const recovery = await this.repository.startRecovery({
+      recoveryId,
+      networkId: this.config.networkId,
+      contractId: this.config.contractId,
+      startBlockHeight,
+      endBlockHeight,
+      startedAtMs: nowMs,
+    });
+    let cursor = await this.repository.getCursor(recoverySourceKey);
+    let processed = 0;
+    let duplicates = 0;
+    let unknownEvents = 0;
+    let malformedEvents = 0;
+    let blocksChecked = recovery.blocksChecked;
+    let eventsChecked = recovery.eventsChecked;
+    try {
+      let hasMore = true;
+      while (hasMore) {
+        const page = await this.source.readRange(
+          startBlockHeight,
+          endBlockHeight,
+          cursor,
+          this.pageSize,
+        );
+        await this.repository.clearSourceFailure(recoverySourceKey);
+        if (page.nextCursor === cursor && page.hasMore)
+          throw new Error("Recovery source did not advance its cursor");
+        const result = await this.processPage(
+          recoverySourceKey,
+          cursor,
+          page,
+          nowMs,
+          false,
+        );
+        cursor = result.cursor;
+        processed += result.processed;
+        duplicates += result.duplicates;
+        unknownEvents += result.unknownEvents;
+        malformedEvents += result.malformedEvents;
+        blocksChecked += page.blocks.length;
+        eventsChecked += page.events.length;
+        hasMore = page.hasMore;
+        await this.repository.updateRecovery(recoveryId, {
+          status: "running",
+          updatedAtMs: nowMs,
+          cursor,
+          blocksChecked,
+          eventsChecked,
+          summary:
+            "Historical page archived and reconciled against current NEAR views",
+        });
+      }
+      const reconciliation = await new PayoutReconciler(
+        this.config.networkId,
+        this.config.contractId,
+        this.reader,
+        this.repository,
+      ).reconcileKnownPayouts(nowMs);
+      const validated =
+        reconciliation.failed === 0 && reconciliation.missing === 0;
+      if (validated)
+        await this.repository.resolveIncidentsInRange(
+          this.config.networkId,
+          this.config.contractId,
+          startBlockHeight,
+          endBlockHeight,
+          nowMs,
+        );
+      await this.repository.updateRecovery(recoveryId, {
+        status: validated ? "validated" : "conflict",
+        updatedAtMs: nowMs,
+        cursor,
+        blocksChecked,
+        eventsChecked,
+        summary: validated
+          ? `Historical range validated; ${reconciliation.checked} known payouts reconciled against current contract views`
+          : `Investigation required: reconciliation reported ${reconciliation.failed} failures and ${reconciliation.missing} missing payouts`,
+      });
+      return {
+        processed,
+        duplicates,
+        jobsCreated: 0,
+        unknownEvents,
+        malformedEvents,
+        cursor,
+        hasMore: false,
+      };
+    } catch (error) {
+      await this.repository.recordSourceFailure(
+        recoverySourceKey,
+        error,
+        nowMs,
+      );
+      await this.repository.updateRecovery(recoveryId, {
+        status: isIntegrityError(error) ? "conflict" : "unavailable",
+        updatedAtMs: nowMs,
+        cursor: await this.repository.getCursor(recoverySourceKey),
+        blocksChecked,
+        eventsChecked,
+        summary:
+          error instanceof Error
+            ? error.message
+            : "Historical recovery failed; investigation required",
+      });
+      throw error;
+    }
+  }
+
+  private async verifyNetwork(nowMs: number): Promise<void> {
     if (
       "verifyNetwork" in this.reader &&
       typeof this.reader.verifyNetwork === "function"
     ) {
-      await this.reader.verifyNetwork();
+      try {
+        await this.reader.verifyNetwork();
+      } catch (error) {
+        await this.repository.recordSourceFailure(
+          JSON.stringify([this.config.networkId, this.config.contractId]),
+          error,
+          nowMs,
+        );
+        throw error;
+      }
     }
   }
 
@@ -122,6 +295,7 @@ export class PayoutDiscoveryProcessor {
     savedCursor: string | null,
     page: Awaited<ReturnType<NearEventSource["readAfter"]>>,
     nowMs: number,
+    allowJobCreation = true,
   ): Promise<DiscoveryRunResult> {
     if (page.nextCursor !== null && !page.nextCursor.trim())
       throw new Error("Event source returned an invalid page cursor");
@@ -129,6 +303,42 @@ export class PayoutDiscoveryProcessor {
       throw new Error("Event source returned events without a page cursor");
     if (page.events.length > this.pageSize)
       throw new Error("Event source exceeded the requested page size");
+    try {
+      validateBlockObservations(
+        page.blocks,
+        this.config,
+        this.source.providerId,
+      );
+      await this.repository.archiveBlocks(page.blocks, nowMs);
+    } catch (error) {
+      if (!isIntegrityError(error)) {
+        try {
+          await this.repository.recordIncident(
+            {
+              type: "archive-write-failure",
+              networkId: this.config.networkId,
+              contractId: this.config.contractId,
+              blockHeight: null,
+              eventKey: null,
+              expected: "Durable block archive commit",
+              observed: {
+                message:
+                  error instanceof Error
+                    ? error.message
+                    : "Unknown archive write failure",
+              },
+              actionRequired:
+                "Stop ingestion, preserve the last durable cursor, verify local storage and backups, then retry after the archive is writable.",
+            },
+            nowMs,
+          );
+        } catch {
+          // A failed archive store may also prevent recording its own incident.
+        }
+      }
+      await this.repository.recordSourceFailure(sourceKey, error, nowMs);
+      throw error;
+    }
     let duplicates = 0;
     let jobsCreated = 0;
     let unknownEvents = 0;
@@ -137,7 +347,12 @@ export class PayoutDiscoveryProcessor {
       const decoded = decodeNearEvent(raw);
       if (decoded.kind === "unknown") unknownEvents += 1;
       if (decoded.kind === "malformed") malformedEvents += 1;
-      const result = await this.processDecoded(decoded, sourceKey, nowMs);
+      const result = await this.processDecoded(
+        decoded,
+        sourceKey,
+        nowMs,
+        allowJobCreation,
+      );
       if (result.duplicate) duplicates += 1;
       if (result.jobCreated) jobsCreated += 1;
     }
@@ -159,6 +374,7 @@ export class PayoutDiscoveryProcessor {
     event: DecodedNearEvent,
     sourceKey: string,
     nowMs: number,
+    allowJobCreation: boolean,
   ): Promise<{ readonly duplicate: boolean; readonly jobCreated: boolean }> {
     const identity = event.identity;
     if (
@@ -191,25 +407,60 @@ export class PayoutDiscoveryProcessor {
       identity.networkId !== this.config.networkId ||
       identity.contractId !== this.config.contractId
     ) {
-      const commit = await this.repository.commitEvent({
-        sourceKey,
-        event,
-        observation: null,
-        discrepancy: {
-          kind: "event-identity-mismatch",
-          message:
-            "Event source identity does not match configured NEAR network/contract or is incomplete",
-          createdAtMs: nowMs,
+      const error = Object.assign(
+        new Error(
+          "Event source identity does not match configured NEAR network or contract",
+        ),
+        {
+          kind: "network-mismatch",
+          retryable: false,
+          context: {
+            expectedNetworkId: this.config.networkId,
+            observedNetworkId: identity.networkId,
+            expectedContractId: this.config.contractId,
+            observedContractId: identity.contractId,
+            blockHeight: identity.blockHeight,
+          },
         },
-        job: null,
-        nextCursor: event.cursor,
-        nowMs,
-      });
-      return { duplicate: commit.duplicate, jobCreated: false };
+      );
+      await this.repository.recordSourceFailure(sourceKey, error, nowMs);
+      throw error;
     }
     if (event.kind !== "known") {
+      if (event.kind === "malformed") {
+        const error = Object.assign(new Error(event.reason), {
+          kind: "malformed",
+          retryable: false,
+          context: {
+            blockHeight: event.identity.blockHeight,
+            eventIdentity: event.identity,
+          },
+        });
+        await this.repository.recordIncident(
+          {
+            type: "malformed-provider-response",
+            networkId: identity.networkId,
+            contractId: identity.contractId,
+            blockHeight: identity.blockHeight,
+            eventKey: JSON.stringify([
+              identity.blockHash,
+              identity.transactionHash,
+              identity.receiptId,
+              identity.eventIndex,
+            ]),
+            expected: "A well-formed recognized Disburse event",
+            observed: { reason: event.reason, rawLog: event.rawLog },
+            actionRequired:
+              "Preserve the cursor and raw log. Inspect the event and contract version before resuming.",
+          },
+          nowMs,
+        );
+        await this.repository.recordSourceFailure(sourceKey, error, nowMs);
+        throw error;
+      }
       const commit = await this.repository.commitEvent({
         sourceKey,
+        providerId: this.source.providerId,
         event,
         observation: null,
         discrepancy: {
@@ -247,6 +498,7 @@ export class PayoutDiscoveryProcessor {
         ? toObservation(identity.networkId, identity.contractId, payout, nowMs)
         : null;
     const job =
+      allowJobCreation &&
       event.name === "payout_reserved" &&
       payout &&
       payout.status === "Reserved" &&
@@ -255,6 +507,7 @@ export class PayoutDiscoveryProcessor {
         : null;
     const committed = await this.repository.commitEvent({
       sourceKey,
+      providerId: this.source.providerId,
       event,
       observation,
       discrepancy:
@@ -317,6 +570,81 @@ export class PayoutDiscoveryProcessor {
       }
     }
     return null;
+  }
+}
+
+function isIntegrityError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  if ("name" in error && error.name === "DiscoveryIntegrityError") return true;
+  return (
+    "kind" in error &&
+    typeof error.kind === "string" &&
+    [
+      "block-continuity-failure",
+      "network-mismatch",
+      "cursor-corruption",
+      "malformed",
+    ].includes(error.kind)
+  );
+}
+
+function validateBlockObservations(
+  blocks: Awaited<ReturnType<NearEventSource["readAfter"]>>["blocks"],
+  config: DiscoveryProcessorConfig,
+  providerId: string,
+): void {
+  let previous: (typeof blocks)[number] | undefined;
+  for (const block of blocks) {
+    const height = /^\d+$/.test(block.blockHeight)
+      ? BigInt(block.blockHeight)
+      : -1n;
+    if (
+      block.networkId !== config.networkId ||
+      block.contractId !== config.contractId ||
+      block.providerId !== providerId ||
+      height < 0n ||
+      !block.blockHash.trim() ||
+      !block.parentBlockHash.trim() ||
+      !Number.isSafeInteger(block.contractReceiptCount) ||
+      block.contractReceiptCount < 0 ||
+      !Number.isSafeInteger(block.contractLogCount) ||
+      block.contractLogCount < 0 ||
+      !/^[a-f0-9]{64}$/i.test(block.canonicalPayloadHash)
+    ) {
+      throw Object.assign(
+        new Error("Event source returned invalid or mismatched block metadata"),
+        {
+          kind: "network-mismatch",
+          retryable: false,
+          context: {
+            blockHeight: block.blockHeight,
+            networkId: block.networkId,
+            contractId: block.contractId,
+            providerId: block.providerId,
+          },
+        },
+      );
+    }
+    if (
+      previous &&
+      (height !== BigInt(previous.blockHeight) + 1n ||
+        block.parentBlockHash !== previous.blockHash)
+    ) {
+      throw Object.assign(
+        new Error("Event source block page is not height/hash contiguous"),
+        {
+          kind: "block-continuity-failure",
+          retryable: false,
+          context: {
+            blockHeight: block.blockHeight,
+            expectedBlockHeight: (BigInt(previous.blockHeight) + 1n).toString(),
+            expectedParentHash: previous.blockHash,
+            observedParentHash: block.parentBlockHash,
+          },
+        },
+      );
+    }
+    previous = block;
   }
 }
 

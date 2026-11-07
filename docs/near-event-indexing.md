@@ -29,8 +29,11 @@ Each event and its cursor commit atomically with its observation, discrepancy, a
 Only after every event in a fetched page is committed does the processor persist the page
 checkpoint. This checkpoint may advance across empty blocks. A failed event write leaves the source
 at the last committed event; a failed page checkpoint causes a safe reread of any trailing empty
-blocks. Unknown and malformed events are persisted before their cursor advances, so unfamiliar
-events remain observable without blocking later events.
+blocks. Unknown standards, versions, and names are persisted before their cursor advances. A
+malformed recognized Disburse event records its exact raw log in an incident and stops at the prior
+cursor. Block observations and event records are archived and compared on replay; conflicts preserve
+originals and pause normal ingestion. See [`near-discovery-integrity.md`](near-discovery-integrity.md)
+for bounded recovery and operator steps.
 
 ## Finality and reorganization behavior
 

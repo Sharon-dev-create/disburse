@@ -183,10 +183,59 @@ CREATE TABLE near_indexed_events (
     payout_id NUMERIC(20, 0),
     campaign_id NUMERIC(20, 0),
     raw_log TEXT NOT NULL,
+    canonical_payload_hash TEXT NOT NULL,
+    provider_id TEXT NOT NULL,
+    first_observed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     decoded_payload JSONB,
     source_cursor TEXT NOT NULL,
     processed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (network_id, contract_id, block_hash, transaction_hash, receipt_id, event_index)
+);
+
+CREATE TABLE near_discovery_blocks (
+    network_id TEXT NOT NULL,
+    contract_id TEXT NOT NULL,
+    block_height NUMERIC(20, 0) NOT NULL CHECK (block_height >= 0),
+    block_hash TEXT NOT NULL,
+    parent_block_hash TEXT NOT NULL,
+    provider_id TEXT NOT NULL,
+    contract_receipt_count INTEGER NOT NULL CHECK (contract_receipt_count >= 0),
+    contract_log_count INTEGER NOT NULL CHECK (contract_log_count >= 0),
+    canonical_payload_hash TEXT NOT NULL,
+    first_observed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_observed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (network_id, contract_id, block_height)
+);
+
+CREATE TABLE near_discovery_incidents (
+    incident_id TEXT PRIMARY KEY,
+    incident_type TEXT NOT NULL,
+    network_id TEXT NOT NULL,
+    contract_id TEXT NOT NULL,
+    block_height NUMERIC(20, 0),
+    event_key TEXT,
+    expected_values JSONB,
+    observed_values JSONB,
+    status TEXT NOT NULL CHECK (status IN ('open', 'resolved', 'unverifiable')),
+    action_required TEXT NOT NULL,
+    occurrences INTEGER NOT NULL DEFAULT 1 CHECK (occurrences > 0),
+    detected_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE near_discovery_recoveries (
+    recovery_id TEXT PRIMARY KEY,
+    network_id TEXT NOT NULL,
+    contract_id TEXT NOT NULL,
+    start_block_height NUMERIC(20, 0) NOT NULL CHECK (start_block_height >= 0),
+    end_block_height NUMERIC(20, 0) NOT NULL CHECK (end_block_height >= start_block_height),
+    status TEXT NOT NULL CHECK (status IN ('running', 'validated', 'conflict', 'unavailable')),
+    cursor_value TEXT,
+    blocks_checked BIGINT NOT NULL DEFAULT 0 CHECK (blocks_checked >= 0),
+    events_checked BIGINT NOT NULL DEFAULT 0 CHECK (events_checked >= 0),
+    summary TEXT NOT NULL,
+    started_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL
 );
 
 CREATE INDEX near_indexed_events_payout_idx

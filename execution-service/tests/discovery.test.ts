@@ -12,7 +12,10 @@ import {
 } from "../src/near/rpc.ts";
 import type { NearPayoutView } from "../src/near/clients.ts";
 import { decodeNearEvent } from "../src/discovery/events.ts";
-import { DurableFileDiscoveryRepository } from "../src/discovery/file-repository.ts";
+import {
+  canonicalEventPayloadHash,
+  DurableFileDiscoveryRepository,
+} from "../src/discovery/file-repository.ts";
 import { PayoutDiscoveryProcessor } from "../src/discovery/processor.ts";
 import { PayoutReconciler } from "../src/discovery/reconciler.ts";
 import { MockNearEventSource } from "../src/discovery/source.ts";
@@ -198,6 +201,34 @@ void test("decoder handles known events, large IDs, unsupported versions, unknow
   assert.equal(decodeNearEvent(malformed).kind, "malformed");
 });
 
+void test("canonical event hashing is stable across JSON formatting and preserves large numeric IDs", () => {
+  const event = makeRawEvent("payout_reserved", "hash-canonical", 0, {
+    payoutId: "18446744073709551615",
+  });
+  const numericIds = event.log.replace(
+    '"payout_id":"18446744073709551615"',
+    '"payout_id":18446744073709551615',
+  );
+  const formatted = numericIds.replace("EVENT_JSON:", "EVENT_JSON: ");
+  const first = decodeNearEvent({ ...event, log: numericIds });
+  const second = decodeNearEvent({ ...event, log: formatted });
+  assert.equal(first.kind, "known");
+  assert.equal(second.kind, "known");
+  assert.equal(
+    canonicalEventPayloadHash(first),
+    canonicalEventPayloadHash(second),
+  );
+  const changed = decodeNearEvent({
+    ...event,
+    log: numericIds.replace("18446744073709551615", "18446744073709551614"),
+  });
+  assert.equal(changed.kind, "known");
+  assert.notEqual(
+    canonicalEventPayloadHash(first),
+    canonicalEventPayloadHash(changed),
+  );
+});
+
 void test("multiple events in one transaction remain distinct and duplicate delivery creates one job", async () => {
   const directory = await mkdtemp(join(tmpdir(), "disburse-discovery-"));
   try {
@@ -366,6 +397,7 @@ void test("view failures do not advance the event cursor; persistence failure ca
     await assert.rejects(
       failedStore.commitEvent({
         sourceKey: "source",
+        providerId: "test-provider",
         event: decodeNearEvent(event),
         observation: null,
         discrepancy: null,
@@ -380,6 +412,7 @@ void test("view failures do not advance the event cursor; persistence failure ca
     failCommit = false;
     await failedStore.commitEvent({
       sourceKey: "source",
+      providerId: "test-provider",
       event: decodeNearEvent(event),
       observation: null,
       discrepancy: null,
@@ -401,13 +434,20 @@ void test("event-source outage is recorded and cleared after a successful cursor
   try {
     let available = false;
     const source = {
+      providerId: "test-source",
       readAfter: async (cursor: string | null) => {
         if (!available) throw new Error("indexer unavailable");
-        return { events: [], nextCursor: cursor, hasMore: false };
+        return { events: [], blocks: [], nextCursor: cursor, hasMore: false };
       },
       readFrom: async () => {
         throw new Error("indexer unavailable");
       },
+      readRange: async () => ({
+        events: [],
+        blocks: [],
+        nextCursor: null,
+        hasMore: false,
+      }),
     };
     const repository = await DurableFileDiscoveryRepository.open(
       join(directory, "index.json"),
@@ -459,6 +499,343 @@ void test("empty-range checkpoints are durable and failed checkpoint writes do n
   }
 });
 
+void test("historical recovery archives matching blocks, reconciles events, and never creates jobs", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "disburse-recovery-"));
+  try {
+    const path = join(directory, "index.json");
+    const event = makeRawEvent("payout_reserved", "recovery-cursor");
+    const block = blockObservation("10", "hash-10", "hash-9");
+    const source = {
+      providerId: "deterministic-recovery",
+      readAfter: async () => ({
+        events: [],
+        blocks: [],
+        nextCursor: null,
+        hasMore: false,
+      }),
+      readFrom: async () => ({
+        events: [],
+        blocks: [],
+        nextCursor: null,
+        hasMore: false,
+      }),
+      readRange: async () => ({
+        events: [event],
+        blocks: [block],
+        nextCursor: event.cursor,
+        hasMore: false,
+      }),
+    };
+    const repository = await DurableFileDiscoveryRepository.open(path);
+    const processor = new PayoutDiscoveryProcessor(
+      config,
+      source,
+      new MutableReader(makePayout()),
+      repository,
+    );
+    const recovered = await processor.recoverRange("10", "10", 500);
+    assert.equal(recovered.processed, 1);
+    assert.equal(recovered.jobsCreated, 0);
+    assert.equal((await repository.getSnapshot()).jobs.size, 0);
+    const snapshot = await repository.getSnapshot();
+    assert.equal(snapshot.events.size, 1);
+    assert.equal(snapshot.blocks.size, 1);
+    assert.equal([...snapshot.recoveries.values()][0]?.status, "validated");
+    assert.equal([...snapshot.events.values()][0]?.event.rawLog, event.log);
+
+    const restarted = await DurableFileDiscoveryRepository.open(path);
+    assert.equal((await restarted.getSnapshot()).blocks.size, 1);
+    const resumed = await new PayoutDiscoveryProcessor(
+      config,
+      source,
+      new MutableReader(makePayout()),
+      restarted,
+    ).recoverRange("10", "10", 600);
+    assert.equal(resumed.duplicates, 1);
+    assert.equal((await restarted.getSnapshot()).jobs.size, 0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+void test("interrupted historical recovery resumes from its last atomically committed event cursor", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "disburse-recovery-restart-"));
+  try {
+    const path = join(directory, "index.json");
+    const firstEvent = makeRawEvent("payout_reserved", "recovery-first");
+    const secondBlock = blockObservation("11", "hash-11", "hash-10");
+    let secondPageAvailable = false;
+    let firstReadAfterRestart = true;
+    const source = {
+      providerId: "deterministic-recovery",
+      readAfter: async () => ({
+        events: [],
+        blocks: [],
+        nextCursor: null,
+        hasMore: false,
+      }),
+      readFrom: async () => ({
+        events: [],
+        blocks: [],
+        nextCursor: null,
+        hasMore: false,
+      }),
+      readRange: async (
+        _start: string,
+        _end: string,
+        cursor: string | null,
+      ) => {
+        if (cursor === null) {
+          return {
+            events: [firstEvent],
+            blocks: [blockObservation("10", "hash-10", "hash-9")],
+            nextCursor: firstEvent.cursor,
+            hasMore: true,
+          };
+        }
+        if (!secondPageAvailable)
+          throw Object.assign(new Error("historical provider unavailable"), {
+            kind: "unavailable",
+            retryable: true,
+          });
+        assert.equal(cursor, firstEvent.cursor);
+        if (firstReadAfterRestart) {
+          firstReadAfterRestart = false;
+          return {
+            events: [],
+            blocks: [secondBlock],
+            nextCursor: "recovery-end",
+            hasMore: false,
+          };
+        }
+        throw new Error("unexpected repeated recovery page");
+      },
+    };
+    const repository = await DurableFileDiscoveryRepository.open(path);
+    const firstProcessor = new PayoutDiscoveryProcessor(
+      config,
+      source,
+      new MutableReader(makePayout()),
+      repository,
+    );
+    await assert.rejects(
+      firstProcessor.recoverRange("10", "11", 700),
+      /historical provider unavailable/,
+    );
+    const failed = await repository.getSnapshot();
+    const recovery = [...failed.recoveries.values()][0];
+    assert.equal(recovery?.status, "unavailable");
+    assert.equal(recovery?.cursor, firstEvent.cursor);
+    assert.equal(failed.events.size, 1);
+    assert.equal(failed.jobs.size, 0);
+
+    secondPageAvailable = true;
+    const restarted = await DurableFileDiscoveryRepository.open(path);
+    const result = await new PayoutDiscoveryProcessor(
+      config,
+      source,
+      new MutableReader(makePayout()),
+      restarted,
+    ).recoverRange("10", "11", 800);
+    assert.equal(result.jobsCreated, 0);
+    const completed = await restarted.getSnapshot();
+    assert.equal([...completed.recoveries.values()][0]?.status, "validated");
+    assert.equal([...completed.recoveries.values()][0]?.blocksChecked, 2);
+    assert.equal(completed.jobs.size, 0);
+    assert.equal(completed.failures.size, 0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+void test("conflicting archived block and event observations are durable and preserve original evidence", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "disburse-archive-"));
+  try {
+    const path = join(directory, "index.json");
+    const repository = await DurableFileDiscoveryRepository.open(path);
+    const originalBlock = blockObservation("20", "hash-20", "hash-19");
+    await repository.archiveBlocks([originalBlock], 100);
+    await assert.rejects(
+      repository.archiveBlocks(
+        [{ ...originalBlock, blockHash: "changed-hash" }],
+        200,
+      ),
+      /differs from the provider response/,
+    );
+    let snapshot = await repository.getSnapshot();
+    assert.equal([...snapshot.blocks.values()][0]?.blockHash, "hash-20");
+    assert.equal(
+      [...snapshot.incidents.values()].some(
+        (incident) => incident.type === "conflicting-historical-block",
+      ),
+      true,
+    );
+
+    const event = makeRawEvent("payout_reserved", "archive-event");
+    await repository.commitEvent({
+      sourceKey: "archive",
+      providerId: "test",
+      event: decodeNearEvent(event),
+      observation: null,
+      discrepancy: null,
+      job: null,
+      nextCursor: event.cursor,
+      nowMs: 100,
+    });
+    const changed = {
+      ...event,
+      log: event.log.replace('"input_amount":"100"', '"input_amount":"101"'),
+    };
+    await assert.rejects(
+      repository.commitEvent({
+        sourceKey: "archive",
+        providerId: "test",
+        event: decodeNearEvent(changed),
+        observation: null,
+        discrepancy: null,
+        job: null,
+        nextCursor: changed.cursor,
+        nowMs: 200,
+      }),
+      /changed content/,
+    );
+    snapshot = await DurableFileDiscoveryRepository.open(path).then((opened) =>
+      opened.getSnapshot(),
+    );
+    assert.equal([...snapshot.events.values()][0]?.event.rawLog, event.log);
+    assert.equal(
+      [...snapshot.incidents.values()].some(
+        (incident) => incident.type === "conflicting-historical-event",
+      ),
+      true,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+void test("archive write failure is recorded and cannot advance the discovery cursor", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "disburse-archive-failure-"));
+  try {
+    let failOnce = true;
+    const repository = await DurableFileDiscoveryRepository.open(
+      join(directory, "index.json"),
+      {
+        beforeCommit: () => {
+          if (failOnce) {
+            failOnce = false;
+            throw new Error("archive disk write failed");
+          }
+        },
+      },
+    );
+    const source = {
+      providerId: "deterministic-recovery",
+      readAfter: async () => ({
+        events: [],
+        blocks: [blockObservation("30", "hash-30", "hash-29")],
+        nextCursor: "checkpoint-30",
+        hasMore: false,
+      }),
+      readFrom: async () => ({
+        events: [],
+        blocks: [],
+        nextCursor: null,
+        hasMore: false,
+      }),
+      readRange: async () => ({
+        events: [],
+        blocks: [],
+        nextCursor: null,
+        hasMore: false,
+      }),
+    };
+    const processor = new PayoutDiscoveryProcessor(
+      config,
+      source,
+      new MutableReader(makePayout()),
+      repository,
+    );
+    await assert.rejects(
+      processor.processNextPage(900),
+      /archive disk write failed/,
+    );
+    assert.equal(
+      await repository.getCursor(
+        JSON.stringify([config.networkId, config.contractId]),
+      ),
+      null,
+    );
+    assert.equal(
+      [...(await repository.getSnapshot()).incidents.values()].some(
+        (incident) => incident.type === "archive-write-failure",
+      ),
+      true,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+void test("malformed recognized event leaves the durable cursor unchanged and records raw evidence", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "disburse-malformed-"));
+  try {
+    const event = makeRawEvent("payout_reserved", "malformed-stop", 0, {
+      fields: { input_amount: "bad" },
+    });
+    const repository = await DurableFileDiscoveryRepository.open(
+      join(directory, "index.json"),
+    );
+    const processor = new PayoutDiscoveryProcessor(
+      config,
+      new MockNearEventSource([event]),
+      new MutableReader(makePayout()),
+      repository,
+    );
+    await assert.rejects(
+      processor.processNextPage(100),
+      /Invalid payout reservation fields/,
+    );
+    assert.equal(
+      await repository.getCursor(
+        JSON.stringify([config.networkId, config.contractId]),
+      ),
+      null,
+    );
+    const incidents = [...(await repository.getSnapshot()).incidents.values()];
+    assert.equal(
+      incidents.some(
+        (incident) =>
+          typeof incident.observed === "object" &&
+          incident.observed !== null &&
+          "rawLog" in incident.observed &&
+          incident.observed.rawLog === event.log,
+      ),
+      true,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+function blockObservation(
+  blockHeight: string,
+  blockHash: string,
+  parentBlockHash: string,
+) {
+  return {
+    networkId: config.networkId,
+    contractId: config.contractId,
+    blockHeight,
+    blockHash,
+    parentBlockHash,
+    providerId: "deterministic-recovery",
+    contractReceiptCount: 1,
+    contractLogCount: 1,
+    canonicalPayloadHash: "a".repeat(64),
+  };
+}
+
 void test("reconciliation refreshes stale observations and records missing or unavailable payouts without authorizing work", async () => {
   const directory = await mkdtemp(join(tmpdir(), "disburse-discovery-"));
   try {
@@ -470,6 +847,7 @@ void test("reconciliation refreshes stale observations and records missing or un
     );
     await repository.commitEvent({
       sourceKey: "source",
+      providerId: "test-provider",
       event,
       observation: {
         networkId: config.networkId,
@@ -509,6 +887,12 @@ void test("reconciliation refreshes stale observations and records missing or un
     const latest = await repository.getSnapshot();
     assert.equal(latest.observations.size, 1); // RPC failure did not erase the last observed view.
     assert.equal(latest.discrepancies.at(-1)?.kind, "rpc-error");
+    assert.equal(
+      [...latest.incidents.values()].some(
+        (incident) => incident.type === "reconciliation-failure",
+      ),
+      true,
+    );
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -567,7 +951,7 @@ void test("historical backfill and live replay share idempotent payout jobs; unk
   }
 });
 
-void test("network/contract mismatches and event/view disagreement are quarantined without jobs", async () => {
+void test("network/contract mismatch stops before cursor commit", async () => {
   const directory = await mkdtemp(join(tmpdir(), "disburse-discovery-"));
   try {
     const wrongContract = {
@@ -577,24 +961,32 @@ void test("network/contract mismatches and event/view disagreement are quarantin
         contractId: "attacker.testnet",
       },
     };
-    const badAmount = makeRawEvent("payout_reserved", "bad-amount", 1, {
-      fields: { input_amount: "101" },
-    });
     const repository = await DurableFileDiscoveryRepository.open(
       join(directory, "index.json"),
     );
     const processor = new PayoutDiscoveryProcessor(
       { ...config, pageSize: 10 },
-      new MockNearEventSource([wrongContract, badAmount]),
+      new MockNearEventSource([wrongContract]),
       new MutableReader(makePayout()),
       repository,
     );
-    await processor.processNextPage(100);
+    await assert.rejects(
+      processor.processNextPage(100),
+      /does not match configured NEAR network or contract/,
+    );
     const snapshot = await repository.getSnapshot();
     assert.equal(snapshot.jobs.size, 0);
-    assert.deepEqual(
-      snapshot.discrepancies.map((item) => item.kind),
-      ["event-identity-mismatch", "event-view-mismatch"],
+    assert.equal(
+      await repository.getCursor(
+        JSON.stringify([config.networkId, config.contractId]),
+      ),
+      null,
+    );
+    assert.equal(
+      [...snapshot.incidents.values()].some(
+        (incident) => incident.type === "network-mismatch",
+      ),
+      true,
     );
   } finally {
     await rm(directory, { recursive: true, force: true });

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { dirname } from "node:path";
 import { mkdir, open, readFile, rename, rm } from "node:fs/promises";
 import {
@@ -22,6 +23,10 @@ import {
 } from "../domain/payout.ts";
 import type {
   DiscoveryDiscrepancy,
+  DiscoveryBlockObservation,
+  ArchivedDiscoveryBlock,
+  DiscoveryIncident,
+  HistoricalRecoveryRecord,
   DiscoveryEventCommit,
   DiscoveryFailure,
   DiscoveryObservation,
@@ -34,6 +39,9 @@ import { nearEventKey, nearPayoutKey } from "./repository.ts";
 interface FileState {
   cursors: Map<string, string>;
   events: Map<string, IndexedEventRecord>;
+  blocks: Map<string, ArchivedDiscoveryBlock>;
+  incidents: Map<string, DiscoveryIncident>;
+  recoveries: Map<string, HistoricalRecoveryRecord>;
   observations: Map<string, DiscoveryObservation>;
   discrepancies: (DiscoveryDiscrepancy & { payoutKey: string | null })[];
   jobs: Map<string, ExecutionJobRecord>;
@@ -42,9 +50,12 @@ interface FileState {
 }
 
 interface SerializedState {
-  readonly version: 1;
+  readonly version: 2;
   readonly cursors: readonly (readonly [string, string])[];
   readonly events: readonly (readonly [string, IndexedEventRecord])[];
+  readonly blocks: readonly (readonly [string, ArchivedDiscoveryBlock])[];
+  readonly incidents: readonly (readonly [string, DiscoveryIncident])[];
+  readonly recoveries: readonly (readonly [string, HistoricalRecoveryRecord])[];
   readonly observations: readonly (readonly [string, DiscoveryObservation])[];
   readonly discrepancies: readonly (DiscoveryDiscrepancy & {
     payoutKey: string | null;
@@ -96,11 +107,273 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
     return this.state.cursors.get(sourceKey) ?? null;
   }
 
+  async assertSourceReady(
+    networkId: string,
+    contractId: string,
+  ): Promise<void> {
+    const blocking = [...this.state.incidents.values()].find(
+      (incident) =>
+        incident.networkId === networkId &&
+        incident.contractId === contractId &&
+        incident.status === "open" &&
+        !["provider-outage", "rate-limit", "reconciliation-failure"].includes(
+          incident.type,
+        ),
+    );
+    if (blocking) {
+      throw new DiscoveryIntegrityError(
+        blocking.type,
+        `Discovery is paused by unresolved ${blocking.type} incident${blocking.blockHeight ? ` at block ${blocking.blockHeight}` : ""}`,
+        blocking,
+      );
+    }
+  }
+
   async commitCursor(sourceKey: string, cursor: string): Promise<void> {
     await this.exclusive(async () => {
       if (this.state.cursors.get(sourceKey) === cursor) return;
       const next = cloneState(this.state);
       next.cursors.set(sourceKey, cursor);
+      await this.persist(next);
+      this.state = next;
+    });
+  }
+
+  async archiveBlocks(
+    observations: readonly DiscoveryBlockObservation[],
+    nowMs: number,
+  ): Promise<void> {
+    if (observations.length === 0) return;
+    await this.exclusive(async () => {
+      const next = cloneState(this.state);
+      const ordered = [...observations].sort((left, right) =>
+        BigInt(left.blockHeight) < BigInt(right.blockHeight)
+          ? -1
+          : BigInt(left.blockHeight) > BigInt(right.blockHeight)
+            ? 1
+            : 0,
+      );
+      for (let index = 0; index < ordered.length; index += 1) {
+        const observed = ordered[index]!;
+        const priorInPage = index > 0 ? ordered[index - 1] : undefined;
+        const priorHeight = BigInt(observed.blockHeight) - 1n;
+        const predecessor =
+          priorInPage && BigInt(priorInPage.blockHeight) === priorHeight
+            ? priorInPage
+            : next.blocks.get(
+                discoveryBlockKey({
+                  ...observed,
+                  blockHeight: priorHeight.toString(),
+                }),
+              );
+        const nextHeight = BigInt(observed.blockHeight) + 1n;
+        const successor =
+          next.blocks.get(
+            discoveryBlockKey({
+              ...observed,
+              blockHeight: nextHeight.toString(),
+            }),
+          ) ?? ordered[index + 1];
+        const discontinuity =
+          (priorInPage &&
+            BigInt(observed.blockHeight) !==
+              BigInt(priorInPage.blockHeight) + 1n) ||
+          (predecessor && predecessor.blockHash !== observed.parentBlockHash) ||
+          (successor &&
+            BigInt(successor.blockHeight) === nextHeight &&
+            successor.parentBlockHash !== observed.blockHash);
+        if (discontinuity) {
+          const incidentInput = {
+            type: "block-continuity-failure" as const,
+            networkId: observed.networkId,
+            contractId: observed.contractId,
+            blockHeight: observed.blockHeight,
+            eventKey: null,
+            expected: predecessor
+              ? { parentBlockHash: predecessor.blockHash }
+              : { contiguousFrom: priorInPage?.blockHeight ?? null },
+            observed: {
+              blockHeight: observed.blockHeight,
+              blockHash: observed.blockHash,
+              parentBlockHash: observed.parentBlockHash,
+            },
+            actionRequired:
+              "Stop ingestion, preserve the checkpoint, and investigate the bounded range before resuming.",
+          };
+          const incident = buildIncident(
+            incidentInput,
+            nowMs,
+            next.incidents.get(incidentKey(incidentInput)),
+          );
+          next.incidents.set(incident.incidentId, incident);
+          await this.persist(next);
+          this.state = next;
+          throw new DiscoveryIntegrityError(
+            "block-continuity-failure",
+            `Block chain continuity failed at ${observed.blockHeight}`,
+            incident,
+          );
+        }
+        const key = discoveryBlockKey(observed);
+        const existing = next.blocks.get(key);
+        if (existing && !sameBlockObservation(existing, observed)) {
+          const incident = buildIncident(
+            {
+              type: "conflicting-historical-block",
+              networkId: observed.networkId,
+              contractId: observed.contractId,
+              blockHeight: observed.blockHeight,
+              eventKey: null,
+              expected: existing,
+              observed,
+              actionRequired:
+                "Stop ingestion and rescan this finalized range. Preserve both observations; do not replace the archived block.",
+            },
+            nowMs,
+            next.incidents.get(blockIncidentId(observed)),
+          );
+          next.incidents.set(incident.incidentId, incident);
+          await this.persist(next);
+          this.state = next;
+          throw new DiscoveryIntegrityError(
+            "conflicting-historical-block",
+            `Archived block ${observed.blockHeight} differs from the provider response`,
+            incident,
+          );
+        }
+        if (existing) {
+          next.blocks.set(key, { ...existing, lastObservedAtMs: nowMs });
+        } else {
+          next.blocks.set(key, {
+            ...observed,
+            firstObservedAtMs: nowMs,
+            lastObservedAtMs: nowMs,
+          });
+        }
+      }
+      await this.persist(next);
+      this.state = next;
+    });
+  }
+
+  async recordIncident(
+    input: Omit<
+      DiscoveryIncident,
+      "incidentId" | "detectedAtMs" | "lastSeenAtMs" | "occurrences" | "status"
+    > & { readonly status?: DiscoveryIncident["status"] },
+    nowMs: number,
+  ): Promise<void> {
+    await this.exclusive(async () => {
+      const next = cloneState(this.state);
+      const id = incidentKey(input);
+      next.incidents.set(
+        id,
+        buildIncident(input, nowMs, next.incidents.get(id), input.status),
+      );
+      await this.persist(next);
+      this.state = next;
+    });
+  }
+
+  async startRecovery(
+    recovery: Omit<
+      HistoricalRecoveryRecord,
+      | "status"
+      | "updatedAtMs"
+      | "cursor"
+      | "blocksChecked"
+      | "eventsChecked"
+      | "summary"
+    >,
+  ): Promise<HistoricalRecoveryRecord> {
+    return this.exclusive(async () => {
+      const existing = this.state.recoveries.get(recovery.recoveryId);
+      if (existing) return existing;
+      const created: HistoricalRecoveryRecord = {
+        ...recovery,
+        status: "running",
+        updatedAtMs: recovery.startedAtMs,
+        cursor: null,
+        blocksChecked: 0,
+        eventsChecked: 0,
+        summary: "Recovery scan started",
+      };
+      const next = cloneState(this.state);
+      next.recoveries.set(created.recoveryId, created);
+      await this.persist(next);
+      this.state = next;
+      return created;
+    });
+  }
+
+  async updateRecovery(
+    recoveryId: string,
+    update: Pick<
+      HistoricalRecoveryRecord,
+      | "status"
+      | "updatedAtMs"
+      | "cursor"
+      | "blocksChecked"
+      | "eventsChecked"
+      | "summary"
+    >,
+  ): Promise<void> {
+    await this.exclusive(async () => {
+      const existing = this.state.recoveries.get(recoveryId);
+      if (!existing) throw new Error("Unknown historical recovery ID");
+      const next = cloneState(this.state);
+      next.recoveries.set(recoveryId, { ...existing, ...update });
+      await this.persist(next);
+      this.state = next;
+    });
+  }
+
+  async resolveIncidentsInRange(
+    networkId: string,
+    contractId: string,
+    startBlockHeight: string,
+    endBlockHeight: string,
+    nowMs: number,
+  ): Promise<void> {
+    const start = BigInt(startBlockHeight);
+    const end = BigInt(endBlockHeight);
+    await this.exclusive(async () => {
+      const next = cloneState(this.state);
+      let changed = false;
+      for (const [id, incident] of next.incidents) {
+        const recoverableWithoutHeight = [
+          "provider-outage",
+          "rate-limit",
+          "reconciliation-failure",
+          "network-mismatch",
+          "malformed-provider-response",
+          "archive-write-failure",
+        ].includes(incident.type);
+        const recoverableInRange = [
+          "block-continuity-failure",
+          "missing-history",
+          "network-mismatch",
+          "malformed-provider-response",
+        ].includes(incident.type);
+        if (
+          incident.networkId !== networkId ||
+          incident.contractId !== contractId ||
+          incident.status !== "open" ||
+          (!recoverableWithoutHeight &&
+            (incident.blockHeight === null ||
+              BigInt(incident.blockHeight) < start ||
+              BigInt(incident.blockHeight) > end ||
+              !recoverableInRange))
+        )
+          continue;
+        next.incidents.set(id, {
+          ...incident,
+          status: "resolved",
+          lastSeenAtMs: nowMs,
+        });
+        changed = true;
+      }
+      if (!changed) return;
       await this.persist(next);
       this.state = next;
     });
@@ -325,17 +598,56 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
     return this.exclusive(async () => {
       const eventKey = nearEventKey(commit.event);
       const existing = this.state.events.get(eventKey);
-      if (existing && !sameEventContent(existing.event, commit.event)) {
-        throw new Error(
-          "A stable NEAR event identity was received with conflicting content",
+      const next = cloneState(this.state);
+      const observedHash = canonicalEventPayloadHash(commit.event);
+      if (
+        existing &&
+        (existing.canonicalPayloadHash !== observedHash ||
+          !sameEventIdentity(existing.event, commit.event))
+      ) {
+        const incidentInput = {
+          type: "conflicting-historical-event",
+          networkId: commit.event.identity.networkId,
+          contractId: commit.event.identity.contractId,
+          blockHeight: commit.event.identity.blockHeight,
+          eventKey,
+          expected: {
+            providerId: existing.providerId,
+            canonicalPayloadHash: existing.canonicalPayloadHash,
+            identity: existing.event.identity,
+            rawLog: existing.event.rawLog,
+          },
+          observed: {
+            providerId: commit.providerId,
+            canonicalPayloadHash: observedHash,
+            identity: commit.event.identity,
+            rawLog: commit.event.rawLog,
+          },
+          actionRequired:
+            "Stop the affected scan and investigate the preserved original and new event payloads.",
+        } as const;
+        const incident = buildIncident(
+          incidentInput,
+          commit.nowMs,
+          next.incidents.get(incidentKey(incidentInput)),
+        );
+        next.incidents.set(incident.incidentId, incident);
+        await this.persist(next);
+        this.state = next;
+        throw new DiscoveryIntegrityError(
+          "conflicting-historical-event",
+          "A stable NEAR event identity was returned with changed content",
+          incident,
         );
       }
-      const next = cloneState(this.state);
       next.failures.delete(eventKey);
       if (!existing) {
         next.events.set(eventKey, {
           eventKey,
           event: commit.event,
+          providerId: commit.providerId,
+          canonicalPayloadHash: observedHash,
+          firstObservedAtMs: commit.nowMs,
           processedAtMs: commit.nowMs,
         });
       }
@@ -385,6 +697,9 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
     return {
       cursors: new Map(state.cursors),
       events: new Map(state.events),
+      blocks: new Map(state.blocks),
+      incidents: new Map(state.incidents),
+      recoveries: new Map(state.recoveries),
       observations: new Map(state.observations),
       discrepancies: [...state.discrepancies],
       jobs: new Map(state.jobs),
@@ -401,6 +716,32 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
       const next = cloneState(this.state);
       if (observation) next.observations.set(payoutKey, observation);
       if (discrepancy) next.discrepancies.push({ ...discrepancy, payoutKey });
+      if (
+        discrepancy &&
+        ["rpc-error", "event-view-mismatch", "payout-missing"].includes(
+          discrepancy.kind,
+        )
+      ) {
+        const [networkId, contractId] = parsePayoutKeyTuple(payoutKey);
+        const incidentInput = {
+          type: "reconciliation-failure" as const,
+          networkId,
+          contractId,
+          blockHeight: null,
+          eventKey: payoutKey,
+          expected: null,
+          observed: { message: discrepancy.message },
+          actionRequired:
+            "Retry the read-only contract view and preserve the last successful payout observation until the read succeeds.",
+        };
+        const id = incidentKey(incidentInput);
+        const incident = buildIncident(
+          incidentInput,
+          discrepancy.createdAtMs,
+          next.incidents.get(id),
+        );
+        next.incidents.set(id, incident);
+      }
       await this.persist(next);
       this.state = next;
     });
@@ -417,25 +758,42 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
       const previous = this.state.failures.get(failureKey);
       const attempts = (previous?.attempts ?? 0) + 1;
       const next = cloneState(this.state);
+      const classification = errorKind(error) ?? "unknown";
       next.failures.set(failureKey, {
         failureKey,
         sourceKey,
         eventIdentity: event.identity,
         stage: "contract-view",
-        classification:
-          error instanceof Error && "kind" in error
-            ? String(error.kind)
-            : "unknown",
-        retryable: true,
+        classification,
+        retryable: errorRetryable(error),
         attempts,
-        nextRetryAtMs:
-          nowMs + Math.min(60_000, 1_000 * 2 ** Math.min(attempts - 1, 6)),
+        nextRetryAtMs: errorRetryable(error)
+          ? nowMs + Math.min(60_000, 1_000 * 2 ** Math.min(attempts - 1, 6))
+          : nowMs,
         message:
           error instanceof Error
             ? error.message
             : "Unknown contract view failure",
         occurredAtMs: nowMs,
       });
+      const incident = buildIncident(
+        {
+          type: "reconciliation-failure",
+          networkId: event.identity.networkId,
+          contractId: event.identity.contractId,
+          blockHeight: event.identity.blockHeight,
+          eventKey: failureKey,
+          expected: null,
+          observed: { classification, message: errorMessage(error) },
+          actionRequired:
+            "Recheck the read-only contract view and preserve the previous payout observation until the read succeeds.",
+        },
+        nowMs,
+        next.incidents.get(
+          JSON.stringify(["reconciliation-failure", failureKey]),
+        ),
+      );
+      next.incidents.set(incident.incidentId, incident);
       await this.persist(next);
       this.state = next;
     });
@@ -451,25 +809,35 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
       const previous = this.state.failures.get(failureKey);
       const attempts = (previous?.attempts ?? 0) + 1;
       const next = cloneState(this.state);
+      const classification = errorKind(error) ?? "unknown";
+      const retryable = errorRetryable(error);
       next.failures.set(failureKey, {
         failureKey,
         sourceKey,
         eventIdentity: null,
         stage: "event-source",
-        classification:
-          error instanceof Error && "kind" in error
-            ? String(error.kind)
-            : "unknown",
-        retryable: true,
+        classification,
+        retryable,
         attempts,
-        nextRetryAtMs:
-          nowMs + Math.min(60_000, 1_000 * 2 ** Math.min(attempts - 1, 6)),
+        nextRetryAtMs: retryable
+          ? nowMs + Math.min(60_000, 1_000 * 2 ** Math.min(attempts - 1, 6))
+          : nowMs,
         message:
           error instanceof Error
             ? error.message
             : "Unknown event source failure",
         occurredAtMs: nowMs,
       });
+      const incidentInput = providerIncidentInput(sourceKey, error);
+      if (incidentInput) {
+        const id = incidentKey(incidentInput);
+        const incident = buildIncident(
+          incidentInput,
+          nowMs,
+          next.incidents.get(id),
+        );
+        next.incidents.set(id, incident);
+      }
       await this.persist(next);
       this.state = next;
     });
@@ -529,6 +897,9 @@ function emptyState(): FileState {
   return {
     cursors: new Map(),
     events: new Map(),
+    blocks: new Map(),
+    incidents: new Map(),
+    recoveries: new Map(),
     observations: new Map(),
     discrepancies: [],
     jobs: new Map(),
@@ -541,6 +912,9 @@ function cloneState(state: FileState): FileState {
   return {
     cursors: new Map(state.cursors),
     events: new Map(state.events),
+    blocks: new Map(state.blocks),
+    incidents: new Map(state.incidents),
+    recoveries: new Map(state.recoveries),
     observations: new Map(state.observations),
     discrepancies: [...state.discrepancies],
     jobs: new Map(state.jobs),
@@ -551,9 +925,12 @@ function cloneState(state: FileState): FileState {
 
 function serialize(state: FileState): SerializedState {
   return {
-    version: 1,
+    version: 2,
     cursors: [...state.cursors],
     events: [...state.events],
+    blocks: [...state.blocks],
+    incidents: [...state.incidents],
+    recoveries: [...state.recoveries],
     observations: [...state.observations],
     discrepancies: state.discrepancies,
     jobs: [...state.jobs],
@@ -564,7 +941,7 @@ function serialize(state: FileState): SerializedState {
 
 function deserialize(text: string): FileState {
   const value: unknown = JSON.parse(text);
-  if (!isRecord(value) || value.version !== 1)
+  if (!isRecord(value) || (value.version !== 1 && value.version !== 2))
     throw new Error("Unsupported discovery file version");
   const cursors = stringMapFrom(value.cursors);
   if ([...cursors.values()].some((cursor) => !cursor.trim())) {
@@ -578,9 +955,24 @@ function deserialize(text: string): FileState {
   ) {
     throw new Error("Corrupt discovery fencing token");
   }
+  const events = mapFrom<string, IndexedEventRecord>(value.events);
+  for (const [key, event] of events) {
+    if (!event.providerId || !event.canonicalPayloadHash) {
+      events.set(key, {
+        ...event,
+        providerId: event.providerId ?? "legacy-unknown",
+        canonicalPayloadHash:
+          event.canonicalPayloadHash ?? canonicalEventPayloadHash(event.event),
+        firstObservedAtMs: event.firstObservedAtMs ?? event.processedAtMs,
+      });
+    }
+  }
   return {
     cursors,
-    events: mapFrom(value.events),
+    events,
+    blocks: value.version === 2 ? mapFrom(value.blocks) : new Map(),
+    incidents: value.version === 2 ? mapFrom(value.incidents) : new Map(),
+    recoveries: value.version === 2 ? mapFrom(value.recoveries) : new Map(),
     observations: mapFrom(value.observations),
     discrepancies: arrayOf(value.discrepancies),
     jobs: mapFrom(value.jobs),
@@ -658,14 +1050,282 @@ function isMissingFile(error: unknown): boolean {
   );
 }
 
-function sameEventContent(
+export class DiscoveryIntegrityError extends Error {
+  readonly kind: string;
+  readonly incident: DiscoveryIncident;
+
+  constructor(kind: string, message: string, incident: DiscoveryIncident) {
+    super(message);
+    this.name = "DiscoveryIntegrityError";
+    this.kind = kind;
+    this.incident = incident;
+  }
+}
+
+export function canonicalEventPayloadHash(
+  event: IndexedEventRecord["event"],
+): string {
+  let canonicalPayload = event.rawLog;
+  if (event.rawLog.startsWith("EVENT_JSON:")) {
+    try {
+      const json = event.rawLog
+        .slice("EVENT_JSON:".length)
+        .replace(
+          /("(?:payout_id|campaign_id)"\s*:\s*)(\d+)(?=\s*[,}])/g,
+          (_match, prefix: string, digits: string) =>
+            `${prefix}${JSON.stringify(digits)}`,
+        );
+      canonicalPayload = stableJson(JSON.parse(json) as unknown);
+    } catch {
+      // Preserve and hash malformed payload bytes exactly as observed.
+    }
+  }
+  return createHash("sha256").update(canonicalPayload, "utf8").digest("hex");
+}
+
+function sameEventIdentity(
   left: IndexedEventRecord["event"],
   right: IndexedEventRecord["event"],
 ): boolean {
+  return JSON.stringify(left.identity) === JSON.stringify(right.identity);
+}
+
+function sameBlockObservation(
+  archived: ArchivedDiscoveryBlock,
+  observed: DiscoveryBlockObservation,
+): boolean {
   return (
-    JSON.stringify({ ...left, cursor: "" }) ===
-    JSON.stringify({ ...right, cursor: "" })
+    archived.networkId === observed.networkId &&
+    archived.contractId === observed.contractId &&
+    archived.blockHeight === observed.blockHeight &&
+    archived.blockHash === observed.blockHash &&
+    archived.parentBlockHash === observed.parentBlockHash &&
+    archived.providerId === observed.providerId &&
+    archived.contractReceiptCount === observed.contractReceiptCount &&
+    archived.contractLogCount === observed.contractLogCount &&
+    archived.canonicalPayloadHash === observed.canonicalPayloadHash
   );
+}
+
+function discoveryBlockKey(block: DiscoveryBlockObservation): string {
+  return JSON.stringify([block.networkId, block.contractId, block.blockHeight]);
+}
+
+function incidentKey(
+  incident: Pick<
+    DiscoveryIncident,
+    "type" | "networkId" | "contractId" | "blockHeight" | "eventKey"
+  >,
+): string {
+  return JSON.stringify([
+    incident.type,
+    incident.networkId,
+    incident.contractId,
+    incident.blockHeight,
+    incident.eventKey,
+  ]);
+}
+
+function blockIncidentId(block: DiscoveryBlockObservation): string {
+  return incidentKey({
+    type: "conflicting-historical-block",
+    networkId: block.networkId,
+    contractId: block.contractId,
+    blockHeight: block.blockHeight,
+    eventKey: null,
+  });
+}
+
+function buildIncident(
+  input: Omit<
+    DiscoveryIncident,
+    "incidentId" | "detectedAtMs" | "lastSeenAtMs" | "occurrences" | "status"
+  > & { readonly status?: DiscoveryIncident["status"] },
+  nowMs: number,
+  previous?: DiscoveryIncident,
+  status: DiscoveryIncident["status"] = input.status ?? "open",
+): DiscoveryIncident {
+  const id = incidentKey(input);
+  return {
+    ...input,
+    incidentId: id,
+    detectedAtMs: previous?.detectedAtMs ?? nowMs,
+    lastSeenAtMs: nowMs,
+    occurrences: (previous?.occurrences ?? 0) + 1,
+    status,
+  };
+}
+
+function providerIncidentInput(
+  sourceKey: string,
+  error: unknown,
+): Omit<
+  DiscoveryIncident,
+  "incidentId" | "detectedAtMs" | "lastSeenAtMs" | "occurrences" | "status"
+> | null {
+  const kind = errorKind(error);
+  if (!kind) return null;
+  const networkContract = parseSourceKey(sourceKey);
+  const typeByKind: Readonly<Record<string, DiscoveryIncident["type"]>> = {
+    timeout: "provider-outage",
+    unavailable: "provider-outage",
+    "rate-limited": "rate-limit",
+    "missing-history": "missing-history",
+    malformed: "malformed-provider-response",
+    "block-continuity-failure": "block-continuity-failure",
+    "network-mismatch": "network-mismatch",
+    configuration: "network-mismatch",
+    "cursor-corruption": "cursor-corruption",
+    "conflicting-historical-block": "conflicting-historical-block",
+    "conflicting-historical-event": "conflicting-historical-event",
+  };
+  const type = typeByKind[kind];
+  if (!type) return null;
+  const context = errorContext(error);
+  const expectedValues = Object.fromEntries(
+    Object.entries(context)
+      .filter(([key]) => key.startsWith("expected"))
+      .map(([key, value]) => [
+        key
+          .slice("expected".length)
+          .replace(/^./u, (letter) => letter.toLowerCase()),
+        value,
+      ]),
+  );
+  const observedValues = Object.fromEntries(
+    Object.entries(context)
+      .filter(([key]) => key.startsWith("observed"))
+      .map(([key, value]) => [
+        key
+          .slice("observed".length)
+          .replace(/^./u, (letter) => letter.toLowerCase()),
+        value,
+      ]),
+  );
+  return {
+    type,
+    networkId: networkContract.networkId,
+    contractId: networkContract.contractId,
+    blockHeight:
+      typeof context.blockHeight === "string" ? context.blockHeight : null,
+    eventKey: null,
+    expected:
+      Object.keys(expectedValues).length > 0
+        ? expectedValues
+        : typeof context.blockHeight === "string"
+          ? { blockHeight: context.blockHeight }
+          : null,
+    observed: {
+      ...observedValues,
+      classification: kind,
+      message: errorMessage(error),
+    },
+    actionRequired: actionForIncident(type),
+  };
+}
+
+function parseSourceKey(sourceKey: string): {
+  networkId: string;
+  contractId: string;
+} {
+  try {
+    const parsed: unknown = JSON.parse(sourceKey);
+    if (
+      Array.isArray(parsed) &&
+      typeof parsed[0] === "string" &&
+      typeof parsed[1] === "string"
+    )
+      return { networkId: parsed[0], contractId: parsed[1] };
+  } catch {
+    // Recovery and custom source keys may not encode the tuple.
+  }
+  return { networkId: "unknown", contractId: "unknown" };
+}
+
+function parsePayoutKeyTuple(payoutKey: string): [string, string] {
+  try {
+    const value: unknown = JSON.parse(payoutKey);
+    if (
+      Array.isArray(value) &&
+      value.length === 3 &&
+      typeof value[0] === "string" &&
+      typeof value[1] === "string"
+    ) {
+      return [value[0], value[1]];
+    }
+  } catch {
+    // Corrupt keys are recorded under unknown scope; never infer financial state from them.
+  }
+  return ["unknown", "unknown"];
+}
+
+function errorKind(error: unknown): string | null {
+  return typeof error === "object" &&
+    error !== null &&
+    "kind" in error &&
+    typeof error.kind === "string"
+    ? error.kind
+    : null;
+}
+
+function errorRetryable(error: unknown): boolean {
+  return typeof error === "object" &&
+    error !== null &&
+    "retryable" in error &&
+    typeof error.retryable === "boolean"
+    ? error.retryable
+    : true;
+}
+
+function errorContext(error: unknown): Readonly<Record<string, unknown>> {
+  return typeof error === "object" &&
+    error !== null &&
+    "context" in error &&
+    isRecord(error.context)
+    ? error.context
+    : {};
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Unknown discovery failure";
+}
+
+function actionForIncident(type: DiscoveryIncident["type"]): string {
+  switch (type) {
+    case "provider-outage":
+      return "Retry the read-only request after provider availability returns; keep the durable cursor unchanged.";
+    case "rate-limit":
+      return "Apply the documented provider rate limit and retry the same cursor.";
+    case "missing-history":
+      return "Stop at this height and verify provider retention or request an independent archive; do not skip the range.";
+    case "malformed-provider-response":
+      return "Stop ingestion and inspect the provider response schema without advancing the cursor.";
+    case "block-continuity-failure":
+      return "Stop ingestion and run a bounded historical rescan; require manual investigation if observations differ.";
+    case "network-mismatch":
+      return "Verify NEAR_NETWORK, the RPC chain ID, endpoint network, and contract account configuration.";
+    case "conflicting-historical-block":
+      return "Preserve both observations and require manual investigation before resuming.";
+    case "conflicting-historical-event":
+      return "Preserve both payloads and require manual investigation before resuming.";
+    case "cursor-corruption":
+      return "Preserve the repository and recover from its last known-good block after investigation.";
+    case "archive-write-failure":
+      return "Stop ingestion, verify local storage health and backups, then retry from the unchanged cursor.";
+    case "reconciliation-failure":
+      return "Retry the read-only NEAR payout view and retain the last valid observation.";
+  }
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (isRecord(value)) {
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

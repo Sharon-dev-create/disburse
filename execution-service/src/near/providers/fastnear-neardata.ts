@@ -285,14 +285,22 @@ export class FastNearNearDataEventSource implements NearEventSource {
         throw new NearDataProviderError(
           "block-continuity-failure",
           "Finalized block hash changed while resuming an event cursor",
-          { blockHeight: block.height, expectedBlockHash: current.currentBlockHash, observedBlockHash: block.hash },
+          {
+            blockHeight: block.height,
+            expectedBlockHash: current.currentBlockHash,
+            observedBlockHash: block.hash,
+          },
         );
       const offset = current.currentBlockHash === null ? 0 : current.logOffset;
       if (offset > block.logs.length)
         throw new NearDataProviderError(
           "cursor-corruption",
           "NEAR Data cursor exceeds block log count",
-          { blockHeight: block.height, logOffset: offset, availableLogs: block.logs.length },
+          {
+            blockHeight: block.height,
+            logOffset: offset,
+            availableLogs: block.logs.length,
+          },
         );
 
       for (let index = offset; index < block.logs.length; index += 1) {
@@ -345,12 +353,7 @@ export class FastNearNearDataEventSource implements NearEventSource {
   private async verifyNetwork(): Promise<void> {
     if (this.networkVerified) return;
     const body = await this.getJson("/v0/first_block");
-    const block = parseBlock(
-      body,
-      this.firstBlockHeight.toString(),
-      this.network,
-      this.contractId,
-    );
+    const block = parseBlock(body, null, this.network, this.contractId);
     if (BigInt(block.height) !== this.firstBlockHeight)
       throw new NearDataProviderError(
         "network-mismatch",
@@ -529,7 +532,12 @@ function parseBlock(
         throw new NearDataProviderError(
           "block-continuity-failure",
           "Receipt outcome block hash differs from its block header",
-          { blockHeight: height, expectedBlockHash: hash, observedBlockHash: blockHash, receiptId },
+          {
+            blockHeight: height,
+            expectedBlockHash: hash,
+            observedBlockHash: blockHash,
+            receiptId,
+          },
         );
       const rawLogs = array(result.logs, "execution logs");
       const receiptLogs: string[] = [];
@@ -584,7 +592,11 @@ function validateCanonicalBlock(
     throw new NearDataProviderError(
       "block-continuity-failure",
       "Finalized block hash changed while resuming an event cursor",
-      { blockHeight: block.height, expectedBlockHash: cursor.currentBlockHash, observedBlockHash: block.hash },
+      {
+        blockHeight: block.height,
+        expectedBlockHash: cursor.currentBlockHash,
+        observedBlockHash: block.hash,
+      },
     );
   if (
     cursor.currentBlockHash === null &&
@@ -594,13 +606,21 @@ function validateCanonicalBlock(
     throw new NearDataProviderError(
       "block-continuity-failure",
       "Finalized block chain does not connect to the persisted cursor",
-      { blockHeight: block.height, expectedParentHash: cursor.previousBlockHash, observedParentHash: block.previousHash },
+      {
+        blockHeight: block.height,
+        expectedParentHash: cursor.previousBlockHash,
+        observedParentHash: block.previousHash,
+      },
     );
   if (cursor.currentBlockHash !== null && cursor.logOffset > block.logs.length)
     throw new NearDataProviderError(
       "cursor-corruption",
       "NEAR Data cursor exceeds block log count",
-      { blockHeight: block.height, logOffset: cursor.logOffset, availableLogs: block.logs.length },
+      {
+        blockHeight: block.height,
+        logOffset: cursor.logOffset,
+        availableLogs: block.logs.length,
+      },
     );
 }
 
@@ -680,7 +700,10 @@ function decodeCursor(cursor: string): BlockCursor {
       currentBlockHash,
     };
   } catch {
-    throw new NearDataProviderError("cursor-corruption", "Invalid NEAR Data cursor");
+    throw new NearDataProviderError(
+      "cursor-corruption",
+      "Invalid NEAR Data cursor",
+    );
   }
 }
 

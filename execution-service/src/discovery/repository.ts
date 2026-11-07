@@ -104,7 +104,7 @@ export interface DiscoveryFailure {
   readonly eventIdentity: DecodedNearEvent["identity"] | null;
   readonly stage: "contract-view" | "event-source";
   readonly classification: string;
-  readonly retryable: true;
+  readonly retryable: boolean;
   readonly attempts: number;
   readonly nextRetryAtMs: number;
   readonly message: string;
@@ -113,6 +113,7 @@ export interface DiscoveryFailure {
 
 export interface DiscoveryEventCommit {
   readonly sourceKey: string;
+  readonly providerId: string;
   readonly event: DecodedNearEvent;
   readonly observation: DiscoveryObservation | null;
   readonly discrepancy: DiscoveryDiscrepancy | null;
@@ -136,6 +137,7 @@ export interface DiscoveryStateSnapshot {
 }
 
 export interface DiscoveryRepository extends JobRepository {
+  assertSourceReady(networkId: string, contractId: string): Promise<void>;
   getCursor(sourceKey: string): Promise<string | null>;
   /** Durably checkpoints source progress across ranges containing no events. */
   commitCursor(sourceKey: string, cursor: string): Promise<void>;
@@ -143,13 +145,42 @@ export interface DiscoveryRepository extends JobRepository {
     observations: readonly DiscoveryBlockObservation[],
     nowMs: number,
   ): Promise<void>;
-  recordIncident(incident: Omit<DiscoveryIncident, "incidentId" | "detectedAtMs" | "lastSeenAtMs" | "occurrences" | "status"> & { readonly status?: DiscoveryIncident["status"] }, nowMs: number): Promise<void>;
+  recordIncident(
+    incident: Omit<
+      DiscoveryIncident,
+      "incidentId" | "detectedAtMs" | "lastSeenAtMs" | "occurrences" | "status"
+    > & { readonly status?: DiscoveryIncident["status"] },
+    nowMs: number,
+  ): Promise<void>;
   startRecovery(
-    recovery: Omit<HistoricalRecoveryRecord, "status" | "updatedAtMs" | "cursor" | "blocksChecked" | "eventsChecked" | "summary">,
+    recovery: Omit<
+      HistoricalRecoveryRecord,
+      | "status"
+      | "updatedAtMs"
+      | "cursor"
+      | "blocksChecked"
+      | "eventsChecked"
+      | "summary"
+    >,
   ): Promise<HistoricalRecoveryRecord>;
   updateRecovery(
     recoveryId: string,
-    update: Pick<HistoricalRecoveryRecord, "status" | "updatedAtMs" | "cursor" | "blocksChecked" | "eventsChecked" | "summary">,
+    update: Pick<
+      HistoricalRecoveryRecord,
+      | "status"
+      | "updatedAtMs"
+      | "cursor"
+      | "blocksChecked"
+      | "eventsChecked"
+      | "summary"
+    >,
+  ): Promise<void>;
+  resolveIncidentsInRange(
+    networkId: string,
+    contractId: string,
+    startBlockHeight: string,
+    endBlockHeight: string,
+    nowMs: number,
   ): Promise<void>;
   commitEvent(
     commit: DiscoveryEventCommit,

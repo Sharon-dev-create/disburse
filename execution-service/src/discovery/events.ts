@@ -160,9 +160,9 @@ const KNOWN_NAMES = Object.keys(REQUIRED_FIELDS) as PayoutLifecycleEventName[];
 
 /** Strict decoder for the exact `disburse` NEP-297 v1 event envelope emitted by src/lib.rs. */
 export function decodeNearEvent(raw: RawNearEvent): DecodedNearEvent {
-  const rawLog = Buffer.from(raw.log, "utf8")
-    .subarray(0, MAX_RAW_LOG_BYTES)
-    .toString("utf8");
+  // Keep the exact provider payload for archival and incident investigation.
+  // Oversized logs remain malformed, but are not truncated before persistence.
+  const rawLog = raw.log;
   if (Buffer.byteLength(raw.log, "utf8") > MAX_RAW_LOG_BYTES) {
     return malformed(
       raw,

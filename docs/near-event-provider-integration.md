@@ -98,3 +98,20 @@ finalized-only. The adapter avoids raw response and credential logging.
 The service must still add deployment-specific metrics/alerts and a transactional multi-worker
 repository before production. Public-provider rate limiting and archive availability can delay
 backfill. A contract payout missing from an incomplete index is not evidence that it does not exist.
+
+## Historical retention classification
+
+The official block reference describes finalized block lookup and a missing/null response when a
+height is unavailable. The provider also documents sequential historical reads, but does not state a
+retention period or archival SLA. We therefore distinguish endpoint capability from a durable
+retention promise: **no formal retention SLA was found**. We observed historical blocks available
+during a read-only check, but that is not a guarantee. The documentation does not give receipt
+outcomes/logs a separate retention commitment from the enclosing block response. Testnet and mainnet
+practical availability are not established as equal. If a requested height is missing, the adapter
+fails with `missing-history`; the indexer records an incident and does not advance through that
+height as if it were empty.
+
+Block/event archival, exact raw log preservation, cursor guarantees, and bounded recovery are
+specified in [`near-discovery-integrity.md`](near-discovery-integrity.md). The local archive can
+preserve only what the indexer actually observed. It does not authenticate FastNear or prove the
+absence of omitted historical events.

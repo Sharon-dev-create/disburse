@@ -32,8 +32,9 @@ idempotency, accounting, pause, and role views.
 
 `NearEventSource` supports cursor continuation and historical reads from a source-specific
 position. `decodeNearEvent` validates the actual NEP-297 envelope, known event payload fields,
-amounts, versions, and bounded raw log size. Unknown event types/standards/versions and malformed
-known events are persisted as observable records and do not crash later event processing.
+amounts, versions, and a configured raw log size limit while preserving exact raw bytes for the
+archive. Unknown event types/standards/versions remain observable. A malformed recognized event is
+recorded as an integrity incident and stops before its cursor can advance.
 
 `PayoutDiscoveryProcessor` processes events in source order. For each known payout event it reads
 the current contract payout. A reservation event must match the returned payout and campaign IDs,
@@ -88,6 +89,11 @@ successfully committed event clears its active view failure. Failed reconciliati
 the previous observed payout view and append an RPC error record.
 
 ## Operational setup before testnet
+
+Historical block/event observations, cursor guarantees, conflict handling, and bounded read-only
+recovery are described in [`near-discovery-integrity.md`](near-discovery-integrity.md). FastNear has
+no documented historical retention SLA, so archive backups and manual investigation are required
+for uncertain ranges.
 
 1. Obtain an authorized deployed contract account and deployment block, then configure the selected
    NEAR Data provider, network, endpoint, timeout, and contract view RPC endpoint.

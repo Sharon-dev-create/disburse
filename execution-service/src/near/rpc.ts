@@ -16,16 +16,29 @@ export interface NearRpcTransport {
 }
 
 export class NearRpcError extends Error {
+  readonly retryable: boolean;
   readonly kind:
-    "timeout" | "unavailable" | "rate-limited" | "rpc" | "malformed";
+    | "timeout"
+    | "unavailable"
+    | "rate-limited"
+    | "rpc"
+    | "network-mismatch"
+    | "malformed";
 
   constructor(
-    kind: "timeout" | "unavailable" | "rate-limited" | "rpc" | "malformed",
+    kind:
+      | "timeout"
+      | "unavailable"
+      | "rate-limited"
+      | "rpc"
+      | "network-mismatch"
+      | "malformed",
     message: string,
   ) {
     super(message);
     this.name = "NearRpcError";
     this.kind = kind;
+    this.retryable = ["timeout", "unavailable", "rate-limited"].includes(kind);
   }
 }
 
@@ -230,7 +243,7 @@ export class NearContractReader implements ContractReader {
     const actual = await this.rpc.getNetworkId();
     if (actual !== this.config.networkId) {
       throw new NearRpcError(
-        "rpc",
+        "network-mismatch",
         `Configured NEAR network ${this.config.networkId} does not match RPC network ${actual}`,
       );
     }
