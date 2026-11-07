@@ -90,6 +90,21 @@ void test("client rejects missing credentials, malformed JSON and malformed obje
   await assert.rejects(malformedObject.requestQuote(request()), /must be an object/);
 });
 
+void test("timed-out preview is ambiguous but cannot become an execution result", async () => {
+  const timeoutError = new Error("timed out");
+  timeoutError.name = "TimeoutError";
+  const client = new NearIntentsClient({
+    apiKey: "test-key", requestTimeoutMs: 1,
+    fetchImpl: async () => { throw timeoutError; },
+  });
+  await assert.rejects(client.requestQuote(request()), (error: unknown) => {
+    assert.ok(error instanceof NearIntentsError);
+    assert.equal(error.kind, "ambiguous-outcome");
+    assert.equal(error.code, "request-timeout");
+    return true;
+  });
+});
+
 void test("valid exact-output quote maps to provider-neutral opportunity using atomic strings", async () => {
   const opportunity = await adapter().quote(intent());
   assert.equal(opportunity.providerId, "near-intents-1click");
@@ -161,6 +176,17 @@ void test("rejects missing IDs, invalid amounts, bad metadata, unsupported route
   await assert.rejects(adapter().quote(badDecimals), /trusted asset configuration/);
 
   assert.throws(() => adapter(undefined, { slippageToleranceBps: 10_001 }), /between 0 and 10000/);
+});
+
+void test("duplicate dry quote responses are observations only and do not mutate payout intent", async () => {
+  const payout = intent();
+  const before = structuredClone(payout);
+  const first = await adapter().quote(payout);
+  const second = await adapter().quote(payout);
+  assert.equal(first.quoteReference, second.quoteReference);
+  assert.deepEqual(payout, before);
+  assert.equal(payout.expectedOutput.atomicAmount, "300");
+  assert.equal(payout.input.atomicAmount, "1000");
 });
 
 void test("quote lifecycle stays separate from payout execution states", () => {
