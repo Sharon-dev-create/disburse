@@ -160,6 +160,20 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
     }
     if (!isIsoDate(response.timestamp))
       throw invalid("invalid-timestamp", "Quote timestamp is invalid");
+    const responseTimestampMs = Date.parse(response.timestamp);
+    if (responseTimestampMs > receivedAtMs + 60_000) {
+      throw invalid(
+        "future-timestamp",
+        "Quote timestamp is too far in the future",
+      );
+    }
+    if (receivedAtMs - responseTimestampMs > this.config.maxQuoteAgeMs) {
+      throw new NearIntentsError(
+        "expired-quote",
+        "stale-provider-response",
+        "Provider response is older than the configured quote freshness window",
+      );
+    }
     assertEqual(echo.dry, true, "echoed dry mode");
     assertEqual(echo.swapType, "EXACT_OUTPUT", "echoed swap type");
     assertEqual(

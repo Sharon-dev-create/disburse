@@ -124,6 +124,13 @@ export class NearIntentsClient {
           safeMessage,
         );
       }
+      if ([404, 405, 415].includes(response.status)) {
+        throw new NearIntentsError(
+          "unsupported-capability",
+          `http-${response.status}`,
+          safeMessage,
+        );
+      }
       if (response.status === 429) {
         const retryAfterHeader = response.headers.get("retry-after");
         const retryAfter =

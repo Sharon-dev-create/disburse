@@ -48,6 +48,7 @@ void test("client normalizes authentication, validation, rate limit, 5xx and net
     [400, "permanent-validation", undefined],
     [401, "configuration-or-authentication", undefined],
     [403, "configuration-or-authentication", undefined],
+    [404, "unsupported-capability", undefined],
     [429, "rate-limited", { "retry-after": "7" }],
     [503, "temporary-provider", undefined],
   ] as const) {
@@ -243,6 +244,16 @@ void test("duplicate dry quote responses are observations only and do not mutate
   assert.deepEqual(payout, before);
   assert.equal(payout.expectedOutput.atomicAmount, "300");
   assert.equal(payout.input.atomicAmount, "1000");
+});
+
+void test("rejects stale provider timestamps as expired previews", async () => {
+  const stale = validResponse();
+  stale.timestamp = "2026-11-07T11:59:00.000Z";
+  await assert.rejects(adapter(stale).quote(intent()), (error: unknown) => {
+    assert.ok(error instanceof NearIntentsError);
+    assert.equal(error.kind, "expired-quote");
+    return true;
+  });
 });
 
 void test("quote lifecycle stays separate from payout execution states", () => {
