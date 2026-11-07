@@ -1,8 +1,43 @@
-import type {
-  PayoutId,
-  PayoutSnapshot,
-  TokenAmount,
-} from "../domain/payout.ts";
+import type { PayoutId, TokenAmount } from "../domain/payout.ts";
+
+export type NearPayoutStatus =
+  | "Created"
+  | "Authorized"
+  | "Reserved"
+  | "Executing"
+  | "PendingVerification"
+  | "Succeeded"
+  | "Failed"
+  | "RefundPending"
+  | "Refunded"
+  | "ManualReview"
+  | "ReservationReleased";
+
+export interface NearTokenAmountView {
+  readonly tokenId: { readonly Near: string } | { readonly External: string };
+  readonly atomicAmount: string;
+  readonly decimals: number;
+}
+
+export interface NearPayoutView {
+  readonly id: PayoutId;
+  readonly campaignId: string;
+  readonly recipientNearAccountId: string | null;
+  readonly inputAmount: NearTokenAmountView;
+  readonly destination: {
+    readonly chainId: string;
+    readonly recipientAddress: string;
+  };
+  readonly expectedOutputAmount: NearTokenAmountView;
+  readonly status: NearPayoutStatus;
+  readonly createdAtNs: string;
+  readonly executionReference: string | null;
+  readonly settlementEvidenceReference: string | null;
+  readonly lifecycleReason: string | null;
+  readonly failureEvidence: unknown | null;
+  readonly settlementEvidence: unknown | null;
+  readonly resolutionEvidence: readonly unknown[];
+}
 
 export interface CampaignAccountingSnapshot {
   readonly campaignId: string;
@@ -20,11 +55,15 @@ export interface NearTransactionResult {
 
 /** Read-only contract calls. JSON decoding must preserve uint64 IDs exactly. */
 export interface ContractReader {
-  getPayout(payoutId: PayoutId): Promise<PayoutSnapshot | null>;
+  getPayout(payoutId: PayoutId): Promise<NearPayoutView | null>;
   getCampaignPayout(
     campaignId: string,
     payoutId: PayoutId,
-  ): Promise<PayoutSnapshot | null>;
+  ): Promise<NearPayoutView | null>;
+  getPayoutByIdempotency(
+    campaignId: string,
+    idempotencyKey: string,
+  ): Promise<NearPayoutView | null>;
   getCampaignPayoutAccounting(
     campaignId: string,
   ): Promise<CampaignAccountingSnapshot | null>;
