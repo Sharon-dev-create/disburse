@@ -56,6 +56,14 @@ void test("testnet readiness rejects mainnet or non-testnet endpoints", () => {
       }),
     /must be a named NEAR testnet account/,
   );
+  assert.throws(
+    () =>
+      loadTestnetReadinessConfig({
+        ...baseEnvironment,
+        TEST_TOKEN_CONTRACT: "invalid..token.testnet",
+      }),
+    /must be a named NEAR testnet account/,
+  );
 });
 
 void test("testnet readiness rejects initializer-owner and signing-role ambiguity", () => {
