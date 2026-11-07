@@ -133,6 +133,8 @@ const event: PayoutReservedEvent = {
     networkId: "near:testnet",
     contractId: "disburse.testnet",
     transactionHash: "near-tx-1",
+    blockHash: "near-block-100",
+    receiptId: "near-receipt-1",
     eventIndex: 0,
     blockHeight: "100",
   },

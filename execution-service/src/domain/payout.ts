@@ -39,6 +39,8 @@ export interface ContractEventIdentity {
   readonly networkId: string;
   readonly contractId: AccountId;
   readonly transactionHash: string;
+  readonly blockHash: string;
+  readonly receiptId: string;
   readonly eventIndex: number;
   readonly blockHeight: string;
 }

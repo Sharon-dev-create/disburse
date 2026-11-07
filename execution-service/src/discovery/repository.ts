@@ -12,7 +12,15 @@ export interface DiscoveryObservation {
 }
 
 export interface DiscoveryDiscrepancy {
-  readonly kind: "payout-missing" | "event-view-mismatch" | "non-executable-status" | "rpc-error";
+  readonly kind:
+    | "payout-missing"
+    | "event-view-mismatch"
+    | "non-executable-status"
+    | "rpc-error"
+    | "event-identity-mismatch"
+    | "unknown-event"
+    | "malformed-event"
+    | "stale-observation";
   readonly message: string;
   readonly createdAtMs: number;
 }
@@ -44,6 +52,11 @@ export interface DiscoveryStateSnapshot {
 export interface DiscoveryRepository {
   getCursor(sourceKey: string): Promise<string | null>;
   commitEvent(commit: DiscoveryEventCommit): Promise<{ readonly duplicate: boolean }>;
+  recordReconciliation(
+    payoutKey: string,
+    observation: DiscoveryObservation | null,
+    discrepancy: DiscoveryDiscrepancy | null,
+  ): Promise<void>;
   getSnapshot(): Promise<DiscoveryStateSnapshot>;
 }
 

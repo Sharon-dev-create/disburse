@@ -112,6 +112,20 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
     };
   }
 
+  async recordReconciliation(
+    payoutKey: string,
+    observation: DiscoveryObservation | null,
+    discrepancy: DiscoveryDiscrepancy | null,
+  ): Promise<void> {
+    await this.exclusive(async () => {
+      const next = cloneState(this.state);
+      if (observation) next.observations.set(payoutKey, observation);
+      if (discrepancy) next.discrepancies.push({ ...discrepancy, payoutKey });
+      await this.persist(next);
+      this.state = next;
+    });
+  }
+
   private async persist(state: FileState): Promise<void> {
     await this.beforeCommit();
     await mkdir(dirname(this.path), { recursive: true });
