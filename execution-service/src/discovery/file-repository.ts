@@ -67,7 +67,7 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
     return this.exclusive(async () => {
       const eventKey = nearEventKey(commit.event);
       const existing = this.state.events.get(eventKey);
-      if (existing && JSON.stringify(existing.event) !== JSON.stringify(commit.event)) {
+      if (existing && !sameEventContent(existing.event, commit.event)) {
         throw new Error("A stable NEAR event identity was received with conflicting content");
       }
       const next = cloneState(this.state);
@@ -219,6 +219,13 @@ function arrayOf<T>(value: unknown): T[] {
 
 function isMissingFile(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
+}
+
+function sameEventContent(
+  left: IndexedEventRecord["event"],
+  right: IndexedEventRecord["event"],
+): boolean {
+  return JSON.stringify({ ...left, cursor: "" }) === JSON.stringify({ ...right, cursor: "" });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

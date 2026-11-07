@@ -12,6 +12,7 @@ export interface NearRpcTransport {
     methodName: string,
     args: Readonly<Record<string, unknown>>,
   ): Promise<unknown>;
+  getNetworkId?(): Promise<string>;
 }
 
 export class NearRpcError extends Error {
@@ -109,6 +110,31 @@ export class HttpNearRpcTransport implements NearRpcTransport {
       clearTimeout(timeout);
     }
   }
+
+  async getNetworkId(): Promise<string> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const response = await this.fetchImpl(this.endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({ jsonrpc: "2.0", id: ++this.requestId, method: "status", params: [] }),
+      });
+      if (!response.ok) throw new NearRpcError("unavailable", `NEAR RPC returned HTTP ${response.status}`);
+      const body: unknown = await response.json();
+      if (!isRecord(body) || !isRecord(body.result) || typeof body.result.chain_id !== "string") {
+        throw new NearRpcError("malformed", "NEAR status response has no chain ID");
+      }
+      return body.result.chain_id;
+    } catch (error) {
+      if (error instanceof NearRpcError) throw error;
+      if (controller.signal.aborted) throw new NearRpcError("timeout", "NEAR status request timed out");
+      throw new NearRpcError("unavailable", "NEAR status request failed");
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
 }
 
 export interface NearContractReaderConfig {
@@ -131,6 +157,14 @@ export class NearContractReader implements ContractReader {
     return parseNullablePayout(
       await this.call("get_payout", { payout_id: nearU64(payoutId, "payout ID") }),
     );
+  }
+
+  async verifyNetwork(): Promise<void> {
+    if (!this.rpc.getNetworkId) throw new Error("RPC transport cannot verify its configured NEAR network");
+    const actual = await this.rpc.getNetworkId();
+    if (actual !== this.config.networkId) {
+      throw new NearRpcError("rpc", `Configured NEAR network ${this.config.networkId} does not match RPC network ${actual}`);
+    }
   }
 
   async getCampaignPayout(

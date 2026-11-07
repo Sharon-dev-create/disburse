@@ -46,6 +46,9 @@ export class PayoutDiscoveryProcessor {
   }
 
   async processNextPage(nowMs: number): Promise<DiscoveryRunResult> {
+    if ("verifyNetwork" in this.reader && typeof this.reader.verifyNetwork === "function") {
+      await this.reader.verifyNetwork();
+    }
     const savedCursor = await this.repository.getCursor(this.sourceKey);
     const page = await this.source.readAfter(savedCursor, this.pageSize);
     if (page.events.length === 0 && page.nextCursor !== null && page.nextCursor !== savedCursor) {
