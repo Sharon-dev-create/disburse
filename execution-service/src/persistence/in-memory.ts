@@ -193,9 +193,7 @@ export class InMemoryJobRepository implements JobRepository {
       !sameLease(current.lease, lease) ||
       lease.expiresAtMs <= nowMs
     ) {
-      throw new Error(
-        "A current worker lease is required to persist an attempt",
-      );
+      throw new Error("Worker lease is stale or expired");
     }
     if (
       current.attempts.some((item) => item.attemptKey === attempt.attemptKey)

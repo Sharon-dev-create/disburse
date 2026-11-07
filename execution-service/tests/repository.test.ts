@@ -11,7 +11,7 @@ import type {
 } from "../src/domain/payout.ts";
 import type { ExecutionAttempt } from "../src/persistence/repository.ts";
 
-await test("duplicate discovery is idempotent and preserves the payout-to-job mapping", async () => {
+void test("duplicate discovery is idempotent and preserves the payout-to-job mapping", async () => {
   const repository = new InMemoryJobRepository();
   const first = await repository.enqueueDiscovered(event, payout, 10);
   const duplicate = await repository.enqueueDiscovered(event, payout, 11);
@@ -26,7 +26,7 @@ await test("duplicate discovery is idempotent and preserves the payout-to-job ma
   assert.equal(duplicate.job.createdAtMs, 10);
 });
 
-await test("concurrent workers cannot hold the same active lease", async () => {
+void test("concurrent workers cannot hold the same active lease", async () => {
   const repository = await queuedRepository();
   const [first, second] = await Promise.all([
     repository.claimNext("worker-a", 100, 50),
@@ -36,7 +36,7 @@ await test("concurrent workers cannot hold the same active lease", async () => {
   assert.equal(Number(first !== null) + Number(second !== null), 1);
 });
 
-await test("expired leases can be reclaimed with a fencing token and stale writes are rejected", async () => {
+void test("expired leases can be reclaimed with a fencing token and stale writes are rejected", async () => {
   const repository = await queuedRepository();
   const firstClaim = await repository.claimNext("worker-a", 100, 50);
   assert.ok(firstClaim?.lease);
@@ -55,7 +55,7 @@ await test("expired leases can be reclaimed with a fencing token and stale write
   );
 });
 
-await test("duplicate execution attempts are rejected by key and sequence", async () => {
+void test("duplicate execution attempts are rejected by key and sequence", async () => {
   const repository = await queuedRepository();
   const claim = await repository.claimNext("worker-a", 100, 50);
   assert.ok(claim?.lease);
@@ -79,7 +79,7 @@ await test("duplicate execution attempts are rejected by key and sequence", asyn
   );
 });
 
-await test("a new repository instance recovers durable job state after worker restart", async () => {
+void test("a new repository instance recovers durable job state after worker restart", async () => {
   const storage = newMemoryPersistenceState();
   const firstProcess = new InMemoryJobRepository(storage);
   await firstProcess.enqueueDiscovered(event, payout, 10);

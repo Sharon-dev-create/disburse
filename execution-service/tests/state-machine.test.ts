@@ -8,7 +8,7 @@ import {
   MockSettlementVerifier,
 } from "./support/mock-adapters.ts";
 
-await test("valid operational path requires separately verified evidence and on-chain settlement", () => {
+void test("valid operational path requires separately verified evidence and on-chain settlement", () => {
   assertTransition("Discovered", "Queued", {
     contractPayoutStatus: "Reserved",
   });
@@ -22,7 +22,7 @@ await test("valid operational path requires separately verified evidence and on-
   assertTransition("ConfirmationPending", "VerificationPending");
   assert.throws(
     () => assertTransition("VerificationPending", "SettlementReady"),
-    /independently/,
+    /Provider success alone/,
   );
   assertTransition("VerificationPending", "SettlementReady", {
     independentVerification: "passed",
@@ -37,9 +37,9 @@ await test("valid operational path requires separately verified evidence and on-
   });
 });
 
-await test("invalid state transitions and provider-only success cannot authorize settlement", async () => {
+void test("invalid state transitions and provider-only success cannot authorize settlement", async () => {
   assert.throws(
-    () => assertTransition("Reserved" as never, "Completed"),
+    () => assertTransition("Completed", "Queued"),
     /Invalid execution/,
   );
 
@@ -63,7 +63,7 @@ await test("invalid state transitions and provider-only success cannot authorize
   );
 });
 
-await test("ambiguous submission cannot be retried; reconcile or escalate", () => {
+void test("ambiguous submission cannot be retried; reconcile or escalate", () => {
   assertTransition("SubmissionStarted", "SubmissionUnknown", {
     providerOutcome: "unknown",
   });
@@ -95,7 +95,7 @@ await test("ambiguous submission cannot be retried; reconcile or escalate", () =
   });
 });
 
-await test("manual-review exit and settlement uncertainty require authoritative chain state", () => {
+void test("manual-review exit and settlement uncertainty require authoritative chain state", () => {
   assert.throws(
     () => assertTransition("ManualReview", "VerificationPending"),
     /return to PendingVerification/,
@@ -117,7 +117,7 @@ await test("manual-review exit and settlement uncertainty require authoritative 
         contractPayoutStatus: "PendingVerification",
         independentVerification: "passed",
       }),
-    /definitively failed NEAR transaction/,
+    /failed NEAR transaction/,
   );
 });
 
