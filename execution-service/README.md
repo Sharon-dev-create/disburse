@@ -9,6 +9,7 @@ transactions, connect to PostgreSQL, or move funds.
 - `src/domain`: exact-string payout/job identifiers and normalized contract payout views.
 - `src/state-machine`: allowed operational transitions and safety preconditions.
 - `src/providers`: provider adapter boundary and restart reconciliation policy.
+- `src/providers/quote.ts` and `src/providers/near-intents`: provider-neutral quote-only types and a deterministic-testable NEAR Intents 1Click `dry: true` adapter. It has no deposit, execution, tracking, signing, or settlement methods.
 - `src/verification`: independent evidence-verification interface.
 - `src/near`: read-only, Operator/Admin, and Verifier contract client boundaries.
 - `src/near/rpc.ts`: read-only JSON-RPC contract reader for existing ABI views.
@@ -66,3 +67,6 @@ The file-backed discovery adapter is intended for local/single-writer operation 
 [`../docs/execution-service-architecture.md`](../docs/execution-service-architecture.md) and
 [`../docs/execution-service-threat-model.md`](../docs/execution-service-threat-model.md) for
 integration requirements and security boundaries.
+
+See [`../docs/near-intents-integration.md`](../docs/near-intents-integration.md) for the API research,
+quote-only boundary, exact-output compatibility assessment, and unresolved integration blockers.

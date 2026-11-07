@@ -12,6 +12,7 @@ export interface NearIntentsQuoteRequest {
   readonly refundType: "ORIGIN_CHAIN";
   readonly recipient: string;
   readonly recipientType: "DESTINATION_CHAIN";
+  readonly deadline: string;
 }
 
 export interface NearIntentsQuoteResponse {

@@ -59,6 +59,10 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
     if (!intent.recipientAddress.trim() || !intent.refundAddress.trim()) {
       throw invalid("missing-address", "Recipient and origin refund address are required");
     }
+    const deadlineMs = Date.parse(intent.deadline);
+    if (!Number.isFinite(deadlineMs) || deadlineMs <= this.now()) {
+      throw invalid("invalid-deadline", "A future quote deadline is required by the provider schema");
+    }
 
     const origin = this.findAsset(intent.input.tokenId, intent.sourceNetworkId);
     const destination = this.findAsset(intent.expectedOutput.tokenId, intent.destinationNetworkId);
@@ -86,6 +90,7 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
       refundType: "ORIGIN_CHAIN" as const,
       recipient: intent.recipientAddress,
       recipientType: "DESTINATION_CHAIN" as const,
+      deadline: intent.deadline,
     };
     const receivedAtMs = this.now();
     const response = await this.config.client.requestQuote(request);
@@ -98,11 +103,16 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
     if (!isIsoDate(response.timestamp)) throw invalid("invalid-timestamp", "Quote timestamp is invalid");
     assertEqual(echo.dry, true, "echoed dry mode");
     assertEqual(echo.swapType, "EXACT_OUTPUT", "echoed swap type");
+    assertEqual(echo.slippageTolerance, this.config.slippageToleranceBps, "echoed slippage tolerance");
     assertEqual(echo.originAsset, origin.assetId, "echoed source asset");
+    assertEqual(echo.depositType, "ORIGIN_CHAIN", "echoed deposit type");
     assertEqual(echo.destinationAsset, destination.assetId, "echoed destination asset");
     assertEqual(echo.amount, intent.expectedOutput.atomicAmount, "echoed amount");
     assertEqual(echo.recipient, intent.recipientAddress, "echoed recipient");
+    assertEqual(echo.recipientType, "DESTINATION_CHAIN", "echoed recipient type");
     assertEqual(echo.refundTo, intent.refundAddress, "echoed refund address");
+    assertEqual(echo.refundType, "ORIGIN_CHAIN", "echoed refund type");
+    assertEqual(echo.deadline, intent.deadline, "echoed deadline");
 
     const amountIn = parseAmount(responseQuote.amountIn, "amountIn");
     const minAmountIn = parseAmount(responseQuote.minAmountIn, "minAmountIn");
@@ -134,7 +144,7 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
       sourceNetworkId: intent.sourceNetworkId,
       sourceTokenId: intent.input.tokenId,
       quotedInputAtomicAmount: amountIn,
-      maximumInputAtomicAmount: amountIn,
+      maximumInputAtomicAmount: null,
       destinationNetworkId: intent.destinationNetworkId,
       destinationTokenId: intent.expectedOutput.tokenId,
       recipientAddress: intent.recipientAddress,
@@ -147,7 +157,7 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
       estimatedExecutionSeconds: estimated === undefined ? null : estimated,
       providerMetadata: {
         responseTimestamp: response.timestamp,
-        signedQuotePresent: "true",
+        quoteSignature: response.signature,
         previewOnly: "true",
       },
     };

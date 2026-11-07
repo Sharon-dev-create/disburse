@@ -9,6 +9,8 @@ export interface QuoteIntent {
   readonly expectedOutput: TokenAmount;
   /** Required by 1Click even for a dry quote; supplied by a future explicit refund policy. */
   readonly refundAddress: string;
+  /** Required by the published request schema; caller supplies policy, adapter does not invent one. */
+  readonly deadline: string;
 }
 
 export interface QuoteFee {

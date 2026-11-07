@@ -95,11 +95,12 @@ void test("valid exact-output quote maps to provider-neutral opportunity using a
   assert.equal(opportunity.providerId, "near-intents-1click");
   assert.equal(opportunity.sourceTokenId, "token:near-usdc");
   assert.equal(opportunity.quotedInputAtomicAmount, "250");
-  assert.equal(opportunity.maximumInputAtomicAmount, "250");
+  assert.equal(opportunity.maximumInputAtomicAmount, null);
   assert.equal(opportunity.expectedOutputAtomicAmount, "300");
   assert.equal(opportunity.minimumOutputAtomicAmount, "300");
   assert.equal(opportunity.recipientAddress, "alice.destination");
   assert.equal(opportunity.quoteReference, "quote-reference-1");
+  assert.equal(opportunity.providerMetadata.quoteSignature, "mock-signature-not-verified");
   assert.equal(opportunity.expiresAt, null);
   assert.equal(opportunity.freshUntil, "2026-11-07T12:00:30.000Z");
   assert.deepEqual(opportunity.fees, [
@@ -149,12 +150,14 @@ void test("rejects missing IDs, invalid amounts, bad metadata, unsupported route
   (badAmount.quote as Record<string, unknown>).amountIn = "999999999999999999999999999999999999999";
   await assert.rejects(adapter(badAmount).quote(intent()), /u128 range/);
 
-  const unknownNetwork = intent();
-  unknownNetwork.destinationNetworkId = "chain:other";
+  const baseIntent = intent();
+  const unknownNetwork = { ...baseIntent, destinationNetworkId: "chain:other" };
   await assert.rejects(adapter().quote(unknownNetwork), /not configured/);
 
-  const badDecimals = intent();
-  badDecimals.input.decimals = 5;
+  const badDecimals = {
+    ...baseIntent,
+    input: { ...baseIntent.input, decimals: 5 },
+  };
   await assert.rejects(adapter().quote(badDecimals), /trusted asset configuration/);
 
   assert.throws(() => adapter(undefined, { slippageToleranceBps: 10_001 }), /between 0 and 10000/);
@@ -201,6 +204,7 @@ function intent(): QuoteIntent {
     recipientAddress: "alice.destination",
     expectedOutput: { tokenId: "token:eth-usdc", atomicAmount: "300", decimals: 6 },
     refundAddress: "treasury.near",
+    deadline: "2026-11-07T12:10:00.000Z",
   };
 }
 
@@ -210,6 +214,7 @@ function request(): NearIntentsQuoteRequest {
     originAsset: "nep141:wrap.near", depositType: "ORIGIN_CHAIN",
     destinationAsset: "nep141:eth-usdc", amount: "300", refundTo: "treasury.near",
     refundType: "ORIGIN_CHAIN", recipient: "alice.destination", recipientType: "DESTINATION_CHAIN",
+    deadline: "2026-11-07T12:10:00.000Z",
   };
 }
 
