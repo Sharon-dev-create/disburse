@@ -247,9 +247,14 @@ mod tests {
     fn settlement_evidence_records_verifier_assertion() {
         let evidence = SettlementEvidence {
             payout_id: 4,
+            provider_id: "evm-rpc".to_string(),
             destination_chain_id: ChainId::new("eip155:1".to_string()).unwrap(),
             destination_transaction_reference: "0xdeadbeef".to_string(),
-            recipient_address: "0x2222222222222222222222222222222222222222".to_string(),
+            transaction_event_identifier: Some("12".to_string()),
+            recipient_address: RecipientAddress::new(
+                "0x2222222222222222222222222222222222222222".to_string(),
+            )
+            .unwrap(),
             output_amount: token_amount(
                 TokenId::external("eip155:1/erc20:0xabc".to_string()).unwrap(),
                 90,
@@ -259,6 +264,7 @@ mod tests {
             verification_method: "receipt-and-transfer-log".to_string(),
             verified_at_ns: 789,
             evidence_reference: Some("sha256:example".to_string()),
+            content_hash: "a".repeat(64),
         };
         assert_eq!(round_trip_borsh(&evidence), evidence);
         let decoded: SettlementEvidence =

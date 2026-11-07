@@ -13,6 +13,7 @@ use state::payout::Payout;
 use types::{
     amount::{TokenAmount, TokenId},
     destination::PayoutDestination,
+    evidence::SettlementEvidence,
     identifier::validate_identifier,
     role::UserRole,
     status::{CampaignStatus, PayoutStatus},
@@ -51,6 +52,7 @@ pub struct PayoutView {
     pub settlement_evidence_reference: Option<String>,
     pub lifecycle_reason: Option<String>,
     pub failure_evidence: Option<ExecutionFailureEvidence>,
+    pub settlement_evidence: Option<SettlementEvidence>,
 }
 
 #[near(serializers = [json, borsh])]
@@ -580,6 +582,166 @@ impl Disburse {
         );
     }
 
+    /// Settle only a pending payout based on an explicit trusted-verifier attestation.
+    /// The contract matches normalized claims and updates reservation accounting, but does not
+    /// independently verify the destination-chain transaction or content hash.
+    pub fn settle_payout(&mut self, payout_id: u64, evidence: SettlementEvidence) {
+        let actor_id = env::predecessor_account_id();
+        require!(
+            self.has_direct_role(&actor_id, UserRole::Verifier),
+            "Explicit Verifier role required to settle payouts"
+        );
+
+        let mut payout = self.payout_or_panic(payout_id);
+        require!(
+            payout.status == PayoutStatus::PendingVerification,
+            "Only PendingVerification payouts can be settled"
+        );
+        require!(evidence.payout_id == payout_id, "Evidence payout ID does not match");
+        require!(
+            evidence.verifier_id == actor_id,
+            "Evidence verifier must match the calling account"
+        );
+        require!(
+            validate_identifier(&evidence.provider_id).is_ok()
+                && evidence.provider_id.len() <= 64,
+            "Provider identifier must be nonempty and at most 64 bytes"
+        );
+        require!(
+            validate_identifier(&evidence.destination_transaction_reference).is_ok()
+                && evidence.destination_transaction_reference.len() <= 256,
+            "Execution identifier must be nonempty and at most 256 bytes"
+        );
+        if let Some(event_identifier) = &evidence.transaction_event_identifier {
+            require!(
+                validate_identifier(event_identifier).is_ok()
+                    && event_identifier.len() <= 128,
+                "Transaction event identifier must be nonempty and at most 128 bytes"
+            );
+        }
+        let evidence_reference = evidence
+            .evidence_reference
+            .as_ref()
+            .unwrap_or_else(|| env::panic_str("Evidence reference is required"));
+        require!(
+            validate_identifier(evidence_reference).is_ok() && evidence_reference.len() <= 256,
+            "Evidence reference must be nonempty and at most 256 bytes"
+        );
+        require!(
+            validate_identifier(&evidence.verification_method).is_ok()
+                && evidence.verification_method.len() <= 128,
+            "Verification method must be nonempty and at most 128 bytes"
+        );
+        require!(
+            evidence.content_hash.len() == 64
+                && evidence.content_hash.bytes().all(|byte| {
+                    byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)
+                }),
+            "Content hash must be 64 lowercase hexadecimal SHA-256 characters"
+        );
+        require!(
+            evidence.destination_chain_id == payout.destination.chain_id,
+            "Evidence destination chain does not match payout"
+        );
+        require!(
+            evidence.recipient_address == payout.destination.recipient_address,
+            "Evidence recipient does not match payout"
+        );
+        require!(
+            evidence.output_amount.token_id() == payout.expected_output_amount.token_id(),
+            "Evidence output token does not match payout"
+        );
+        require!(
+            evidence.output_amount.atomic_amount()
+                == payout.expected_output_amount.atomic_amount(),
+            "Evidence output amount does not match payout"
+        );
+
+        let execution_key = (
+            evidence.provider_id.clone(),
+            evidence.destination_chain_id.as_str().to_string(),
+            evidence.destination_transaction_reference.clone(),
+            evidence.transaction_event_identifier.clone(),
+        );
+        require!(
+            Self::settlement_execution_index()
+                .get(&execution_key)
+                .is_none(),
+            "Settlement execution evidence has already been used"
+        );
+        require!(
+            Self::settlement_reference_index()
+                .get(evidence_reference)
+                .is_none(),
+            "Settlement evidence reference has already been used"
+        );
+
+        let mut campaign = self.campaign_or_panic(payout.campaign_id);
+        require!(
+            evidence.input_token_matches_campaign(&payout, &campaign),
+            "Payout input token does not match campaign funding token"
+        );
+        require!(
+            campaign.funded <= campaign.budget,
+            "Campaign funding invariant violated"
+        );
+        let old_committed = campaign
+            .reserved
+            .checked_add(campaign.spent)
+            .unwrap_or_else(|| env::panic_str("Campaign accounting overflow"));
+        require!(
+            old_committed <= campaign.funded,
+            "Campaign accounting invariant violated"
+        );
+        let new_reserved = campaign
+            .reserved
+            .checked_sub(payout.input_amount.atomic_amount())
+            .unwrap_or_else(|| env::panic_str("Campaign reserved balance underflow"));
+        let new_spent = campaign
+            .spent
+            .checked_add(payout.input_amount.atomic_amount())
+            .unwrap_or_else(|| env::panic_str("Campaign spent balance overflow"));
+        let new_committed = new_reserved
+            .checked_add(new_spent)
+            .unwrap_or_else(|| env::panic_str("Campaign accounting overflow"));
+        require!(
+            new_committed <= campaign.funded && campaign.funded <= campaign.budget,
+            "Campaign accounting invariant violated"
+        );
+
+        let previous_status = payout.status;
+        campaign.reserved = new_reserved;
+        campaign.spent = new_spent;
+        payout.status = PayoutStatus::Succeeded;
+        payout.settlement_evidence_reference = Some(evidence_reference.clone());
+
+        self.campaigns.insert(campaign.id, campaign);
+        self.payouts.insert(payout_id, payout.clone());
+        Self::payout_settlement_evidence().insert(payout_id, evidence.clone());
+        Self::settlement_execution_index().insert(execution_key, payout_id);
+        Self::settlement_reference_index().insert(evidence_reference.clone(), payout_id);
+        self.emit_event(
+            "payout_settled",
+            near_sdk::serde_json::json!({
+                "payout_id": payout_id,
+                "campaign_id": payout.campaign_id,
+                "verifier_id": actor_id,
+                "previous_status": Self::payout_status_name(previous_status),
+                "new_status": Self::payout_status_name(payout.status),
+                "destination_chain_id": evidence.destination_chain_id.as_str(),
+                "provider_id": evidence.provider_id,
+                "execution_id": evidence.destination_transaction_reference,
+                "transaction_event_identifier": evidence.transaction_event_identifier,
+                "output_token_id": Self::token_id_string(evidence.output_amount.token_id()),
+                "recipient_address": evidence.recipient_address.as_str(),
+                "actual_output_amount": evidence.output_amount.atomic_amount().to_string(),
+                "evidence_reference": evidence_reference,
+                "content_hash": evidence.content_hash,
+                "input_amount_moved_to_spent": payout.input_amount.atomic_amount().to_string(),
+            }),
+        );
+    }
+
     /// Grant a non-owner role. The owner is the only grant authority and cannot self-grant.
     pub fn grant_role(&mut self, account_id: AccountId, role: UserRole) {
         let actor_id = env::predecessor_account_id();
@@ -804,6 +966,19 @@ impl Disburse {
 
     fn payout_failure_evidence() -> LookupMap<u64, ExecutionFailureEvidence> {
         LookupMap::new(b"payout-failure-evidence-v1".to_vec())
+    }
+
+    fn payout_settlement_evidence() -> LookupMap<u64, SettlementEvidence> {
+        LookupMap::new(b"payout-settlement-records-v1".to_vec())
+    }
+
+    fn settlement_execution_index(
+    ) -> LookupMap<(String, String, String, Option<String>), u64> {
+        LookupMap::new(b"payout-settlement-executions-v1".to_vec())
+    }
+
+    fn settlement_reference_index() -> LookupMap<String, u64> {
+        LookupMap::new(b"payout-settlement-references-v1".to_vec())
     }
 
     fn campaign_or_panic(&self, campaign_id: u64) -> Campaign {
