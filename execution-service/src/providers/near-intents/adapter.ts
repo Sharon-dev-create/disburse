@@ -96,11 +96,6 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
       );
     }
 
-    const origin = this.findAsset(intent.input.tokenId, intent.sourceNetworkId);
-    const destination = this.findAsset(
-      intent.expectedOutput.tokenId,
-      intent.destinationNetworkId,
-    );
     const originChain =
       this.config.providerNetworkByDisburseNetwork[intent.sourceNetworkId];
     const destinationChain =
@@ -111,6 +106,11 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
         "Requested source or destination network is not configured",
       );
     }
+    const origin = this.findAsset(intent.input.tokenId, intent.sourceNetworkId);
+    const destination = this.findAsset(
+      intent.expectedOutput.tokenId,
+      intent.destinationNetworkId,
+    );
     if (
       origin.networkId !== intent.sourceNetworkId ||
       destination.networkId !== intent.destinationNetworkId
