@@ -87,6 +87,8 @@ pub struct CampaignPayoutAccounting {
     pub available: U128,
 }
 
+type SettlementExecutionKey = (String, String, String, Option<String>);
+
 #[derive(Clone)]
 struct PayoutRequest {
     campaign_id: u64,
@@ -854,7 +856,12 @@ impl Disburse {
         self.campaigns.insert(campaign.id, campaign);
         self.payouts.insert(payout_id, payout.clone());
         Self::payout_settlement_evidence().insert(payout_id, evidence.clone());
-        Self::settlement_execution_index().insert(execution_key, payout_id);
+        if Self::settlement_execution_index()
+            .get(&execution_key)
+            .is_none()
+        {
+            Self::settlement_execution_index().insert(execution_key, payout_id);
+        }
         Self::settlement_reference_index().insert(evidence_reference.clone(), payout_id);
         self.emit_event(
             "payout_settled",
@@ -1085,6 +1092,200 @@ impl Disburse {
         actor_id
     }
 
+    fn assert_verifier(&self) -> AccountId {
+        let actor_id = env::predecessor_account_id();
+        require!(
+            self.has_direct_role(&actor_id, UserRole::Verifier),
+            "Explicit Verifier role required for payout recovery"
+        );
+        actor_id
+    }
+
+    fn validate_resolution_evidence(
+        payout_id: u64,
+        actor_id: &AccountId,
+        evidence: &PayoutResolutionEvidence,
+        expected_outcome: PayoutResolutionOutcome,
+    ) -> Option<SettlementExecutionKey> {
+        require!(evidence.payout_id == payout_id, "Resolution payout ID does not match");
+        require!(
+            &evidence.verifier_id == actor_id,
+            "Resolution verifier must match the calling account"
+        );
+        require!(
+            evidence.outcome == expected_outcome,
+            "Resolution outcome does not match the requested recovery path"
+        );
+        require!(
+            evidence.verified_at_ns > 0,
+            "Resolution verification timestamp must be nonzero"
+        );
+        require!(
+            validate_identifier(&evidence.verification_method).is_ok()
+                && evidence.verification_method.len() <= 128,
+            "Verification method must be nonempty and at most 128 bytes"
+        );
+        require!(
+            validate_identifier(&evidence.evidence_reference).is_ok()
+                && evidence.evidence_reference.len() <= 256,
+            "Resolution evidence reference must be nonempty and at most 256 bytes"
+        );
+        require!(
+            evidence.content_hash.len() == 64
+                && evidence
+                    .content_hash
+                    .bytes()
+                    .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)),
+            "Content hash must be 64 lowercase hexadecimal SHA-256 characters"
+        );
+        require!(
+            validate_identifier(&evidence.reason).is_ok() && evidence.reason.len() <= 512,
+            "Resolution reason must be nonempty and at most 512 bytes"
+        );
+
+        let execution_key = evidence.external_execution.as_ref().map(|identity| {
+            require!(
+                validate_identifier(&identity.provider_id).is_ok()
+                    && identity.provider_id.len() <= 64,
+                "Provider identifier must be nonempty and at most 64 bytes"
+            );
+            require!(
+                identity.destination_chain_id.as_str().len() <= 128,
+                "Destination chain identifier cannot exceed 128 bytes"
+            );
+            require!(
+                validate_identifier(&identity.execution_reference).is_ok()
+                    && identity.execution_reference.len() <= 256,
+                "Execution identifier must be nonempty and at most 256 bytes"
+            );
+            if let Some(event_identifier) = &identity.transaction_event_identifier {
+                require!(
+                    validate_identifier(event_identifier).is_ok()
+                        && event_identifier.len() <= 128,
+                    "Transaction event identifier must be nonempty and at most 128 bytes"
+                );
+            }
+            Self::external_execution_key(identity)
+        });
+        require!(
+            expected_outcome != PayoutResolutionOutcome::ExecutionConfirmed
+                || execution_key.is_some(),
+            "Execution confirmation requires an external execution identity"
+        );
+        execution_key
+    }
+
+    fn external_execution_key(identity: &ExternalExecutionIdentity) -> SettlementExecutionKey {
+        (
+            identity.provider_id.clone(),
+            identity.destination_chain_id.as_str().to_string(),
+            identity.execution_reference.clone(),
+            identity.transaction_event_identifier.clone(),
+        )
+    }
+
+    fn settlement_execution_key(evidence: &SettlementEvidence) -> SettlementExecutionKey {
+        (
+            evidence.provider_id.clone(),
+            evidence.destination_chain_id.as_str().to_string(),
+            evidence.destination_transaction_reference.clone(),
+            evidence.transaction_event_identifier.clone(),
+        )
+    }
+
+    fn assert_recovery_evidence_available(
+        &self,
+        evidence: &PayoutResolutionEvidence,
+        execution_key: Option<&SettlementExecutionKey>,
+    ) {
+        require!(
+            Self::settlement_reference_index()
+                .get(&evidence.evidence_reference)
+                .is_none(),
+            "Resolution evidence reference has already been used"
+        );
+        if let Some(execution_key) = execution_key {
+            require!(
+                Self::settlement_execution_index()
+                    .get(execution_key)
+                    .is_none(),
+                "External execution identity has already been used"
+            );
+        }
+    }
+
+    fn index_resolution_evidence(
+        evidence: &PayoutResolutionEvidence,
+        execution_key: Option<SettlementExecutionKey>,
+    ) {
+        Self::settlement_reference_index().insert(evidence.evidence_reference.clone(), evidence.payout_id);
+        if let Some(execution_key) = execution_key {
+            Self::settlement_execution_index().insert(execution_key, evidence.payout_id);
+        }
+    }
+
+    fn release_reservation_with_evidence(
+        &mut self,
+        mut payout: Payout,
+        evidence: PayoutResolutionEvidence,
+        execution_key: Option<SettlementExecutionKey>,
+        event: &str,
+    ) {
+        require!(
+            matches!(payout.status, PayoutStatus::Failed | PayoutStatus::ManualReview),
+            "Payout is not eligible for reservation release"
+        );
+        let mut campaign = self.campaign_or_panic(payout.campaign_id);
+        require!(
+            payout.input_amount.token_id().near_account_id() == Some(&campaign.token_id),
+            "Payout input token does not match campaign funding token"
+        );
+        require!(
+            campaign.funded <= campaign.budget,
+            "Campaign funding invariant violated"
+        );
+        let committed = campaign
+            .reserved
+            .checked_add(campaign.spent)
+            .unwrap_or_else(|| env::panic_str("Campaign accounting overflow"));
+        require!(
+            committed <= campaign.funded,
+            "Campaign accounting invariant violated"
+        );
+        let new_reserved = campaign
+            .reserved
+            .checked_sub(payout.input_amount.atomic_amount())
+            .unwrap_or_else(|| env::panic_str("Campaign reserved balance underflow"));
+        let new_committed = new_reserved
+            .checked_add(campaign.spent)
+            .unwrap_or_else(|| env::panic_str("Campaign accounting overflow"));
+        require!(
+            new_committed <= campaign.funded && campaign.funded <= campaign.budget,
+            "Campaign accounting invariant violated"
+        );
+
+        let previous_status = payout.status;
+        campaign.reserved = new_reserved;
+        payout.status = PayoutStatus::ReservationReleased;
+        self.campaigns.insert(campaign.id, campaign);
+        self.payouts.insert(payout.id, payout.clone());
+        Self::payout_resolution_evidence().insert(payout.id, evidence.clone());
+        Self::index_resolution_evidence(&evidence, execution_key);
+        self.emit_event(
+            event,
+            near_sdk::serde_json::json!({
+                "payout_id": payout.id,
+                "campaign_id": payout.campaign_id,
+                "verifier_id": evidence.verifier_id,
+                "previous_status": Self::payout_status_name(previous_status),
+                "new_status": Self::payout_status_name(payout.status),
+                "released_input_amount": payout.input_amount.atomic_amount().to_string(),
+                "evidence_reference": evidence.evidence_reference,
+                "resolution_outcome": evidence.outcome,
+            }),
+        );
+    }
+
     fn payout_or_panic(&self, payout_id: u64) -> Payout {
         self.payouts
             .get(&payout_id)
@@ -1106,6 +1307,10 @@ impl Disburse {
 
     fn payout_settlement_evidence() -> LookupMap<u64, SettlementEvidence> {
         LookupMap::new(b"payout-settlement-records-v1".to_vec())
+    }
+
+    fn payout_resolution_evidence() -> LookupMap<u64, PayoutResolutionEvidence> {
+        LookupMap::new(b"payout-resolution-records-v1".to_vec())
     }
 
     fn settlement_execution_index() -> LookupMap<(String, String, String, Option<String>), u64> {
@@ -1181,6 +1386,7 @@ impl Disburse {
             lifecycle_reason: Self::payout_lifecycle_reasons().get(&payout.id).cloned(),
             failure_evidence: Self::payout_failure_evidence().get(&payout.id).cloned(),
             settlement_evidence: Self::payout_settlement_evidence().get(&payout.id).cloned(),
+            resolution_evidence: Self::payout_resolution_evidence().get(&payout.id).cloned(),
         }
     }
 
@@ -1231,6 +1437,7 @@ impl Disburse {
             PayoutStatus::RefundPending => "RefundPending",
             PayoutStatus::Refunded => "Refunded",
             PayoutStatus::ManualReview => "ManualReview",
+            PayoutStatus::ReservationReleased => "ReservationReleased",
         }
     }
 
