@@ -58,11 +58,13 @@ reservation, moving the payout to terminal `ReservationReleased`.
 
 Resolution attestations include the payout and verifier IDs, outcome, method, timestamp, unique
 evidence reference, SHA-256 content hash, bounded reason, and optional provider-scoped external
-execution identity. They are stored under `payout-resolution-records-v1`. The existing global
-settlement reference and execution indexes are shared with recovery, preventing cross-path
-replay. A confirmed execution claims its identity for that payout, allowing that same payout to
-settle against the identity but preventing any other payout from using it. A non-settlement
-identity is permanently unavailable to settlement.
+execution identity. They are stored as an append-only per-payout history under
+`payout-resolution-records-v1` and returned by both payout views. The existing global settlement
+reference and execution indexes are shared with recovery, preventing cross-path replay. A
+confirmed execution claims its identity for that payout, allowing that same payout to settle
+against the identity but preventing any other payout from using it. A non-settlement identity is
+permanently unavailable to settlement. When supplied, an external identity's chain must match
+the payout's authorized destination.
 
 Reservation release validates the campaign token and accounting invariant, subtracts only from
 `reserved` using checked arithmetic, and leaves `spent`, `funded`, and `budget` unchanged. It
@@ -71,6 +73,10 @@ existing payouts. Failed and uncertain payouts remain reserved until a verifier 
 structured, final non-settlement attestation; timeouts and missing provider responses alone are
 not sufficient. This remains a trusted-verifier model: the contract records and checks the
 attestation but cannot independently prove the external execution outcome.
+
+A payout with any prior `ExecutionConfirmed` resolution cannot later be released as
+non-settled, even if it is subsequently moved back into review or marked Failed. This prevents a
+later resolution from contradicting an already-recorded execution confirmation.
 
 This milestone adds no withdrawals, automatic retries, external transaction submission, or
 trustless cross-chain proof verification.

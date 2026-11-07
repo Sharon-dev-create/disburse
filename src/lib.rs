@@ -56,7 +56,7 @@ pub struct PayoutView {
     pub lifecycle_reason: Option<String>,
     pub failure_evidence: Option<ExecutionFailureEvidence>,
     pub settlement_evidence: Option<SettlementEvidence>,
-    pub resolution_evidence: Option<PayoutResolutionEvidence>,
+    pub resolution_evidence: Vec<PayoutResolutionEvidence>,
 }
 
 #[near(serializers = [json, borsh])]
@@ -601,6 +601,7 @@ impl Disburse {
             payout.status == PayoutStatus::Failed,
             "Only Failed payouts can use failed-payout recovery"
         );
+        Self::require_no_prior_execution_confirmation(payout_id);
         require!(
             Self::payout_failure_evidence().get(&payout_id).is_some(),
             "Failure evidence is required before releasing a Failed payout"
@@ -611,6 +612,7 @@ impl Disburse {
             &evidence,
             PayoutResolutionOutcome::NonSettlementConfirmed,
         );
+        Self::assert_resolution_destination_matches(&payout, &evidence);
         self.assert_recovery_evidence_available(&evidence, execution_key.as_ref());
         self.release_reservation_with_evidence(
             payout,
@@ -647,12 +649,13 @@ impl Disburse {
             &evidence,
             PayoutResolutionOutcome::ExecutionConfirmed,
         );
+        Self::assert_resolution_destination_matches(&payout, &evidence);
         self.assert_recovery_evidence_available(&evidence, execution_key.as_ref());
 
         let previous_status = payout.status;
         payout.status = PayoutStatus::PendingVerification;
         self.payouts.insert(payout_id, payout.clone());
-        Self::payout_resolution_evidence().insert(payout_id, evidence.clone());
+        Self::record_resolution_evidence(payout_id, evidence.clone());
         Self::index_resolution_evidence(&evidence, execution_key);
         self.emit_event(
             "manual_review_execution_confirmed",
@@ -681,12 +684,14 @@ impl Disburse {
             payout.status == PayoutStatus::ManualReview,
             "Only ManualReview payouts can be resolved as non-settled"
         );
+        Self::require_no_prior_execution_confirmation(payout_id);
         let execution_key = Self::validate_resolution_evidence(
             payout_id,
             &actor_id,
             &evidence,
             PayoutResolutionOutcome::NonSettlementConfirmed,
         );
+        Self::assert_resolution_destination_matches(&payout, &evidence);
         self.assert_recovery_evidence_available(&evidence, execution_key.as_ref());
         self.release_reservation_with_evidence(
             payout,
@@ -797,15 +802,17 @@ impl Disburse {
             let resolution_map = Self::payout_resolution_evidence();
             let resolution = resolution_map.get(&payout_id);
             require!(
-                resolution.is_some_and(|resolution| {
-                    resolution.outcome == PayoutResolutionOutcome::ExecutionConfirmed
-                        && resolution
-                            .external_execution
-                            .as_ref()
-                            .is_some_and(|identity| {
-                                Self::external_execution_key(identity) == execution_key
-                            })
-                }),
+                resolution
+                    .and_then(|records| records.last())
+                    .is_some_and(|resolution| {
+                        resolution.outcome == PayoutResolutionOutcome::ExecutionConfirmed
+                            && resolution
+                                .external_execution
+                                .as_ref()
+                                .is_some_and(|identity| {
+                                    Self::external_execution_key(identity) == execution_key
+                                })
+                    }),
                 "Execution identity is reserved by a different payout resolution"
             );
         }
@@ -1188,6 +1195,34 @@ impl Disburse {
         )
     }
 
+    fn assert_resolution_destination_matches(payout: &Payout, evidence: &PayoutResolutionEvidence) {
+        if let Some(identity) = &evidence.external_execution {
+            require!(
+                identity.destination_chain_id == payout.destination.chain_id,
+                "Resolution execution chain does not match the payout destination"
+            );
+        }
+    }
+
+    fn record_resolution_evidence(payout_id: u64, evidence: PayoutResolutionEvidence) {
+        let mut records = Self::payout_resolution_evidence()
+            .get(&payout_id)
+            .cloned()
+            .unwrap_or_default();
+        records.push(evidence);
+        Self::payout_resolution_evidence().insert(payout_id, records);
+    }
+
+    fn require_no_prior_execution_confirmation(payout_id: u64) {
+        let resolutions = Self::payout_resolution_evidence();
+        require!(
+            !resolutions.get(&payout_id).is_some_and(|records| records
+                .iter()
+                .any(|record| { record.outcome == PayoutResolutionOutcome::ExecutionConfirmed })),
+            "A payout previously confirmed executed cannot be released as non-settled"
+        );
+    }
+
     fn settlement_execution_key(evidence: &SettlementEvidence) -> SettlementExecutionKey {
         (
             evidence.provider_id.clone(),
@@ -1277,7 +1312,7 @@ impl Disburse {
         payout.status = PayoutStatus::ReservationReleased;
         self.campaigns.insert(campaign.id, campaign);
         self.payouts.insert(payout.id, payout.clone());
-        Self::payout_resolution_evidence().insert(payout.id, evidence.clone());
+        Self::record_resolution_evidence(payout.id, evidence.clone());
         Self::index_resolution_evidence(&evidence, execution_key);
         self.emit_event(
             event,
@@ -1317,7 +1352,7 @@ impl Disburse {
         LookupMap::new(b"payout-settlement-records-v1".to_vec())
     }
 
-    fn payout_resolution_evidence() -> LookupMap<u64, PayoutResolutionEvidence> {
+    fn payout_resolution_evidence() -> LookupMap<u64, Vec<PayoutResolutionEvidence>> {
         LookupMap::new(b"payout-resolution-records-v1".to_vec())
     }
 
@@ -1394,7 +1429,10 @@ impl Disburse {
             lifecycle_reason: Self::payout_lifecycle_reasons().get(&payout.id).cloned(),
             failure_evidence: Self::payout_failure_evidence().get(&payout.id).cloned(),
             settlement_evidence: Self::payout_settlement_evidence().get(&payout.id).cloned(),
-            resolution_evidence: Self::payout_resolution_evidence().get(&payout.id).cloned(),
+            resolution_evidence: Self::payout_resolution_evidence()
+                .get(&payout.id)
+                .cloned()
+                .unwrap_or_default(),
         }
     }
 
@@ -3786,7 +3824,7 @@ mod tests {
         assert_eq!(after.budget, before_campaign.budget);
         let released = contract.get_payout(payout_id).unwrap();
         assert_eq!(released.status, PayoutStatus::ReservationReleased);
-        assert!(released.resolution_evidence.is_some());
+        assert_eq!(released.resolution_evidence.len(), 1);
         let logs = get_logs();
         let event = logs.last().unwrap();
         assert!(event.contains("failed_payout_reservation_released"));
@@ -3836,7 +3874,7 @@ mod tests {
             pending.execution_reference,
             Some("execution:recover-executed".into())
         );
-        assert_eq!(pending.resolution_evidence, Some(evidence));
+        assert_eq!(pending.resolution_evidence, vec![evidence]);
         let after_resolution = contract
             .get_campaign_payout_accounting(campaign_id)
             .unwrap();
@@ -3876,11 +3914,14 @@ mod tests {
             PayoutResolutionOutcome::NonSettlementConfirmed,
             "recover:not-executed",
         );
+        set_context(accounts(1));
+        contract.pause();
+        set_context(accounts(5));
         contract.release_manual_review_reservation(payout_id, evidence.clone());
 
         let released = contract.get_payout(payout_id).unwrap();
         assert_eq!(released.status, PayoutStatus::ReservationReleased);
-        assert_eq!(released.resolution_evidence, Some(evidence));
+        assert_eq!(released.resolution_evidence, vec![evidence]);
         let after = contract
             .get_campaign_payout_accounting(campaign_id)
             .unwrap();
@@ -3954,6 +3995,21 @@ mod tests {
         contract.release_manual_review_reservation(released_id, release.clone());
 
         later_settlement.evidence_reference = Some("cross-path:settlement-ref".into());
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| {
+                contract.settle_payout(pending_id, later_settlement.clone())
+            }))
+            .is_err()
+        );
+        assert_eq!(
+            contract.get_payout(pending_id).unwrap().status,
+            PayoutStatus::PendingVerification
+        );
+
+        later_settlement.provider_id = "another-provider".into();
+        later_settlement.destination_transaction_reference = "different-execution".into();
+        later_settlement.transaction_event_identifier = None;
+        later_settlement.evidence_reference = Some(release.evidence_reference.clone());
         assert!(
             catch_unwind(AssertUnwindSafe(|| {
                 contract.settle_payout(pending_id, later_settlement.clone())
@@ -4132,6 +4188,86 @@ mod tests {
             Disburse::payout_resolution_evidence()
                 .get(&payout_id)
                 .is_none()
+        );
+
+        inconsistent.reserved = u128::MAX;
+        inconsistent.spent = 1;
+        contract.campaigns.insert(campaign_id, inconsistent.clone());
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| {
+                contract.release_failed_payout_reservation(payout_id, good.clone())
+            }))
+            .is_err()
+        );
+        assert_eq!(contract.campaigns.get(&campaign_id), Some(&inconsistent));
+        assert!(
+            Disburse::settlement_reference_index()
+                .get(&good.evidence_reference)
+                .is_none()
+        );
+
+        contract.campaigns.insert(campaign_id, before.clone());
+        contract.release_failed_payout_reservation(payout_id, good.clone());
+        assert_eq!(
+            contract.get_payout(payout_id).unwrap().status,
+            PayoutStatus::ReservationReleased
+        );
+    }
+
+    #[test]
+    fn multiple_recoveries_preserve_aggregate_accounting_and_view_history() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        let first = failed_test_payout(&mut contract, campaign_id, "aggregate-release-one");
+        let second = failed_test_payout(&mut contract, campaign_id, "aggregate-release-two");
+        let before = contract
+            .get_campaign_payout_accounting(campaign_id)
+            .unwrap();
+        grant_verifier(&mut contract, accounts(5));
+        contract.release_failed_payout_reservation(
+            first,
+            resolution_evidence(
+                first,
+                accounts(5),
+                PayoutResolutionOutcome::NonSettlementConfirmed,
+                "aggregate:evidence-one",
+            ),
+        );
+        contract.release_failed_payout_reservation(
+            second,
+            resolution_evidence(
+                second,
+                accounts(5),
+                PayoutResolutionOutcome::NonSettlementConfirmed,
+                "aggregate:evidence-two",
+            ),
+        );
+        let after = contract
+            .get_campaign_payout_accounting(campaign_id)
+            .unwrap();
+        assert_eq!(after.reserved.0, before.reserved.0 - 20);
+        assert_eq!(after.spent, before.spent);
+        assert_eq!(after.funded, before.funded);
+        assert_eq!(after.budget, before.budget);
+        assert_eq!(after.available.0, before.available.0 + 20);
+        assert_eq!(
+            contract
+                .get_payout(first)
+                .unwrap()
+                .resolution_evidence
+                .len(),
+            1
+        );
+        assert_eq!(
+            contract
+                .get_payout(second)
+                .unwrap()
+                .resolution_evidence
+                .len(),
+            1
+        );
+        assert_eq!(
+            contract.get_campaign_payout(campaign_id, first).unwrap(),
+            contract.get_payout(first).unwrap()
         );
     }
 }
