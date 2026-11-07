@@ -1,5 +1,5 @@
-import type { ExecutionJobKey, PayoutReservedEvent, PayoutSnapshot } from "../domain/payout.js";
-import type { JobState, TransitionEvidence } from "../state-machine/state.js";
+import type { ExecutionJobKey, PayoutReservedEvent, PayoutSnapshot } from "../domain/payout.ts";
+import type { JobState, TransitionEvidence } from "../state-machine/state.ts";
 
 export interface Lease {
   readonly workerId: string;

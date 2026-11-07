@@ -4,14 +4,14 @@ import {
   type ExecutionJobKey,
   type PayoutReservedEvent,
   type PayoutSnapshot
-} from "../domain/payout.js";
-import { assertTransition, type JobState, type TransitionEvidence } from "../state-machine/state.js";
+} from "../domain/payout.ts";
+import { assertTransition, type JobState, type TransitionEvidence } from "../state-machine/state.ts";
 import type {
   ExecutionAttempt,
   ExecutionJobRecord,
   JobRepository,
   Lease
-} from "./repository.js";
+} from "./repository.ts";
 
 export interface MemoryPersistenceState {
   readonly jobs: Map<string, ExecutionJobRecord>;
@@ -24,7 +24,11 @@ export function newMemoryPersistenceState(): MemoryPersistenceState {
 
 /** Test-only repository. Production persistence is specified by the PostgreSQL schema. */
 export class InMemoryJobRepository implements JobRepository {
-  constructor(private readonly storage: MemoryPersistenceState = newMemoryPersistenceState()) {}
+  private readonly storage: MemoryPersistenceState;
+
+  constructor(storage: MemoryPersistenceState = newMemoryPersistenceState()) {
+    this.storage = storage;
+  }
 
   async enqueueDiscovered(
     event: PayoutReservedEvent,

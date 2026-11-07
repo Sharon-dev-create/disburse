@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { restartAction } from "../src/providers/adapter.js";
-import { assertTransition } from "../src/state-machine/state.js";
-import { MockExecutionProvider, MockSettlementVerifier } from "./support/mock-adapters.js";
+import { restartAction } from "../src/providers/adapter.ts";
+import { assertTransition } from "../src/state-machine/state.ts";
+import { MockExecutionProvider, MockSettlementVerifier } from "./support/mock-adapters.ts";
 
 test("valid operational path requires separately verified evidence and on-chain settlement", () => {
   assertTransition("Discovered", "Queued", { contractPayoutStatus: "Reserved" });

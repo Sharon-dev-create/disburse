@@ -1,4 +1,4 @@
-import type { PayoutSnapshot } from "../../src/domain/payout.js";
+import type { PayoutSnapshot } from "../../src/domain/payout.ts";
 import type {
   ExecutionProviderAdapter,
   ExecutionQuote,
@@ -7,11 +7,11 @@ import type {
   ProviderEvidenceClaims,
   ProviderStatus,
   ProviderSubmissionResult
-} from "../../src/providers/adapter.js";
+} from "../../src/providers/adapter.ts";
 import type {
   SettlementVerifier,
   VerificationResult
-} from "../../src/verification/verifier.js";
+} from "../../src/verification/verifier.ts";
 
 export class MockExecutionProvider implements ExecutionProviderAdapter {
   readonly providerId = "mock-provider";

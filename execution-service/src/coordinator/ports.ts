@@ -1,7 +1,7 @@
-import type { PayoutReservedEvent, PayoutSnapshot } from "../domain/payout.js";
-import type { ExecutionJobRecord, JobRepository, Lease } from "../persistence/repository.js";
-import type { ExecutionProviderAdapter } from "../providers/adapter.js";
-import type { SettlementVerifier } from "../verification/verifier.js";
+import type { PayoutReservedEvent, PayoutSnapshot } from "../domain/payout.ts";
+import type { ExecutionJobRecord, JobRepository, Lease } from "../persistence/repository.ts";
+import type { ExecutionProviderAdapter } from "../providers/adapter.ts";
+import type { SettlementVerifier } from "../verification/verifier.ts";
 
 export interface DiscoverySource {
   /** Consumes finalized/indexed events and supports cursor-based replay after restart. */

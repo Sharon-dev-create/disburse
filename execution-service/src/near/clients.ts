@@ -1,4 +1,4 @@
-import type { PayoutId, PayoutSnapshot, TokenAmount } from "../domain/payout.js";
+import type { PayoutId, PayoutSnapshot, TokenAmount } from "../domain/payout.ts";
 
 export interface CampaignAccountingSnapshot {
   readonly campaignId: string;

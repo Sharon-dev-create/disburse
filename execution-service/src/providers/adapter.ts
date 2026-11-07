@@ -1,4 +1,4 @@
-import type { PayoutSnapshot } from "../domain/payout.js";
+import type { PayoutSnapshot } from "../domain/payout.ts";
 
 export interface ExecutionRequest {
   readonly payout: PayoutSnapshot;

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import type { ExecutionJobKey } from "../domain/payout.js";
-import { executionJobKeyString } from "../domain/payout.js";
+import type { ExecutionJobKey } from "../domain/payout.ts";
+import { executionJobKeyString } from "../domain/payout.ts";
 
 /** Stable, bounded references; provider enforcement must still be verified per adapter. */
 export function stableExecutionReference(key: ExecutionJobKey): string {

@@ -1,5 +1,5 @@
-import type { PayoutSnapshot } from "../domain/payout.js";
-import type { ProviderEvidenceClaims } from "../providers/adapter.js";
+import type { PayoutSnapshot } from "../domain/payout.ts";
+import type { ProviderEvidenceClaims } from "../providers/adapter.ts";
 
 export type VerificationResult =
   | {

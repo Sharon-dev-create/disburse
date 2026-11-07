@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { InMemoryJobRepository, newMemoryPersistenceState } from "../src/persistence/in-memory.js";
-import type { PayoutReservedEvent, PayoutSnapshot } from "../src/domain/payout.js";
-import type { ExecutionAttempt } from "../src/persistence/repository.js";
+import { InMemoryJobRepository, newMemoryPersistenceState } from "../src/persistence/in-memory.ts";
+import type { PayoutReservedEvent, PayoutSnapshot } from "../src/domain/payout.ts";
+import type { ExecutionAttempt } from "../src/persistence/repository.ts";
 
 test("duplicate discovery is idempotent and preserves the payout-to-job mapping", async () => {
   const repository = new InMemoryJobRepository();
