@@ -61,7 +61,10 @@ export class NearIntentsClient {
         "A NEAR Intents API key is required",
       );
     }
-    if (!Number.isInteger(config.requestTimeoutMs) || config.requestTimeoutMs < 1) {
+    if (
+      !Number.isInteger(config.requestTimeoutMs) ||
+      config.requestTimeoutMs < 1
+    ) {
       throw new NearIntentsError(
         "permanent-validation",
         "invalid-timeout",
@@ -71,7 +74,9 @@ export class NearIntentsClient {
     this.fetchImpl = config.fetchImpl ?? fetch;
   }
 
-  async requestQuote(request: NearIntentsQuoteRequest): Promise<NearIntentsQuoteResponse> {
+  async requestQuote(
+    request: NearIntentsQuoteRequest,
+  ): Promise<NearIntentsQuoteResponse> {
     let response: Response;
     try {
       response = await this.fetchImpl(`${NEAR_INTENTS_API_BASE_URL}/v0/quote`, {
@@ -97,7 +102,11 @@ export class NearIntentsClient {
     if (!response.ok) {
       const safeMessage = await readProviderMessage(response);
       if (response.status === 400) {
-        throw new NearIntentsError("permanent-validation", "http-400", safeMessage);
+        throw new NearIntentsError(
+          "permanent-validation",
+          "http-400",
+          safeMessage,
+        );
       }
       if (response.status === 401 || response.status === 403) {
         throw new NearIntentsError(
@@ -107,7 +116,8 @@ export class NearIntentsClient {
         );
       }
       if (response.status === 429) {
-        const retryAfter = Number(response.headers.get("retry-after"));
+        const retryAfterHeader = response.headers.get("retry-after");
+        const retryAfter = retryAfterHeader === null ? Number.NaN : Number(retryAfterHeader);
         throw new NearIntentsError(
           "rate-limited",
           "http-429",
@@ -116,9 +126,17 @@ export class NearIntentsClient {
         );
       }
       if (response.status >= 500) {
-        throw new NearIntentsError("temporary-provider", `http-${response.status}`, safeMessage);
+        throw new NearIntentsError(
+          "temporary-provider",
+          `http-${response.status}`,
+          safeMessage,
+        );
       }
-      throw new NearIntentsError("temporary-provider", `http-${response.status}`, safeMessage);
+      throw new NearIntentsError(
+        "temporary-provider",
+        `http-${response.status}`,
+        safeMessage,
+      );
     }
 
     let body: unknown;

@@ -46,13 +46,11 @@ export interface QuoteProviderAdapter {
 }
 
 export type QuoteLifecycleState =
-  | "Requested"
-  | "Received"
-  | "Validated"
-  | "Rejected"
-  | "Expired";
+  "Requested" | "Received" | "Validated" | "Rejected" | "Expired";
 
-const quoteTransitions: Readonly<Record<QuoteLifecycleState, readonly QuoteLifecycleState[]>> = {
+const quoteTransitions: Readonly<
+  Record<QuoteLifecycleState, readonly QuoteLifecycleState[]>
+> = {
   Requested: ["Received", "Rejected"],
   Received: ["Validated", "Rejected", "Expired"],
   Validated: ["Expired"],
@@ -67,7 +65,10 @@ export function canTransitionQuote(
   return quoteTransitions[from].includes(to);
 }
 
-export function isFreshQuote(opportunity: ExecutionOpportunity, nowMs: number): boolean {
+export function isFreshQuote(
+  opportunity: ExecutionOpportunity,
+  nowMs: number,
+): boolean {
   const freshUntilMs = Date.parse(opportunity.freshUntil);
   return Number.isFinite(freshUntilMs) && nowMs < freshUntilMs;
 }

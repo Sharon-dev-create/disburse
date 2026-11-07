@@ -31,7 +31,10 @@ void test("1Click client sends authenticated preview-only exact-output quote", a
   await client.requestQuote(request());
   assert.equal(sent?.url, "https://1click.chaindefuser.com/v0/quote");
   assert.equal(sent?.init.method, "POST");
-  assert.equal(new Headers(sent?.init.headers).get("x-api-key"), "test-api-key");
+  assert.equal(
+    new Headers(sent?.init.headers).get("x-api-key"),
+    "test-api-key",
+  );
   assert.equal(new Headers(sent?.init.headers).get("authorization"), null);
   const body = JSON.parse(String(sent?.init.body)) as NearIntentsQuoteRequest;
   assert.equal(body.dry, true);
@@ -51,7 +54,11 @@ void test("client normalizes authentication, validation, rate limit, 5xx and net
     const client = new NearIntentsClient({
       apiKey: "test-key",
       requestTimeoutMs: 100,
-      fetchImpl: async () => new Response(JSON.stringify({ message: "safe provider error" }), { status, headers }),
+      fetchImpl: async () =>
+        new Response(JSON.stringify({ message: "safe provider error" }), {
+          status,
+          ...(headers === undefined ? {} : { headers }),
+        }),
     });
     await assert.rejects(client.requestQuote(request()), (error: unknown) => {
       assert.ok(error instanceof NearIntentsError);
@@ -63,39 +70,58 @@ void test("client normalizes authentication, validation, rate limit, 5xx and net
   const networkClient = new NearIntentsClient({
     apiKey: "test-key",
     requestTimeoutMs: 100,
-    fetchImpl: async () => { throw new TypeError("network down"); },
+    fetchImpl: async () => {
+      throw new TypeError("network down");
+    },
   });
-  await assert.rejects(networkClient.requestQuote(request()), (error: unknown) => {
-    assert.ok(error instanceof NearIntentsError);
-    assert.equal(error.kind, "ambiguous-outcome");
-    assert.equal(error.code, "network-failure");
-    return true;
-  });
+  await assert.rejects(
+    networkClient.requestQuote(request()),
+    (error: unknown) => {
+      assert.ok(error instanceof NearIntentsError);
+      assert.equal(error.kind, "ambiguous-outcome");
+      assert.equal(error.code, "network-failure");
+      return true;
+    },
+  );
 });
 
 void test("client rejects missing credentials, malformed JSON and malformed object response", async () => {
   assert.throws(
-    () => new NearIntentsClient({ apiKey: "replace-with-key", requestTimeoutMs: 10 }),
-    (error: unknown) => error instanceof NearIntentsError && error.kind === "configuration-or-authentication",
+    () =>
+      new NearIntentsClient({
+        apiKey: "replace-with-key",
+        requestTimeoutMs: 10,
+      }),
+    (error: unknown) =>
+      error instanceof NearIntentsError &&
+      error.kind === "configuration-or-authentication",
   );
   const malformedJson = new NearIntentsClient({
-    apiKey: "key", requestTimeoutMs: 100,
+    apiKey: "key",
+    requestTimeoutMs: 100,
     fetchImpl: async () => new Response("not-json"),
   });
   await assert.rejects(malformedJson.requestQuote(request()), /malformed JSON/);
   const malformedObject = new NearIntentsClient({
-    apiKey: "key", requestTimeoutMs: 100,
+    apiKey: "key",
+    requestTimeoutMs: 100,
     fetchImpl: async () => new Response(JSON.stringify([])),
   });
-  await assert.rejects(malformedObject.requestQuote(request()), /must be an object/);
+  await assert.rejects(
+    malformedObject.requestQuote(request()),
+    /must be an object/,
+  );
 });
 
 void test("timed-out preview is ambiguous but cannot become an execution result", async () => {
   const timeoutError = new Error("timed out");
   timeoutError.name = "TimeoutError";
   const client = new NearIntentsClient({
-    apiKey: "test-key", requestTimeoutMs: 1,
-    fetchImpl: async () => { throw timeoutError; },
+    apiKey: "test-key",
+    requestTimeoutMs: 1,
+    fetchImpl: async () => {
+      throw timeoutError;
+    },
   });
   await assert.rejects(client.requestQuote(request()), (error: unknown) => {
     assert.ok(error instanceof NearIntentsError);
@@ -115,12 +141,19 @@ void test("valid exact-output quote maps to provider-neutral opportunity using a
   assert.equal(opportunity.minimumOutputAtomicAmount, "300");
   assert.equal(opportunity.recipientAddress, "alice.destination");
   assert.equal(opportunity.quoteReference, "quote-reference-1");
-  assert.equal(opportunity.providerMetadata.quoteSignature, "mock-signature-not-verified");
+  assert.equal(
+    opportunity.providerMetadata.quoteSignature,
+    "mock-signature-not-verified",
+  );
   assert.equal(opportunity.expiresAt, null);
   assert.equal(opportunity.freshUntil, "2026-11-07T12:00:30.000Z");
   assert.deepEqual(opportunity.fees, [
     { kind: "origin-refund", tokenId: "token:near-usdc", atomicAmount: "2" },
-    { kind: "destination-withdrawal", tokenId: "token:eth-usdc", atomicAmount: "1" },
+    {
+      kind: "destination-withdrawal",
+      tokenId: "token:eth-usdc",
+      atomicAmount: "1",
+    },
   ]);
   assert.equal(opportunity.estimatedExecutionSeconds, 90);
   assert.equal(isFreshQuote(opportunity, now), true);
@@ -128,12 +161,19 @@ void test("valid exact-output quote maps to provider-neutral opportunity using a
 });
 
 void test("rejects quotes that change source, destination, recipient, or refund route", async () => {
-  for (const key of ["originAsset", "destinationAsset", "recipient", "refundTo"] as const) {
+  for (const key of [
+    "originAsset",
+    "destinationAsset",
+    "recipient",
+    "refundTo",
+  ] as const) {
     const response = validResponse();
     const echo = response.quoteRequest as Record<string, unknown>;
     echo[key] = "attacker-chosen-value";
-    await assert.rejects(adapter(response).quote(intent()), (error: unknown) =>
-      error instanceof NearIntentsError && error.code === "route-mismatch",
+    await assert.rejects(
+      adapter(response).quote(intent()),
+      (error: unknown) =>
+        error instanceof NearIntentsError && error.code === "route-mismatch",
     );
   }
 });
@@ -141,7 +181,10 @@ void test("rejects quotes that change source, destination, recipient, or refund 
 void test("rejects input over reservation, non-exact or insufficient output, and malformed fee data", async () => {
   const overBudget = validResponse();
   (overBudget.quote as Record<string, unknown>).amountIn = "1001";
-  await assert.rejects(adapter(overBudget).quote(intent()), /exceeds the reserved/);
+  await assert.rejects(
+    adapter(overBudget).quote(intent()),
+    /exceeds the reserved/,
+  );
 
   const wrongOutput = validResponse();
   (wrongOutput.quote as Record<string, unknown>).amountOut = "301";
@@ -149,11 +192,17 @@ void test("rejects input over reservation, non-exact or insufficient output, and
 
   const tooLittleMin = validResponse();
   (tooLittleMin.quote as Record<string, unknown>).minAmountOut = "299";
-  await assert.rejects(adapter(tooLittleMin).quote(intent()), /below the payout/);
+  await assert.rejects(
+    adapter(tooLittleMin).quote(intent()),
+    /below the payout/,
+  );
 
   const badFee = validResponse();
   (badFee.quote as Record<string, unknown>).withdrawFee = "1.5";
-  await assert.rejects(adapter(badFee).quote(intent()), /atomic integer string/);
+  await assert.rejects(
+    adapter(badFee).quote(intent()),
+    /atomic integer string/,
+  );
 });
 
 void test("rejects missing IDs, invalid amounts, bad metadata, unsupported routes and invalid decimals", async () => {
@@ -162,7 +211,8 @@ void test("rejects missing IDs, invalid amounts, bad metadata, unsupported route
   await assert.rejects(adapter(noId).quote(intent()), /correlation ID/);
 
   const badAmount = validResponse();
-  (badAmount.quote as Record<string, unknown>).amountIn = "999999999999999999999999999999999999999";
+  (badAmount.quote as Record<string, unknown>).amountIn =
+    "999999999999999999999999999999999999999";
   await assert.rejects(adapter(badAmount).quote(intent()), /u128 range/);
 
   const baseIntent = intent();
@@ -173,9 +223,15 @@ void test("rejects missing IDs, invalid amounts, bad metadata, unsupported route
     ...baseIntent,
     input: { ...baseIntent.input, decimals: 5 },
   };
-  await assert.rejects(adapter().quote(badDecimals), /trusted asset configuration/);
+  await assert.rejects(
+    adapter().quote(badDecimals),
+    /trusted asset configuration/,
+  );
 
-  assert.throws(() => adapter(undefined, { slippageToleranceBps: 10_001 }), /between 0 and 10000/);
+  assert.throws(
+    () => adapter(undefined, { slippageToleranceBps: 10_001 }),
+    /between 0 and 10000/,
+  );
 });
 
 void test("duplicate dry quote responses are observations only and do not mutate payout intent", async () => {
@@ -199,7 +255,9 @@ void test("quote lifecycle stays separate from payout execution states", () => {
 
 function adapter(
   response = validResponse(),
-  overrides: Partial<Pick<NearIntentsAdapterConfig, "maxQuoteAgeMs" | "slippageToleranceBps">> = {},
+  overrides: Partial<
+    Pick<NearIntentsAdapterConfig, "maxQuoteAgeMs" | "slippageToleranceBps">
+  > = {},
 ) {
   const client = new NearIntentsClient({
     apiKey: "test-api-key",
@@ -209,8 +267,18 @@ function adapter(
   return new NearIntentsQuoteAdapter({
     client,
     assets: [
-      { assetId: "nep141:wrap.near", networkId: "near:mainnet", tokenId: "token:near-usdc", decimals: 6 },
-      { assetId: "nep141:eth-usdc", networkId: "eth:mainnet", tokenId: "token:eth-usdc", decimals: 6 },
+      {
+        assetId: "nep141:wrap.near",
+        networkId: "near:mainnet",
+        tokenId: "token:near-usdc",
+        decimals: 6,
+      },
+      {
+        assetId: "nep141:eth-usdc",
+        networkId: "eth:mainnet",
+        tokenId: "token:eth-usdc",
+        decimals: 6,
+      },
     ],
     providerNetworkByDisburseNetwork: {
       "near:mainnet": "near",
@@ -228,7 +296,11 @@ function intent(): QuoteIntent {
     input: { tokenId: "token:near-usdc", atomicAmount: "1000", decimals: 6 },
     destinationNetworkId: "eth:mainnet",
     recipientAddress: "alice.destination",
-    expectedOutput: { tokenId: "token:eth-usdc", atomicAmount: "300", decimals: 6 },
+    expectedOutput: {
+      tokenId: "token:eth-usdc",
+      atomicAmount: "300",
+      decimals: 6,
+    },
     refundAddress: "treasury.near",
     deadline: "2026-11-07T12:10:00.000Z",
   };
@@ -236,17 +308,27 @@ function intent(): QuoteIntent {
 
 function request(): NearIntentsQuoteRequest {
   return {
-    dry: true, swapType: "EXACT_OUTPUT", slippageTolerance: 0,
-    originAsset: "nep141:wrap.near", depositType: "ORIGIN_CHAIN",
-    destinationAsset: "nep141:eth-usdc", amount: "300", refundTo: "treasury.near",
-    refundType: "ORIGIN_CHAIN", recipient: "alice.destination", recipientType: "DESTINATION_CHAIN",
+    dry: true,
+    swapType: "EXACT_OUTPUT",
+    slippageTolerance: 0,
+    originAsset: "nep141:wrap.near",
+    depositType: "ORIGIN_CHAIN",
+    destinationAsset: "nep141:eth-usdc",
+    amount: "300",
+    refundTo: "treasury.near",
+    refundType: "ORIGIN_CHAIN",
+    recipient: "alice.destination",
+    recipientType: "DESTINATION_CHAIN",
     deadline: "2026-11-07T12:10:00.000Z",
   };
 }
 
 function validResponse(): {
-  correlationId: string; timestamp: string; signature: string;
-  quoteRequest: Record<string, unknown>; quote: Record<string, unknown>;
+  correlationId: string;
+  timestamp: string;
+  signature: string;
+  quoteRequest: Record<string, unknown>;
+  quote: Record<string, unknown>;
 } {
   return {
     correlationId: "quote-reference-1",
@@ -256,12 +338,20 @@ function validResponse(): {
       ...request(),
     },
     quote: {
-      amountIn: "250", minAmountIn: "250", amountOut: "300", minAmountOut: "300",
-      refundFee: "2", withdrawFee: "1", timeEstimate: 90,
+      amountIn: "250",
+      minAmountIn: "250",
+      amountOut: "300",
+      minAmountOut: "300",
+      refundFee: "2",
+      withdrawFee: "1",
+      timeEstimate: 90,
     },
   };
 }
 
 function jsonResponse(body: unknown): Response {
-  return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
 }

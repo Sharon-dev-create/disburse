@@ -1,5 +1,10 @@
-import type { QuoteIntent, ExecutionOpportunity, QuoteProviderAdapter, QuoteFee } from "../quote.ts";
-import { NearIntentsClient, NearIntentsError } from "./client.ts";
+import type {
+  QuoteIntent,
+  ExecutionOpportunity,
+  QuoteProviderAdapter,
+  QuoteFee,
+} from "../quote.ts";
+import { NearIntentsError, type NearIntentsClient } from "./client.ts";
 
 export interface NearIntentsAssetMapping {
   readonly assetId: string;
@@ -34,18 +39,37 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
       config.slippageToleranceBps < 0 ||
       config.slippageToleranceBps > 10_000
     ) {
-      throw invalid("slippage-tolerance", "Slippage tolerance must be between 0 and 10000 bps");
+      throw invalid(
+        "slippage-tolerance",
+        "Slippage tolerance must be between 0 and 10000 bps",
+      );
     }
-    if (config.assets.length === 0) throw invalid("asset-mapping", "At least one asset mapping is required");
+    if (config.assets.length === 0)
+      throw invalid("asset-mapping", "At least one asset mapping is required");
     const seen = new Set<string>();
     for (const asset of config.assets) {
-      if (!asset.assetId.trim() || !asset.networkId.trim() || !asset.tokenId.trim()) {
-        throw invalid("asset-mapping", "Asset mappings require asset, network, and token IDs");
+      if (
+        !asset.assetId.trim() ||
+        !asset.networkId.trim() ||
+        !asset.tokenId.trim()
+      ) {
+        throw invalid(
+          "asset-mapping",
+          "Asset mappings require asset, network, and token IDs",
+        );
       }
-      if (!Number.isInteger(asset.decimals) || asset.decimals < 0 || asset.decimals > 255) {
-        throw invalid("asset-decimals", "Trusted asset decimals must fit an unsigned byte");
+      if (
+        !Number.isInteger(asset.decimals) ||
+        asset.decimals < 0 ||
+        asset.decimals > 255
+      ) {
+        throw invalid(
+          "asset-decimals",
+          "Trusted asset decimals must fit an unsigned byte",
+        );
       }
-      if (seen.has(asset.assetId)) throw invalid("asset-mapping", "Provider asset IDs must be unique");
+      if (seen.has(asset.assetId))
+        throw invalid("asset-mapping", "Provider asset IDs must be unique");
       seen.add(asset.assetId);
     }
     this.now = config.now ?? Date.now;
@@ -57,25 +81,51 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
     validateTokenAmount(intent.input);
     validateTokenAmount(intent.expectedOutput);
     if (!intent.recipientAddress.trim() || !intent.refundAddress.trim()) {
-      throw invalid("missing-address", "Recipient and origin refund address are required");
+      throw invalid(
+        "missing-address",
+        "Recipient and origin refund address are required",
+      );
     }
     const deadlineMs = Date.parse(intent.deadline);
     if (!Number.isFinite(deadlineMs) || deadlineMs <= this.now()) {
-      throw invalid("invalid-deadline", "A future quote deadline is required by the provider schema");
+      throw invalid(
+        "invalid-deadline",
+        "A future quote deadline is required by the provider schema",
+      );
     }
 
     const origin = this.findAsset(intent.input.tokenId, intent.sourceNetworkId);
-    const destination = this.findAsset(intent.expectedOutput.tokenId, intent.destinationNetworkId);
-    const originChain = this.config.providerNetworkByDisburseNetwork[intent.sourceNetworkId];
-    const destinationChain = this.config.providerNetworkByDisburseNetwork[intent.destinationNetworkId];
+    const destination = this.findAsset(
+      intent.expectedOutput.tokenId,
+      intent.destinationNetworkId,
+    );
+    const originChain =
+      this.config.providerNetworkByDisburseNetwork[intent.sourceNetworkId];
+    const destinationChain =
+      this.config.providerNetworkByDisburseNetwork[intent.destinationNetworkId];
     if (!originChain || !destinationChain) {
-      throw unsupported("network", "Requested source or destination network is not configured");
+      throw unsupported(
+        "network",
+        "Requested source or destination network is not configured",
+      );
     }
-    if (origin.networkId !== intent.sourceNetworkId || destination.networkId !== intent.destinationNetworkId) {
-      throw unsupported("asset-network-mismatch", "Configured token does not belong to the requested network");
+    if (
+      origin.networkId !== intent.sourceNetworkId ||
+      destination.networkId !== intent.destinationNetworkId
+    ) {
+      throw unsupported(
+        "asset-network-mismatch",
+        "Configured token does not belong to the requested network",
+      );
     }
-    if (origin.decimals !== intent.input.decimals || destination.decimals !== intent.expectedOutput.decimals) {
-      throw invalid("decimal-metadata-mismatch", "Payout token decimals do not match trusted asset configuration");
+    if (
+      origin.decimals !== intent.input.decimals ||
+      destination.decimals !== intent.expectedOutput.decimals
+    ) {
+      throw invalid(
+        "decimal-metadata-mismatch",
+        "Payout token decimals do not match trusted asset configuration",
+      );
     }
 
     const request = {
@@ -97,19 +147,42 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
     const responseQuote = record(response.quote, "quote");
     const echo = record(response.quoteRequest, "quoteRequest");
 
-    if (!isNonEmptyString(response.correlationId) || !isNonEmptyString(response.signature)) {
-      throw invalid("missing-quote-identity", "Quote response is missing its correlation ID or signature");
+    if (
+      !isNonEmptyString(response.correlationId) ||
+      !isNonEmptyString(response.signature)
+    ) {
+      throw invalid(
+        "missing-quote-identity",
+        "Quote response is missing its correlation ID or signature",
+      );
     }
-    if (!isIsoDate(response.timestamp)) throw invalid("invalid-timestamp", "Quote timestamp is invalid");
+    if (!isIsoDate(response.timestamp))
+      throw invalid("invalid-timestamp", "Quote timestamp is invalid");
     assertEqual(echo.dry, true, "echoed dry mode");
     assertEqual(echo.swapType, "EXACT_OUTPUT", "echoed swap type");
-    assertEqual(echo.slippageTolerance, this.config.slippageToleranceBps, "echoed slippage tolerance");
+    assertEqual(
+      echo.slippageTolerance,
+      this.config.slippageToleranceBps,
+      "echoed slippage tolerance",
+    );
     assertEqual(echo.originAsset, origin.assetId, "echoed source asset");
     assertEqual(echo.depositType, "ORIGIN_CHAIN", "echoed deposit type");
-    assertEqual(echo.destinationAsset, destination.assetId, "echoed destination asset");
-    assertEqual(echo.amount, intent.expectedOutput.atomicAmount, "echoed amount");
+    assertEqual(
+      echo.destinationAsset,
+      destination.assetId,
+      "echoed destination asset",
+    );
+    assertEqual(
+      echo.amount,
+      intent.expectedOutput.atomicAmount,
+      "echoed amount",
+    );
     assertEqual(echo.recipient, intent.recipientAddress, "echoed recipient");
-    assertEqual(echo.recipientType, "DESTINATION_CHAIN", "echoed recipient type");
+    assertEqual(
+      echo.recipientType,
+      "DESTINATION_CHAIN",
+      "echoed recipient type",
+    );
     assertEqual(echo.refundTo, intent.refundAddress, "echoed refund address");
     assertEqual(echo.refundType, "ORIGIN_CHAIN", "echoed refund type");
     assertEqual(echo.deadline, intent.deadline, "echoed deadline");
@@ -117,28 +190,52 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
     const amountIn = parseAmount(responseQuote.amountIn, "amountIn");
     const minAmountIn = parseAmount(responseQuote.minAmountIn, "minAmountIn");
     const amountOut = parseAmount(responseQuote.amountOut, "amountOut");
-    const minAmountOut = parseAmount(responseQuote.minAmountOut, "minAmountOut");
+    const minAmountOut = parseAmount(
+      responseQuote.minAmountOut,
+      "minAmountOut",
+    );
     const authorizedInput = BigInt(intent.input.atomicAmount);
     if (BigInt(amountIn) > authorizedInput) {
-      throw invalid("input-budget-exceeded", "Quote maximum input exceeds the reserved payout input amount");
+      throw invalid(
+        "input-budget-exceeded",
+        "Quote maximum input exceeds the reserved payout input amount",
+      );
     }
     if (BigInt(minAmountIn) > BigInt(amountIn)) {
-      throw invalid("invalid-input-range", "Quote minimum input exceeds its quoted input amount");
+      throw invalid(
+        "invalid-input-range",
+        "Quote minimum input exceeds its quoted input amount",
+      );
     }
     if (amountOut !== intent.expectedOutput.atomicAmount) {
-      throw invalid("exact-output-mismatch", "Exact-output quote does not match the payout's required atomic output");
+      throw invalid(
+        "exact-output-mismatch",
+        "Exact-output quote does not match the payout's required atomic output",
+      );
     }
     if (BigInt(minAmountOut) < BigInt(intent.expectedOutput.atomicAmount)) {
-      throw invalid("minimum-output-below-required", "Quote minimum output is below the payout's exact required output");
+      throw invalid(
+        "minimum-output-below-required",
+        "Quote minimum output is below the payout's exact required output",
+      );
     }
     const fees = parseFees(responseQuote, origin, destination);
     const estimated = responseQuote.timeEstimate;
-    if (estimated !== undefined && (typeof estimated !== "number" || !Number.isFinite(estimated) || estimated < 0)) {
-      throw invalid("invalid-estimate", "Provider execution-time estimate is invalid");
+    if (
+      estimated !== undefined &&
+      (typeof estimated !== "number" ||
+        !Number.isFinite(estimated) ||
+        estimated < 0)
+    ) {
+      throw invalid(
+        "invalid-estimate",
+        "Provider execution-time estimate is invalid",
+      );
     }
 
     const freshUntilMs = receivedAtMs + this.config.maxQuoteAgeMs;
-    if (!Number.isFinite(freshUntilMs)) throw invalid("invalid-clock", "Quote freshness timestamp overflowed");
+    if (!Number.isFinite(freshUntilMs))
+      throw invalid("invalid-clock", "Quote freshness timestamp overflowed");
     return {
       providerId: this.providerId,
       sourceNetworkId: intent.sourceNetworkId,
@@ -163,12 +260,18 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
     };
   }
 
-  private findAsset(tokenId: string, networkId: string): NearIntentsAssetMapping {
+  private findAsset(
+    tokenId: string,
+    networkId: string,
+  ): NearIntentsAssetMapping {
     const matches = this.config.assets.filter(
       (asset) => asset.tokenId === tokenId && asset.networkId === networkId,
     );
     if (matches.length !== 1) {
-      throw unsupported("asset", "Requested token and network pair is not uniquely allowlisted");
+      throw unsupported(
+        "asset",
+        "Requested token and network pair is not uniquely allowlisted",
+      );
     }
     return matches[0]!;
   }
@@ -193,24 +296,38 @@ function parseFees(
 }
 
 function validateTokenAmount(amount: { readonly decimals: number }): void {
-  if (!Number.isInteger(amount.decimals) || amount.decimals < 0 || amount.decimals > 255) {
-    throw invalid("invalid-decimals", "Token decimals must fit an unsigned byte");
+  if (
+    !Number.isInteger(amount.decimals) ||
+    amount.decimals < 0 ||
+    amount.decimals > 255
+  ) {
+    throw invalid(
+      "invalid-decimals",
+      "Token decimals must fit an unsigned byte",
+    );
   }
 }
 
 function validateAmount(value: string, label: string): string {
   const parsed = parseAmount(value, label);
-  if (BigInt(parsed) === 0n) throw invalid("invalid-amount", `${label} must be positive`);
+  if (BigInt(parsed) === 0n)
+    throw invalid("invalid-amount", `${label} must be positive`);
   return parsed;
 }
 
 function parseAmount(value: unknown, label: string, allowZero = false): string {
   if (typeof value !== "string" || !DECIMAL_INTEGER.test(value)) {
-    throw invalid("malformed-amount", `${label} must be an unsigned atomic integer string`);
+    throw invalid(
+      "malformed-amount",
+      `${label} must be an unsigned atomic integer string`,
+    );
   }
   const parsed = BigInt(value);
   if (parsed > U128_MAX || (!allowZero && parsed === 0n)) {
-    throw invalid("amount-out-of-range", `${label} is outside the supported u128 range`);
+    throw invalid(
+      "amount-out-of-range",
+      `${label} is outside the supported u128 range`,
+    );
   }
   return value;
 }
@@ -223,7 +340,11 @@ function record(value: unknown, label: string): Record<string, unknown> {
 }
 
 function assertEqual(actual: unknown, expected: unknown, label: string): void {
-  if (actual !== expected) throw invalid("route-mismatch", `Provider ${label} does not match the requested payout`);
+  if (actual !== expected)
+    throw invalid(
+      "route-mismatch",
+      `Provider ${label} does not match the requested payout`,
+    );
 }
 
 function isNonEmptyString(value: unknown): value is string {
