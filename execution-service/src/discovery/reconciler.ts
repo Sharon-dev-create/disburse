@@ -34,11 +34,22 @@ export class PayoutReconciler {
   async reconcileKnownPayouts(nowMs: number): Promise<ReconciliationResult> {
     const snapshot = await this.repository.getSnapshot();
     const keys = new Set<string>();
+    const expectedCampaigns = new Map<string, Set<string>>();
     for (const indexed of snapshot.events.values()) {
-      if (indexed.event.kind === "known") {
-        keys.add(
-          payoutKeyFor(this.networkId, this.contractId, indexed.event.payoutId),
+      if (
+        indexed.event.kind === "known" &&
+        indexed.event.identity.networkId === this.networkId &&
+        indexed.event.identity.contractId === this.contractId
+      ) {
+        const payoutKey = payoutKeyFor(
+          this.networkId,
+          this.contractId,
+          indexed.event.payoutId,
         );
+        keys.add(payoutKey);
+        const campaigns = expectedCampaigns.get(payoutKey) ?? new Set<string>();
+        campaigns.add(indexed.event.campaignId);
+        expectedCampaigns.set(payoutKey, campaigns);
       }
     }
     for (const key of snapshot.observations.keys()) keys.add(key);
@@ -55,50 +66,18 @@ export class PayoutReconciler {
       )
         continue;
       const previous = snapshot.observations.get(payoutKey);
+      if ((expectedCampaigns.get(payoutKey)?.size ?? 0) > 1) {
+        failed += 1;
+        await this.repository.recordReconciliation(payoutKey, null, {
+          kind: "event-view-mismatch",
+          message: "Indexed events disagree about the payout campaign ID",
+          createdAtMs: nowMs,
+        });
+        continue;
+      }
+      let payout: Awaited<ReturnType<ContractReader["getPayout"]>>;
       try {
-        const payout = await this.reader.getPayout(tuple.payoutId);
-        if (!payout) {
-          missing += 1;
-          await this.repository.recordReconciliation(payoutKey, null, {
-            kind: "payout-missing",
-            message:
-              "A previously indexed payout is absent from the current contract view",
-            createdAtMs: nowMs,
-          });
-          continue;
-        }
-        if (payout.id !== tuple.payoutId) {
-          failed += 1;
-          await this.repository.recordReconciliation(payoutKey, null, {
-            kind: "event-view-mismatch",
-            message: "Contract view returned a different payout ID",
-            createdAtMs: nowMs,
-          });
-          continue;
-        }
-        const observation: DiscoveryObservation = {
-          networkId: this.networkId,
-          contractId: this.contractId,
-          payoutId: payout.id,
-          campaignId: payout.campaignId,
-          contractStatus: payout.status,
-          payout,
-          observedAtMs: nowMs,
-        };
-        const statusChanged =
-          previous !== undefined && previous.contractStatus !== payout.status;
-        if (statusChanged) changed += 1;
-        await this.repository.recordReconciliation(
-          payoutKey,
-          observation,
-          statusChanged
-            ? {
-                kind: "stale-observation",
-                message: `Indexed status ${previous.contractStatus} was refreshed to authoritative status ${payout.status}`,
-                createdAtMs: nowMs,
-              }
-            : null,
-        );
+        payout = await this.reader.getPayout(tuple.payoutId);
       } catch (error) {
         failed += 1;
         await this.repository.recordReconciliation(payoutKey, null, {
@@ -107,7 +86,63 @@ export class PayoutReconciler {
             error instanceof Error ? error.message : "Unknown NEAR RPC failure",
           createdAtMs: nowMs,
         });
+        continue;
       }
+      if (!payout) {
+        missing += 1;
+        await this.repository.recordReconciliation(payoutKey, null, {
+          kind: "payout-missing",
+          message:
+            "A previously indexed payout is absent from the current contract view",
+          createdAtMs: nowMs,
+        });
+        continue;
+      }
+      if (payout.id !== tuple.payoutId) {
+        failed += 1;
+        await this.repository.recordReconciliation(payoutKey, null, {
+          kind: "event-view-mismatch",
+          message: "Contract view returned a different payout ID",
+          createdAtMs: nowMs,
+        });
+        continue;
+      }
+      const expectedCampaign =
+        [...(expectedCampaigns.get(payoutKey) ?? [])][0] ??
+        previous?.campaignId;
+      if (expectedCampaign && payout.campaignId !== expectedCampaign) {
+        failed += 1;
+        await this.repository.recordReconciliation(payoutKey, null, {
+          kind: "event-view-mismatch",
+          message: `Indexed campaign ${expectedCampaign} differs from contract campaign ${payout.campaignId}`,
+          createdAtMs: nowMs,
+        });
+        continue;
+      }
+      const observation: DiscoveryObservation = {
+        networkId: this.networkId,
+        contractId: this.contractId,
+        payoutId: payout.id,
+        campaignId: payout.campaignId,
+        contractStatus: payout.status,
+        payout,
+        observedAtMs: nowMs,
+      };
+      const viewChanged =
+        previous !== undefined &&
+        JSON.stringify(previous.payout) !== JSON.stringify(payout);
+      if (viewChanged) changed += 1;
+      await this.repository.recordReconciliation(
+        payoutKey,
+        observation,
+        viewChanged
+          ? {
+              kind: "stale-observation",
+              message: `Stored payout view was refreshed from the authoritative contract view (status: ${payout.status})`,
+              createdAtMs: nowMs,
+            }
+          : null,
+      );
     }
     return { checked: keys.size, changed, missing, failed };
   }

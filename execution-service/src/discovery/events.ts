@@ -160,7 +160,9 @@ const KNOWN_NAMES = Object.keys(REQUIRED_FIELDS) as PayoutLifecycleEventName[];
 
 /** Strict decoder for the exact `disburse` NEP-297 v1 event envelope emitted by src/lib.rs. */
 export function decodeNearEvent(raw: RawNearEvent): DecodedNearEvent {
-  const rawLog = raw.log.slice(0, MAX_RAW_LOG_BYTES);
+  const rawLog = Buffer.from(raw.log, "utf8")
+    .subarray(0, MAX_RAW_LOG_BYTES)
+    .toString("utf8");
   if (Buffer.byteLength(raw.log, "utf8") > MAX_RAW_LOG_BYTES) {
     return malformed(
       raw,
@@ -361,10 +363,11 @@ export function decodeNearEvent(raw: RawNearEvent): DecodedNearEvent {
 
 function canonicalU64(value: unknown): string | null {
   if (typeof value !== "number" && typeof value !== "string") return null;
+  if (typeof value === "number" && !Number.isSafeInteger(value)) return null;
   const text = String(value);
   if (!/^\d+$/.test(text) || BigInt(text) > 18_446_744_073_709_551_615n)
     return null;
-  return text;
+  return BigInt(text).toString();
 }
 
 function isUnsigned(value: unknown): boolean {

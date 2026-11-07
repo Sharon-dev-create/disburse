@@ -51,8 +51,10 @@ execution.
 `DurableFileDiscoveryRepository` is a local single-writer implementation. It stores cursors,
 deduplicated events, observations, discrepancies, and discovered operational jobs in one versioned
 JSON snapshot. Each event record and its cursor update are written together through fsync and
-atomic rename; a failed write leaves both unchanged. The repository can be reopened after process
-restart. It is not a multi-process database implementation. `execution-service/sql/schema.sql`
+atomic rename; a failed write leaves both unchanged. It implements the existing `JobRepository`
+lease, fencing, attempt, and state-transition methods as well, so the discovery coordinator exposes
+the same repository to the current operational workflow. The repository can be reopened after
+process restart. It is not a multi-process database implementation. `execution-service/sql/schema.sql`
 contains reference PostgreSQL tables and uniqueness constraints for a future transactional
 deployment; it is never applied by package commands.
 
@@ -78,6 +80,11 @@ absence is not treated as evidence that no payout existed or that it is safe to 
 cursor is corrupt or unknown to a provider, an operator must recover it from a trusted finalized
 block/receipt position or replay from a known earlier position. Replay is safe due to event and job
 uniqueness.
+
+Event-source and contract-view failures are retained with retry classification, attempt count, and
+bounded exponential retry time. A successful source read clears its active source failure; a
+successfully committed event clears its active view failure. Failed reconciliation reads retain
+the previous observed payout view and append an RPC error record.
 
 ## Operational setup before testnet
 

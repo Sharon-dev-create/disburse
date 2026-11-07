@@ -1,4 +1,7 @@
-import type { ExecutionJobRecord } from "../persistence/repository.ts";
+import type {
+  ExecutionJobRecord,
+  JobRepository,
+} from "../persistence/repository.ts";
 import type { DecodedNearEvent } from "./events.ts";
 
 export interface DiscoveryObservation {
@@ -34,8 +37,8 @@ export interface IndexedEventRecord {
 export interface DiscoveryFailure {
   readonly failureKey: string;
   readonly sourceKey: string;
-  readonly eventIdentity: DecodedNearEvent["identity"];
-  readonly stage: "contract-view";
+  readonly eventIdentity: DecodedNearEvent["identity"] | null;
+  readonly stage: "contract-view" | "event-source";
   readonly classification: string;
   readonly retryable: true;
   readonly attempts: number;
@@ -65,7 +68,7 @@ export interface DiscoveryStateSnapshot {
   readonly failures: ReadonlyMap<string, DiscoveryFailure>;
 }
 
-export interface DiscoveryRepository {
+export interface DiscoveryRepository extends JobRepository {
   getCursor(sourceKey: string): Promise<string | null>;
   commitEvent(
     commit: DiscoveryEventCommit,
@@ -81,6 +84,12 @@ export interface DiscoveryRepository {
     error: unknown,
     nowMs: number,
   ): Promise<void>;
+  recordSourceFailure(
+    sourceKey: string,
+    error: unknown,
+    nowMs: number,
+  ): Promise<void>;
+  clearSourceFailure(sourceKey: string): Promise<void>;
   getSnapshot(): Promise<DiscoveryStateSnapshot>;
 }
 

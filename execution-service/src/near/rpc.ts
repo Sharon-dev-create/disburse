@@ -16,10 +16,11 @@ export interface NearRpcTransport {
 }
 
 export class NearRpcError extends Error {
-  readonly kind: "timeout" | "unavailable" | "rpc" | "malformed";
+  readonly kind:
+    "timeout" | "unavailable" | "rate-limited" | "rpc" | "malformed";
 
   constructor(
-    kind: "timeout" | "unavailable" | "rpc" | "malformed",
+    kind: "timeout" | "unavailable" | "rate-limited" | "rpc" | "malformed",
     message: string,
   ) {
     super(message);
@@ -79,6 +80,12 @@ export class HttpNearRpcTransport implements NearRpcTransport {
           },
         }),
       });
+      if (response.status === 429) {
+        throw new NearRpcError(
+          "rate-limited",
+          "NEAR RPC rate limit was reached",
+        );
+      }
       if (!response.ok) {
         throw new NearRpcError(
           "unavailable",
@@ -153,6 +160,11 @@ export class HttpNearRpcTransport implements NearRpcTransport {
           params: [],
         }),
       });
+      if (response.status === 429)
+        throw new NearRpcError(
+          "rate-limited",
+          "NEAR RPC rate limit was reached",
+        );
       if (!response.ok)
         throw new NearRpcError(
           "unavailable",
@@ -200,11 +212,14 @@ export class NearContractReader implements ContractReader {
   }
 
   async getPayout(payoutId: PayoutId): Promise<NearPayoutView | null> {
-    return parseNullablePayout(
+    const payout = parseNullablePayout(
       await this.call("get_payout", {
         payout_id: nearU64(payoutId, "payout ID"),
       }),
     );
+    if (payout && payout.id !== asU64String(payoutId, "payout ID"))
+      throw malformed("Payout response does not match requested ID");
+    return payout;
   }
 
   async verifyNetwork(): Promise<void> {
@@ -225,12 +240,19 @@ export class NearContractReader implements ContractReader {
     campaignId: string,
     payoutId: PayoutId,
   ): Promise<NearPayoutView | null> {
-    return parseNullablePayout(
+    const payout = parseNullablePayout(
       await this.call("get_campaign_payout", {
         campaign_id: nearU64(campaignId, "campaign ID"),
         payout_id: nearU64(payoutId, "payout ID"),
       }),
     );
+    if (
+      payout &&
+      (payout.id !== asU64String(payoutId, "payout ID") ||
+        payout.campaignId !== asU64String(campaignId, "campaign ID"))
+    )
+      throw malformed("Campaign payout response does not match requested IDs");
+    return payout;
   }
 
   async getPayoutByIdempotency(
@@ -238,12 +260,17 @@ export class NearContractReader implements ContractReader {
     idempotencyKey: string,
   ): Promise<NearPayoutView | null> {
     if (!idempotencyKey.trim()) throw new Error("Idempotency key is required");
-    return parseNullablePayout(
+    const payout = parseNullablePayout(
       await this.call("get_payout_by_idempotency", {
         campaign_id: nearU64(campaignId, "campaign ID"),
         idempotency_key: idempotencyKey,
       }),
     );
+    if (payout && payout.campaignId !== asU64String(campaignId, "campaign ID"))
+      throw malformed(
+        "Idempotency lookup returned a payout from another campaign",
+      );
+    return payout;
   }
 
   async getCampaignPayoutAccounting(
@@ -263,7 +290,7 @@ export class NearContractReader implements ContractReader {
       spent: asU128(value.spent, "spent"),
       available: asU128(value.available, "available"),
     };
-    if (parsed.campaignId !== campaignId) {
+    if (parsed.campaignId !== asU64String(campaignId, "campaign ID")) {
       throw malformed(
         "Campaign accounting response does not match the request",
       );
@@ -371,9 +398,10 @@ function parseTokenAmount(value: unknown) {
   const tokenId =
     tokenKeys[0] === "Near" ? { Near: tokenValue } : { External: tokenValue };
   if (
+    typeof value.decimals !== "number" ||
     !Number.isInteger(value.decimals) ||
-    Number(value.decimals) < 0 ||
-    Number(value.decimals) > 255
+    value.decimals < 0 ||
+    value.decimals > 255
   ) {
     throw malformed("Invalid token decimals");
   }
@@ -406,11 +434,14 @@ function asU64String(value: unknown, label: string): string {
   if (typeof value !== "string" && typeof value !== "number") {
     throw malformed(`Invalid ${label}`);
   }
+  if (typeof value === "number" && !Number.isSafeInteger(value)) {
+    throw malformed(`${label} cannot be decoded exactly`);
+  }
   const text = String(value);
   if (!/^\d+$/.test(text)) throw malformed(`Invalid ${label}`);
   if (BigInt(text) > 18_446_744_073_709_551_615n)
     throw malformed(`${label} exceeds u64`);
-  return text;
+  return BigInt(text).toString();
 }
 
 function asU128(value: unknown, label: string): string {

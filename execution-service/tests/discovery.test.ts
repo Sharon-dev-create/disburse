@@ -79,6 +79,26 @@ void test("NEAR HTTP transport sends exact numeric IDs and classifies timeout an
     failed.viewFunction(config.contractId, "get_payout", {}),
     (error: unknown) => error instanceof NearRpcError && error.kind === "rpc",
   );
+  const limited = new HttpNearRpcTransport(
+    "https://rpc.test",
+    1000,
+    async () => new Response("rate limit", { status: 429 }),
+  );
+  await assert.rejects(
+    limited.viewFunction(config.contractId, "get_payout", {}),
+    (error: unknown) =>
+      error instanceof NearRpcError && error.kind === "rate-limited",
+  );
+  const offline = new HttpNearRpcTransport(
+    "https://rpc.test",
+    1000,
+    async () => new Response("unavailable", { status: 503 }),
+  );
+  await assert.rejects(
+    offline.viewFunction(config.contractId, "get_payout", {}),
+    (error: unknown) =>
+      error instanceof NearRpcError && error.kind === "unavailable",
+  );
   const timedOut = new HttpNearRpcTransport(
     "https://rpc.test",
     1,
@@ -121,6 +141,30 @@ void test("contract reader rejects malformed payout data and invalid IDs without
     wrongNetwork.verifyNetwork(),
     /does not match RPC network/,
   );
+});
+
+void test("contract reader exposes idempotency, accounting, pause, and role views with exact amounts", async () => {
+  const maximum = "340282366920938463463374607431768211455";
+  const rpc = new QueueRpc([
+    null,
+    {
+      campaign_id: "7",
+      budget: maximum,
+      funded: "9",
+      reserved: "2",
+      spent: "1",
+      available: "6",
+    },
+    true,
+    false,
+  ]);
+  const reader = new NearContractReader(config, rpc);
+  assert.equal(await reader.getPayoutByIdempotency("7", "request-key"), null);
+  const accounting = await reader.getCampaignPayoutAccounting("7");
+  assert.equal(accounting?.budget, maximum);
+  assert.equal(accounting?.available, "6");
+  assert.equal(await reader.isPaused(), true);
+  assert.equal(await reader.hasRole("operator.testnet", "Operator"), false);
 });
 
 void test("decoder handles known events, large IDs, unsupported versions, unknown names, and malformed known payloads", () => {
@@ -256,6 +300,29 @@ void test("reserved creation maps one job after event identity and contract data
       [...snapshot.observations.values()][0]?.contractStatus,
       "Executing",
     );
+    const discovered = [...snapshot.jobs.values()][0];
+    assert.ok(discovered);
+    const queued = await repository.transition(
+      discovered.key,
+      discovered.version,
+      "Queued",
+      { contractPayoutStatus: "Reserved" },
+      null,
+      102,
+    );
+    const [leased, otherLease] = await Promise.all([
+      repository.claimNext("worker-1", 103, 500),
+      repository.claimNext("worker-2", 103, 500),
+    ]);
+    assert.equal(Number(leased !== null) + Number(otherLease !== null), 1);
+    const acquired = leased ?? otherLease;
+    assert.equal(acquired?.key.payoutId, queued.key.payoutId);
+    const restarted = await DurableFileDiscoveryRepository.open(
+      join(directory, "index.json"),
+    );
+    const recovered = await restarted.get(discovered.key);
+    assert.equal(recovered?.state, "Leased");
+    assert.equal(recovered?.lease?.fencingToken, acquired?.lease?.fencingToken);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -329,6 +396,40 @@ void test("view failures do not advance the event cursor; persistence failure ca
   }
 });
 
+void test("event-source outage is recorded and cleared after a successful cursor read", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "disburse-discovery-"));
+  try {
+    let available = false;
+    const source = {
+      readAfter: async (cursor: string | null) => {
+        if (!available) throw new Error("indexer unavailable");
+        return { events: [], nextCursor: cursor, hasMore: false };
+      },
+      readFrom: async () => {
+        throw new Error("indexer unavailable");
+      },
+    };
+    const repository = await DurableFileDiscoveryRepository.open(
+      join(directory, "index.json"),
+    );
+    const processor = new PayoutDiscoveryProcessor(
+      config,
+      source,
+      new MutableReader(makePayout()),
+      repository,
+    );
+    await assert.rejects(processor.processNextPage(100), /indexer unavailable/);
+    const failed = await repository.getSnapshot();
+    assert.equal([...failed.failures.values()][0]?.stage, "event-source");
+    assert.equal(failed.cursors.size, 0);
+    available = true;
+    await processor.processNextPage(200);
+    assert.equal((await repository.getSnapshot()).failures.size, 0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 void test("reconciliation refreshes stale observations and records missing or unavailable payouts without authorizing work", async () => {
   const directory = await mkdtemp(join(tmpdir(), "disburse-discovery-"));
   try {
@@ -395,6 +496,79 @@ void test("event source cursor resumes after its last delivered event and histor
   assert.equal(page.hasMore, true);
   const next = await source.readAfter(page.nextCursor, 1);
   assert.equal(next.events[0]?.cursor, "cursor-b");
+});
+
+void test("historical backfill and live replay share idempotent payout jobs; unknown events are retained", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "disburse-discovery-"));
+  try {
+    const reserved = makeRawEvent("payout_reserved", "live-cursor", 0);
+    const backfillEvent = { ...reserved, cursor: "backfill-cursor" };
+    const unknown = makeRawEvent("future_payout_event", "unknown-cursor", 1);
+    const repository = await DurableFileDiscoveryRepository.open(
+      join(directory, "index.json"),
+    );
+    const reader = new MutableReader(makePayout());
+    const processor = new PayoutDiscoveryProcessor(
+      { ...config, pageSize: 1 },
+      new MockNearEventSource([backfillEvent, reserved, unknown]),
+      reader,
+      repository,
+    );
+    const backfill = await processor.backfillFrom("backfill-cursor", 100);
+    assert.equal(backfill.jobsCreated, 1);
+    const live = await processor.processNextPage(101);
+    assert.equal(live.jobsCreated, 0);
+    assert.equal(live.duplicates, 1);
+    const repeated = await processor.processNextPage(102);
+    assert.equal(repeated.duplicates, 1);
+    await processor.processNextPage(103);
+    const snapshot = await repository.getSnapshot();
+    assert.equal(snapshot.jobs.size, 1);
+    assert.equal(snapshot.events.size, 2);
+    assert.equal(
+      [...snapshot.events.values()].filter(
+        (item) => item.event.kind === "unknown",
+      ).length,
+      1,
+    );
+    assert.equal(snapshot.discrepancies.at(-1)?.kind, "unknown-event");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+void test("network/contract mismatches and event/view disagreement are quarantined without jobs", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "disburse-discovery-"));
+  try {
+    const wrongContract = {
+      ...makeRawEvent("payout_reserved", "wrong-contract"),
+      identity: {
+        ...makeRawEvent("payout_reserved", "wrong-contract").identity,
+        contractId: "attacker.testnet",
+      },
+    };
+    const badAmount = makeRawEvent("payout_reserved", "bad-amount", 1, {
+      fields: { input_amount: "101" },
+    });
+    const repository = await DurableFileDiscoveryRepository.open(
+      join(directory, "index.json"),
+    );
+    const processor = new PayoutDiscoveryProcessor(
+      { ...config, pageSize: 10 },
+      new MockNearEventSource([wrongContract, badAmount]),
+      new MutableReader(makePayout()),
+      repository,
+    );
+    await processor.processNextPage(100);
+    const snapshot = await repository.getSnapshot();
+    assert.equal(snapshot.jobs.size, 0);
+    assert.deepEqual(
+      snapshot.discrepancies.map((item) => item.kind),
+      ["event-identity-mismatch", "event-view-mismatch"],
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 class QueueRpc implements NearRpcTransport {

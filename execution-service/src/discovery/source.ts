@@ -1,5 +1,6 @@
 import type { RawNearEvent } from "./events.ts";
 
+/** Implementations must return finalized events in deterministic chain order and replay all gaps. */
 export interface NearEventSource {
   readAfter(cursor: string | null, limit: number): Promise<NearEventPage>;
   readFrom(startPosition: string, limit: number): Promise<NearEventPage>;
@@ -23,12 +24,16 @@ export class MockNearEventSource implements NearEventSource {
     cursor: string | null,
     limit: number,
   ): Promise<NearEventPage> {
-    const index =
-      cursor === null
-        ? 0
-        : this.entries.findIndex((event) => event.cursor === cursor) + 1;
-    if (index < 0) throw new Error("Unknown event cursor");
-    return this.page(index, limit);
+    let index = 0;
+    if (cursor !== null) {
+      const cursorIndex = this.entries.findIndex(
+        (event) => event.cursor === cursor,
+      );
+      if (cursorIndex < 0) throw new Error("Unknown event cursor");
+      index = cursorIndex + 1;
+    }
+    const page = this.page(index, limit);
+    return page.events.length === 0 ? { ...page, nextCursor: cursor } : page;
   }
 
   async readFrom(startPosition: string, limit: number): Promise<NearEventPage> {

@@ -1,6 +1,7 @@
 import type { NearEventSource } from "../discovery/source.ts";
 import type { ContractReader } from "../near/clients.ts";
 import type { DiscoveryRepository } from "../discovery/repository.ts";
+import type { JobRepository } from "../persistence/repository.ts";
 import { PayoutDiscoveryProcessor } from "../discovery/processor.ts";
 import { PayoutReconciler } from "../discovery/reconciler.ts";
 
@@ -14,6 +15,7 @@ export interface NearDiscoveryConfig {
 export class NearDiscoveryCoordinator {
   private readonly processor: PayoutDiscoveryProcessor;
   private readonly reconciler: PayoutReconciler;
+  readonly jobs: JobRepository;
 
   constructor(
     config: NearDiscoveryConfig,
@@ -21,6 +23,7 @@ export class NearDiscoveryCoordinator {
     reader: ContractReader,
     repository: DiscoveryRepository,
   ) {
+    this.jobs = repository;
     this.processor = new PayoutDiscoveryProcessor(
       config,
       source,

@@ -64,18 +64,66 @@ export class PayoutDiscoveryProcessor {
   }
 
   async processNextPage(nowMs: number): Promise<DiscoveryRunResult> {
+    await this.verifyNetwork();
+    const savedCursor = await this.repository.getCursor(this.sourceKey);
+    let page: Awaited<ReturnType<NearEventSource["readAfter"]>>;
+    try {
+      page = await this.source.readAfter(savedCursor, this.pageSize);
+    } catch (error) {
+      await this.repository.recordSourceFailure(this.sourceKey, error, nowMs);
+      throw error;
+    }
+    await this.repository.clearSourceFailure(this.sourceKey);
+    return this.processPage(this.sourceKey, savedCursor, page, nowMs);
+  }
+
+  /** Starts or resumes a named historical backfill stream independently of live ingestion. */
+  async backfillFrom(
+    startPosition: string,
+    nowMs: number,
+  ): Promise<DiscoveryRunResult> {
+    if (!startPosition.trim())
+      throw new Error("Historical start position is required");
+    await this.verifyNetwork();
+    const backfillKey = JSON.stringify([
+      this.config.networkId,
+      this.config.contractId,
+      "backfill",
+      startPosition,
+    ]);
+    const savedCursor = await this.repository.getCursor(backfillKey);
+    let page: Awaited<ReturnType<NearEventSource["readAfter"]>>;
+    try {
+      page =
+        savedCursor === null
+          ? await this.source.readFrom(startPosition, this.pageSize)
+          : await this.source.readAfter(savedCursor, this.pageSize);
+    } catch (error) {
+      await this.repository.recordSourceFailure(backfillKey, error, nowMs);
+      throw error;
+    }
+    await this.repository.clearSourceFailure(backfillKey);
+    return this.processPage(backfillKey, savedCursor, page, nowMs);
+  }
+
+  private async verifyNetwork(): Promise<void> {
     if (
       "verifyNetwork" in this.reader &&
       typeof this.reader.verifyNetwork === "function"
     ) {
       await this.reader.verifyNetwork();
     }
-    const savedCursor = await this.repository.getCursor(this.sourceKey);
-    const page = await this.source.readAfter(savedCursor, this.pageSize);
+  }
+
+  private async processPage(
+    sourceKey: string,
+    savedCursor: string | null,
+    page: Awaited<ReturnType<NearEventSource["readAfter"]>>,
+    nowMs: number,
+  ): Promise<DiscoveryRunResult> {
     if (
-      page.events.length === 0 &&
-      page.nextCursor !== null &&
-      page.nextCursor !== savedCursor
+      (page.events.length === 0 && page.nextCursor !== savedCursor) ||
+      (page.events.length > 0 && page.nextCursor !== page.events.at(-1)?.cursor)
     ) {
       throw new Error(
         "Event source advanced a cursor without returning events",
@@ -87,7 +135,7 @@ export class PayoutDiscoveryProcessor {
     let jobsCreated = 0;
     for (const raw of page.events) {
       const decoded = decodeNearEvent(raw);
-      const result = await this.processDecoded(decoded, nowMs);
+      const result = await this.processDecoded(decoded, sourceKey, nowMs);
       if (result.duplicate) duplicates += 1;
       if (result.jobCreated) jobsCreated += 1;
     }
@@ -103,22 +151,42 @@ export class PayoutDiscoveryProcessor {
 
   private async processDecoded(
     event: DecodedNearEvent,
+    sourceKey: string,
     nowMs: number,
   ): Promise<{ readonly duplicate: boolean; readonly jobCreated: boolean }> {
     const identity = event.identity;
     if (
-      identity.networkId !== this.config.networkId ||
-      identity.contractId !== this.config.contractId ||
-      !/^[0-9]+$/.test(identity.blockHeight) ||
+      typeof event.cursor !== "string" ||
+      !event.cursor.trim() ||
+      typeof event.rawLog !== "string" ||
+      typeof identity.networkId !== "string" ||
+      !identity.networkId.trim() ||
+      typeof identity.contractId !== "string" ||
+      !identity.contractId.trim() ||
+      typeof identity.blockHeight !== "string" ||
+      !/^\d+$/.test(identity.blockHeight) ||
+      BigInt(identity.blockHeight) > 18_446_744_073_709_551_615n ||
+      typeof identity.blockHash !== "string" ||
       !identity.blockHash.trim() ||
+      typeof identity.transactionHash !== "string" ||
       !identity.transactionHash.trim() ||
+      typeof identity.receiptId !== "string" ||
       !identity.receiptId.trim() ||
       !Number.isSafeInteger(identity.eventIndex) ||
-      identity.eventIndex < 0 ||
-      !event.cursor.trim()
+      identity.eventIndex < 0
+    ) {
+      const error = new Error(
+        "Event source returned an invalid identity, log, or cursor",
+      );
+      await this.repository.recordSourceFailure(sourceKey, error, nowMs);
+      throw error;
+    }
+    if (
+      identity.networkId !== this.config.networkId ||
+      identity.contractId !== this.config.contractId
     ) {
       const commit = await this.repository.commitEvent({
-        sourceKey: this.sourceKey,
+        sourceKey,
         event,
         observation: null,
         discrepancy: {
@@ -135,7 +203,7 @@ export class PayoutDiscoveryProcessor {
     }
     if (event.kind !== "known") {
       const commit = await this.repository.commitEvent({
-        sourceKey: this.sourceKey,
+        sourceKey,
         event,
         observation: null,
         discrepancy: {
@@ -157,11 +225,12 @@ export class PayoutDiscoveryProcessor {
           event.campaignId,
           event.payoutId,
         );
+        if (!payout) payout = await this.reader.getPayout(event.payoutId);
       } else {
         payout = await this.reader.getPayout(event.payoutId);
       }
     } catch (error) {
-      await this.repository.recordFailure(event, this.sourceKey, error, nowMs);
+      await this.repository.recordFailure(event, sourceKey, error, nowMs);
       throw error;
     }
     const discrepancy = this.compareEventAndView(event, payout, nowMs);
@@ -179,7 +248,7 @@ export class PayoutDiscoveryProcessor {
         ? makeJob(event, payout, nowMs)
         : null;
     const committed = await this.repository.commitEvent({
-      sourceKey: this.sourceKey,
+      sourceKey,
       event,
       observation,
       discrepancy:

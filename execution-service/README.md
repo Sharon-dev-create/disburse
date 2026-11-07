@@ -25,9 +25,10 @@ The local discovery index is operational state, not a financial ledger. The cont
 authoritative. Provider claims require independent verification, and ambiguous submissions go to
 reconciliation or ManualReview rather than automatic resubmission.
 
-`DurableFileDiscoveryRepository` supports a single local indexer process. Its atomic snapshot
-contains events, observations, jobs, discrepancies, failures, and cursor. Use a transactional
-database adapter for multiple workers/indexers. `MockNearEventSource` is test-only: no production
+`DurableFileDiscoveryRepository` supports a single local indexer/worker process and implements the
+existing `JobRepository` interface, so discovered jobs flow into the operational state machine. Its
+atomic snapshot contains events, observations, jobs, leases, discrepancies, failures, and cursors.
+Use a transactional database adapter for multiple workers/indexers. `MockNearEventSource` is test-only: no production
 historical event provider is connected. See [`../docs/near-payout-discovery.md`](../docs/near-payout-discovery.md)
 and [`../docs/near-event-indexing.md`](../docs/near-event-indexing.md) for historical coverage and
 testnet requirements.

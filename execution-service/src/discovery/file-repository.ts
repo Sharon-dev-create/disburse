@@ -1,7 +1,25 @@
 import { randomUUID } from "node:crypto";
 import { dirname } from "node:path";
 import { mkdir, open, readFile, rename, rm } from "node:fs/promises";
-import type { ExecutionJobRecord } from "../persistence/repository.ts";
+import {
+  executionJobKeyString,
+  type ExecutionJobKey,
+} from "../domain/payout.ts";
+import type {
+  ExecutionAttempt,
+  ExecutionJobRecord,
+  Lease,
+} from "../persistence/repository.ts";
+import {
+  assertTransition,
+  type JobState,
+  type TransitionEvidence,
+} from "../state-machine/state.ts";
+import {
+  validatePayoutSnapshot,
+  type PayoutReservedEvent,
+  type PayoutSnapshot,
+} from "../domain/payout.ts";
 import type {
   DiscoveryDiscrepancy,
   DiscoveryEventCommit,
@@ -20,6 +38,7 @@ interface FileState {
   discrepancies: (DiscoveryDiscrepancy & { payoutKey: string | null })[];
   jobs: Map<string, ExecutionJobRecord>;
   failures: Map<string, DiscoveryFailure>;
+  nextFencingTokens: Map<string, number>;
 }
 
 interface SerializedState {
@@ -32,6 +51,7 @@ interface SerializedState {
   })[];
   readonly jobs: readonly (readonly [string, ExecutionJobRecord])[];
   readonly failures: readonly (readonly [string, DiscoveryFailure])[];
+  readonly nextFencingTokens: readonly (readonly [string, number])[];
 }
 
 /**
@@ -76,6 +96,219 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
     return this.state.cursors.get(sourceKey) ?? null;
   }
 
+  async enqueueDiscovered(
+    event: PayoutReservedEvent,
+    payout: PayoutSnapshot,
+    nowMs: number,
+  ): Promise<{ readonly job: ExecutionJobRecord; readonly created: boolean }> {
+    validatePayoutSnapshot(payout);
+    if (
+      event.payoutId !== payout.payoutId ||
+      event.campaignId !== payout.campaignId
+    ) {
+      throw new Error(
+        "Discovery event does not identify the supplied on-chain payout",
+      );
+    }
+    const key: ExecutionJobKey = {
+      networkId: event.identity.networkId,
+      contractId: event.identity.contractId,
+      payoutId: payout.payoutId,
+    };
+    const storageKey = executionJobKeyString(key);
+    return this.exclusive(async () => {
+      const existing = this.state.jobs.get(storageKey);
+      if (existing) {
+        if (
+          JSON.stringify(existing.payout) !== JSON.stringify(payout) ||
+          JSON.stringify(existing.discoveryEvent) !==
+            JSON.stringify(event.identity)
+        ) {
+          throw new Error(
+            "Duplicate payout discovery conflicts with the persisted job",
+          );
+        }
+        return { job: existing, created: false };
+      }
+      const job: ExecutionJobRecord = {
+        key,
+        payout,
+        discoveryEvent: event.identity,
+        state: "Discovered",
+        version: 0,
+        createdAtMs: nowMs,
+        updatedAtMs: nowMs,
+        lease: null,
+        attempts: [],
+      };
+      const next = cloneState(this.state);
+      next.jobs.set(storageKey, job);
+      await this.persist(next);
+      this.state = next;
+      return { job, created: true };
+    });
+  }
+
+  async claimNext(
+    workerId: string,
+    nowMs: number,
+    ttlMs: number,
+  ): Promise<ExecutionJobRecord | null> {
+    if (!workerId || ttlMs <= 0)
+      throw new Error("A worker ID and positive lease duration are required");
+    return this.exclusive(async () => {
+      const candidate = [...this.state.jobs.values()].find(
+        (job) =>
+          (job.lease === null || job.lease.expiresAtMs <= nowMs) &&
+          (job.state === "Queued" || job.state === "Leased"),
+      );
+      if (!candidate) return null;
+      const storageKey = executionJobKeyString(candidate.key);
+      if (candidate.state === "Queued") assertTransition("Queued", "Leased");
+      const fencingToken =
+        (this.state.nextFencingTokens.get(storageKey) ?? 0) + 1;
+      const lease: Lease = {
+        workerId,
+        fencingToken,
+        expiresAtMs: nowMs + ttlMs,
+      };
+      const claimed: ExecutionJobRecord = {
+        ...candidate,
+        state: "Leased",
+        version: candidate.version + 1,
+        updatedAtMs: nowMs,
+        lease,
+      };
+      const next = cloneState(this.state);
+      next.nextFencingTokens.set(storageKey, fencingToken);
+      next.jobs.set(storageKey, claimed);
+      await this.persist(next);
+      this.state = next;
+      return claimed;
+    });
+  }
+
+  async renewLease(
+    key: ExecutionJobKey,
+    lease: Lease,
+    nowMs: number,
+    ttlMs: number,
+  ): Promise<Lease | null> {
+    const storageKey = executionJobKeyString(key);
+    return this.exclusive(async () => {
+      const current = this.state.jobs.get(storageKey);
+      if (
+        !current?.lease ||
+        !sameLease(current.lease, lease) ||
+        current.lease.expiresAtMs <= nowMs
+      )
+        return null;
+      if (ttlMs <= 0) throw new Error("Lease duration must be positive");
+      const renewed = { ...lease, expiresAtMs: nowMs + ttlMs };
+      const next = cloneState(this.state);
+      next.jobs.set(storageKey, {
+        ...current,
+        version: current.version + 1,
+        updatedAtMs: nowMs,
+        lease: renewed,
+      });
+      await this.persist(next);
+      this.state = next;
+      return renewed;
+    });
+  }
+
+  async transition(
+    key: ExecutionJobKey,
+    expectedVersion: number,
+    nextState: JobState,
+    evidence: TransitionEvidence,
+    lease: Lease | null,
+    nowMs: number,
+  ): Promise<ExecutionJobRecord> {
+    const storageKey = executionJobKeyString(key);
+    return this.exclusive(async () => {
+      const current = this.state.jobs.get(storageKey);
+      if (!current) throw new Error("Execution job not found");
+      if (current.version !== expectedVersion)
+        throw new Error("Execution job version conflict");
+      if (
+        lease &&
+        (!current.lease ||
+          !sameLease(current.lease, lease) ||
+          lease.expiresAtMs <= nowMs)
+      ) {
+        throw new Error("Worker lease is stale or expired");
+      }
+      if (
+        (current.state === "Leased" || isWorkerState(current.state)) &&
+        !lease
+      ) {
+        throw new Error("A live worker lease is required for this transition");
+      }
+      assertTransition(current.state, nextState, evidence);
+      const updated: ExecutionJobRecord = {
+        ...current,
+        state: nextState,
+        version: current.version + 1,
+        updatedAtMs: nowMs,
+        lease:
+          nextState === "Queued" ||
+          nextState === "Completed" ||
+          nextState === "Abandoned"
+            ? null
+            : current.lease,
+      };
+      const next = cloneState(this.state);
+      next.jobs.set(storageKey, updated);
+      await this.persist(next);
+      this.state = next;
+      return updated;
+    });
+  }
+
+  async appendAttempt(
+    key: ExecutionJobKey,
+    lease: Lease,
+    attempt: ExecutionAttempt,
+    nowMs: number,
+  ): Promise<ExecutionJobRecord> {
+    const storageKey = executionJobKeyString(key);
+    return this.exclusive(async () => {
+      const current = this.state.jobs.get(storageKey);
+      if (
+        !current?.lease ||
+        !sameLease(current.lease, lease) ||
+        lease.expiresAtMs <= nowMs
+      ) {
+        throw new Error("Worker lease is stale or expired");
+      }
+      if (
+        current.attempts.some((item) => item.attemptKey === attempt.attemptKey)
+      ) {
+        throw new Error("Duplicate execution attempt key");
+      }
+      if (attempt.sequence !== current.attempts.length + 1) {
+        throw new Error("Execution attempt sequence must be contiguous");
+      }
+      const updated: ExecutionJobRecord = {
+        ...current,
+        attempts: [...current.attempts, attempt],
+        version: current.version + 1,
+        updatedAtMs: nowMs,
+      };
+      const next = cloneState(this.state);
+      next.jobs.set(storageKey, updated);
+      await this.persist(next);
+      this.state = next;
+      return updated;
+    });
+  }
+
+  async get(key: ExecutionJobKey): Promise<ExecutionJobRecord | null> {
+    return this.state.jobs.get(executionJobKeyString(key)) ?? null;
+  }
+
   async commitEvent(
     commit: DiscoveryEventCommit,
   ): Promise<{ readonly duplicate: boolean }> {
@@ -88,6 +321,7 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
         );
       }
       const next = cloneState(this.state);
+      next.failures.delete(eventKey);
       if (!existing) {
         next.events.set(eventKey, {
           eventKey,
@@ -115,7 +349,19 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
           commit.job.key.contractId,
           commit.job.key.payoutId,
         );
-        if (!next.jobs.has(jobKey)) next.jobs.set(jobKey, commit.job);
+        const existingJob = next.jobs.get(jobKey);
+        if (
+          existingJob &&
+          (JSON.stringify(existingJob.payout) !==
+            JSON.stringify(commit.job.payout) ||
+            JSON.stringify(existingJob.discoveryEvent) !==
+              JSON.stringify(commit.job.discoveryEvent))
+        ) {
+          throw new Error(
+            "Discovery event conflicts with the existing operational job",
+          );
+        }
+        if (!existingJob) next.jobs.set(jobKey, commit.job);
       }
       next.cursors.set(commit.sourceKey, commit.nextCursor);
       await this.persist(next);
@@ -185,6 +431,51 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
     });
   }
 
+  async recordSourceFailure(
+    sourceKey: string,
+    error: unknown,
+    nowMs: number,
+  ): Promise<void> {
+    await this.exclusive(async () => {
+      const failureKey = JSON.stringify(["source", sourceKey]);
+      const previous = this.state.failures.get(failureKey);
+      const attempts = (previous?.attempts ?? 0) + 1;
+      const next = cloneState(this.state);
+      next.failures.set(failureKey, {
+        failureKey,
+        sourceKey,
+        eventIdentity: null,
+        stage: "event-source",
+        classification:
+          error instanceof Error && "kind" in error
+            ? String(error.kind)
+            : "unknown",
+        retryable: true,
+        attempts,
+        nextRetryAtMs:
+          nowMs + Math.min(60_000, 1_000 * 2 ** Math.min(attempts - 1, 6)),
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unknown event source failure",
+        occurredAtMs: nowMs,
+      });
+      await this.persist(next);
+      this.state = next;
+    });
+  }
+
+  async clearSourceFailure(sourceKey: string): Promise<void> {
+    await this.exclusive(async () => {
+      const failureKey = JSON.stringify(["source", sourceKey]);
+      if (!this.state.failures.has(failureKey)) return;
+      const next = cloneState(this.state);
+      next.failures.delete(failureKey);
+      await this.persist(next);
+      this.state = next;
+    });
+  }
+
   private async persist(state: FileState): Promise<void> {
     await this.beforeCommit();
     await mkdir(dirname(this.path), { recursive: true });
@@ -232,6 +523,7 @@ function emptyState(): FileState {
     discrepancies: [],
     jobs: new Map(),
     failures: new Map(),
+    nextFencingTokens: new Map(),
   };
 }
 
@@ -243,6 +535,7 @@ function cloneState(state: FileState): FileState {
     discrepancies: [...state.discrepancies],
     jobs: new Map(state.jobs),
     failures: new Map(state.failures),
+    nextFencingTokens: new Map(state.nextFencingTokens),
   };
 }
 
@@ -255,6 +548,7 @@ function serialize(state: FileState): SerializedState {
     discrepancies: state.discrepancies,
     jobs: [...state.jobs],
     failures: [...state.failures],
+    nextFencingTokens: [...state.nextFencingTokens],
   };
 }
 
@@ -262,14 +556,64 @@ function deserialize(text: string): FileState {
   const value: unknown = JSON.parse(text);
   if (!isRecord(value) || value.version !== 1)
     throw new Error("Unsupported discovery file version");
+  const cursors = stringMapFrom(value.cursors);
+  if ([...cursors.values()].some((cursor) => !cursor.trim())) {
+    throw new Error("Corrupt discovery repository cursor");
+  }
+  const nextFencingTokens = numberMapFrom(value.nextFencingTokens);
+  if (
+    [...nextFencingTokens.values()].some(
+      (token) => !Number.isSafeInteger(token) || token < 0,
+    )
+  ) {
+    throw new Error("Corrupt discovery fencing token");
+  }
   return {
-    cursors: mapFrom(value.cursors),
+    cursors,
     events: mapFrom(value.events),
     observations: mapFrom(value.observations),
     discrepancies: arrayOf(value.discrepancies),
     jobs: mapFrom(value.jobs),
     failures: mapFrom(value.failures),
+    nextFencingTokens,
   };
+}
+
+function stringMapFrom(value: unknown): Map<string, string> {
+  const result = mapFrom<string, unknown>(value);
+  if ([...result.values()].some((item) => typeof item !== "string")) {
+    throw new Error("Corrupt discovery repository cursor data");
+  }
+  return result as Map<string, string>;
+}
+
+function numberMapFrom(value: unknown): Map<string, number> {
+  const result = mapFrom<string, unknown>(value);
+  if ([...result.values()].some((item) => typeof item !== "number")) {
+    throw new Error("Corrupt discovery repository fencing data");
+  }
+  return result as Map<string, number>;
+}
+
+function sameLease(left: Lease, right: Lease): boolean {
+  return (
+    left.workerId === right.workerId &&
+    left.fencingToken === right.fencingToken &&
+    left.expiresAtMs === right.expiresAtMs
+  );
+}
+
+function isWorkerState(state: JobState): boolean {
+  return [
+    "Preparing",
+    "SubmissionStarted",
+    "SubmissionUnknown",
+    "Submitted",
+    "ConfirmationPending",
+    "VerificationPending",
+    "SettlementReady",
+    "SettlementSubmitted",
+  ].includes(state);
 }
 
 function mapFrom<K extends string, V>(value: unknown): Map<K, V> {
