@@ -17,13 +17,17 @@ import { makePayout, makeRawEvent } from "./support/near-fixtures.ts";
 const config = { networkId: "testnet", contractId: "disburse.testnet", pageSize: 2 };
 
 void test("NEAR contract reader distinguishes missing payouts and preserves u64/u128 values", async () => {
-  const payout = makePayout({ id: "18446744073709551615", campaignId: "9007199254740993" });
+  const payout = makePayout({
+    id: "18446744073709551615",
+    campaignId: "9007199254740993",
+    inputAmount: { tokenId: { Near: "token.testnet" }, atomicAmount: "340282366920938463463374607431768211455", decimals: 6 },
+  });
   const rpc = new QueueRpc([nearJsonPayout(payout), null]);
   const reader = new NearContractReader(config, rpc);
   const found = await reader.getCampaignPayout("9007199254740993", payout.id);
   assert.equal(found?.id, "18446744073709551615");
   assert.equal(found?.campaignId, "9007199254740993");
-  assert.equal(found?.inputAmount.atomicAmount, "100");
+  assert.equal(found?.inputAmount.atomicAmount, "340282366920938463463374607431768211455");
   assert.equal(await reader.getPayout("42"), null);
   assert.equal(rpc.calls[0]?.contractId, config.contractId);
 });
@@ -34,7 +38,8 @@ void test("NEAR HTTP transport sends exact numeric IDs and classifies timeout an
     const body = JSON.parse(String(init?.body)) as { params: { args_base64: string } };
     const args = Buffer.from(body.params.args_base64, "base64").toString("utf8");
     assert.equal(args, '{"payout_id":18446744073709551615}');
-    return Response.json({ result: { result: [...Buffer.from(JSON.stringify(payout))] } });
+    const exactJson = JSON.stringify(payout).replace('"id":"18446744073709551615"', '"id":18446744073709551615');
+    return Response.json({ result: { result: [...Buffer.from(exactJson)] } });
   });
   const value = await transport.viewFunction(config.contractId, "get_payout", {
     payout_id: "__DISBURSE_U64_18446744073709551615__",
@@ -55,6 +60,11 @@ void test("contract reader rejects malformed payout data and invalid IDs without
   const rpcFailure = new NearContractReader(config, { viewFunction: async () => { throw new NearRpcError("unavailable", "offline"); } });
   await assert.rejects(rpcFailure.getPayout("1"), (error: unknown) => error instanceof NearRpcError && error.kind === "unavailable");
   await assert.rejects(rpcFailure.getPayout("18446744073709551616"), /u64/);
+  const wrongNetwork = new NearContractReader(config, {
+    viewFunction: async () => null,
+    getNetworkId: async () => "mainnet",
+  });
+  await assert.rejects(wrongNetwork.verifyNetwork(), /does not match RPC network/);
 });
 
 void test("decoder handles known events, large IDs, unsupported versions, unknown names, and malformed known payloads", () => {
@@ -136,6 +146,9 @@ void test("view failures do not advance the event cursor; persistence failure ca
     const processor = new PayoutDiscoveryProcessor(config, new MockNearEventSource([event]), failingReader, repository);
     await assert.rejects(processor.processNextPage(100), /timed out/);
     assert.equal(await repository.getCursor(JSON.stringify([config.networkId, config.contractId])), null);
+    const failedState = await repository.getSnapshot();
+    assert.equal(failedState.failures.size, 1);
+    assert.equal([...failedState.failures.values()][0]?.retryable, true);
 
     let failCommit = true;
     const failedStore = await DurableFileDiscoveryRepository.open(join(directory, "atomic.json"), {

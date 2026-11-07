@@ -122,10 +122,42 @@ export function decodeNearEvent(raw: RawNearEvent): DecodedNearEvent {
       return malformed(raw, eventName, "Invalid payout reservation fields", rawLog);
     }
   }
-  for (const key of ["previous_status", "new_status", "execution_reference", "evidence_reference", "reason", "actor_id", "verifier_id"]) {
+  const stringFields = [
+    "input_token_id", "expected_output_token_id", "actor_id", "verifier_id",
+    "previous_status", "new_status", "execution_reference", "evidence_reference", "reason",
+    "failure_kind", "resolution_outcome", "destination_chain_id", "provider_id", "execution_id",
+    "output_token_id", "recipient_address", "content_hash",
+  ];
+  for (const key of stringFields) {
     if (key in fields && fields[key] !== null && (typeof fields[key] !== "string" || !fields[key].trim())) {
       return malformed(raw, eventName, `Invalid event field: ${key}`, rawLog);
     }
+  }
+  const statuses = ["Created", "Authorized", "Reserved", "Executing", "PendingVerification", "Succeeded", "Failed", "RefundPending", "Refunded", "ManualReview", "ReservationReleased"];
+  for (const key of ["previous_status", "new_status"]) {
+    if (key in fields && (typeof fields[key] !== "string" || !statuses.includes(fields[key]))) {
+      return malformed(raw, eventName, `Invalid payout status: ${key}`, rawLog);
+    }
+  }
+  const expectedStatus: Partial<Record<PayoutLifecycleEventName, string>> = {
+    payout_reserved: "Reserved",
+    payout_execution_started: "Executing",
+    payout_pending_verification: "PendingVerification",
+    payout_execution_failed: "Failed",
+    payout_manual_review: "ManualReview",
+    payout_settled: "Succeeded",
+    failed_payout_reservation_released: "ReservationReleased",
+    manual_review_execution_confirmed: "PendingVerification",
+    manual_review_non_settlement_confirmed: "ReservationReleased",
+  };
+  if ("new_status" in fields && fields.new_status !== expectedStatus[eventName as PayoutLifecycleEventName]) {
+    return malformed(raw, eventName, "Event new_status conflicts with its event type", rawLog);
+  }
+  if ("failure_kind" in fields && !["RejectedBeforeSubmission", "TransactionReverted"].includes(String(fields.failure_kind))) {
+    return malformed(raw, eventName, "Unsupported execution failure kind", rawLog);
+  }
+  if ("resolution_outcome" in fields && fields.resolution_outcome !== "NonSettlementConfirmed") {
+    return malformed(raw, eventName, "Unsupported recovery resolution outcome", rawLog);
   }
   for (const key of ["input_amount", "expected_output_amount", "actual_output_amount", "input_amount_moved_to_spent", "released_input_amount"]) {
     if (key in fields && !isUnsigned(fields[key])) return malformed(raw, eventName, `Invalid amount: ${key}`, rawLog);

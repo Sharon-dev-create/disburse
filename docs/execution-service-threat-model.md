@@ -26,7 +26,7 @@ service is correct.
 | Replay attack | One external execution or evidence settles multiple payouts | Stable provider-scoped execution identity, contract global replay indexes, unique DB constraints, and contract rereads. Never alter provider, chain, transaction, event, or evidence reference to bypass a collision. |
 | Forged transaction reference | False match to a real execution or malicious provider lookup | References are correlation IDs until independently checked against destination-chain data. Use canonical chain/transaction/event values from verifier sources; do not trust a worker-supplied string alone. |
 | Incorrect destination/token metadata | Funds sent to wrong address/token or false verification | Bind request to payout's immutable on-chain destination and expected output; provider quote cannot replace authorization. Maintain reviewed chain/token metadata out of band, version it, and fail closed on unknown/ambiguous metadata. Token decimals are not authoritative; compare identity and atomic units. |
-| RPC/indexer inconsistency or reorg | Missed/duplicated events, stale payout state, false finality | Use finalized events and replayable cursor; store block/tx/event identity; reconcile against contract views; detect reorgs per network policy; do not infer state from a single provider/RPC response. Contract views currently do not enumerate payouts. |
+| RPC/indexer inconsistency or reorg | Missed/duplicated events, stale payout state, false finality | The discovery foundation validates network/contract identity, persists block/tx/receipt/event identity, atomically commits each local cursor with the event, and rereads current contract views. A live source must supply finalized replay and document reorg policy. No production indexer is connected, so event completeness is not established. Contract views do not enumerate payouts. |
 | Stale job lease | Old worker writes after another worker takes over | Lease expiry plus monotonic fencing token and state version in every persistence write. A stale worker may still have an in-flight provider call; it must not submit again and the new worker must reconcile the stable reference. |
 | Concurrent execution attempts | Two workers pay the same payout | Atomic DB claim and unique current lease, stable provider key only when provider guarantee is verified, stable contract execution reference, and contract status gate. Database leases cannot retract a provider call already in flight. |
 | Private-key compromise | Unauthorized Operator or Verifier calls and potentially irreversible execution | No private keys in plaintext, source, database, or logs. No key-management implementation is included. Future signer service must separate Operator/Admin and Verifier policies, enforce method allowlists, rate/amount limits, audit signatures, rotate/revoke access, and protect infrastructure. |
@@ -64,7 +64,11 @@ custody or signing code.
 
 - The contract trusts assigned Verifiers and does not independently verify external execution.
 - The current contract has no paginated payout listing or payout count; discovery requires a
-  separate replayable indexer/event source.
+  separate replayable indexer/event source. Milestone 9 only supplies the provider interface and
+  deterministic mock, not historical provider integration.
+- The local discovery file repository is single-writer and not a multi-process database. A
+  transactional database adapter and operational backup/restore procedure are required before
+  running multiple indexers or execution workers.
 - Provider idempotency and lookup semantics are unknown until a provider-specific review is done.
 - No independent chain verifier, RPC integration, durable PostgreSQL repository, key management,
   or end-to-end testnet system is implemented.

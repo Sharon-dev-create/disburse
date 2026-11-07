@@ -2,11 +2,13 @@
 
 ## Status and scope
 
-Milestone 8 adds a provider-neutral TypeScript foundation only. It contains typed boundaries,
-an operational state machine, a test-only in-memory repository, deterministic mock adapters, and
-a reference PostgreSQL schema. It does not connect to NEAR RPC, PostgreSQL, NEAR Intents, or any
-destination-chain provider, and it cannot submit transactions. The Rust contract remains the
-authority for reservations, campaign accounting, payout state, settlement, and release.
+Milestone 8 added provider-neutral execution boundaries, an operational state machine,
+deterministic mock adapters, and a reference PostgreSQL schema. Milestone 9 adds a read-only NEAR
+JSON-RPC client, strict event decoder, replayable event-source interface, durable single-writer
+local index, discovery processor, and contract-view reconciler. There is still no production
+event-indexer or PostgreSQL adapter, no NEAR Intents/destination-chain adapter, and no transaction
+submission. The Rust contract remains the authority for reservations, campaign accounting, payout
+state, settlement, and release.
 
 The schema in `execution-service/sql/schema.sql` is a reference artifact. Package scripts never
 apply it, and no database was contacted.
@@ -39,19 +41,23 @@ committed.
 
 ### Discovery and coordinator
 
-The coordinator ingests finalized/indexed `payout_reserved` events, fetches `get_payout`, and
-inserts a job under `(network_id, contract_id, payout_id)`. Duplicate events converge on that
-unique job. A durable cursor and event identity let the discovery source replay from its last
-committed point after restart. Job claiming and state updates use database transactions, leases,
-compare-and-swap versions, and fencing tokens.
+`NearDiscoveryCoordinator` wires an event source, read-only contract reader, durable repository,
+processor, and reconciler. The processor reads `payout_reserved` and lifecycle events, fetches the
+current contract view, and inserts an operational job under
+`(network_id, contract_id, payout_id)` only while that view says `Reserved`. Lifecycle events refresh
+observations without directly transitioning an execution job. The local repository atomically
+persists event, observation, optional job, and cursor, and can resume after restart. It is a
+single-writer local file store, not the future multi-worker database implementation. Job claiming
+and execution state updates still require the transactional production adapter described elsewhere.
 
-The current ABI has `get_payout(payout_id)`, `get_campaign_payout(campaign_id, payout_id)`, and
-`get_campaign_payout_accounting(campaign_id)`, but no paginated payout listing or payout count.
-`get_campaign_count()` is for campaigns, not payouts. Therefore the initial discovery source
-must be an independently operated NEAR indexer/event consumer with replayable cursors. A future
-indexing milestone should specify finality, historical backfill, cursor persistence, duplicate
-delivery, and reorg handling. This milestone does not add a contract listing method or pretend
-that polling a bounded range of guessed payout IDs is a complete index.
+The current ABI has payout, idempotency, accounting, pause, and role views, but no paginated payout
+listing or payout count. `get_campaign_count()` is for campaigns, not payouts. The source and
+generated ABI were checked. A complete historical feed therefore requires an independently
+operated NEAR event indexer with replayable cursors. The package defines this boundary and includes
+only a deterministic mock. Historical discovery, completeness, and gap detection are not claimed
+until a provider adapter with documented retention, finality, and reorg behavior is selected and
+integrated. See [`near-payout-discovery.md`](near-payout-discovery.md) and
+[`near-event-indexing.md`](near-event-indexing.md).
 
 ### Provider adapter and verification
 
