@@ -57,7 +57,7 @@ export interface ExecutionJobKey {
 }
 
 export function executionJobKeyString(key: ExecutionJobKey): string {
-  return `${key.networkId}:${key.contractId}:${key.payoutId}`;
+  return JSON.stringify([key.networkId, key.contractId, key.payoutId]);
 }
 
 export function validatePayoutSnapshot(payout: PayoutSnapshot): void {
