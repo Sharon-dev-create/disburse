@@ -653,7 +653,7 @@ impl Disburse {
         payout.status = PayoutStatus::PendingVerification;
         self.payouts.insert(payout_id, payout.clone());
         Self::payout_resolution_evidence().insert(payout_id, evidence.clone());
-        self.index_resolution_evidence(&evidence, execution_key);
+        Self::index_resolution_evidence(&evidence, execution_key);
         self.emit_event(
             "manual_review_execution_confirmed",
             near_sdk::serde_json::json!({
@@ -789,20 +789,22 @@ impl Disburse {
         );
 
         let execution_key = Self::settlement_execution_key(&evidence);
-        if let Some(existing_payout_id) =
-            Self::settlement_execution_index().get(&execution_key)
-        {
+        if let Some(existing_payout_id) = Self::settlement_execution_index().get(&execution_key) {
             require!(
                 *existing_payout_id == payout_id,
                 "Settlement execution evidence has already been used"
             );
-            let resolution = Self::payout_resolution_evidence().get(&payout_id);
+            let resolution_map = Self::payout_resolution_evidence();
+            let resolution = resolution_map.get(&payout_id);
             require!(
                 resolution.is_some_and(|resolution| {
                     resolution.outcome == PayoutResolutionOutcome::ExecutionConfirmed
-                        && resolution.external_execution.as_ref().is_some_and(|identity| {
-                            Self::external_execution_key(identity) == execution_key
-                        })
+                        && resolution
+                            .external_execution
+                            .as_ref()
+                            .is_some_and(|identity| {
+                                Self::external_execution_key(identity) == execution_key
+                            })
                 }),
                 "Execution identity is reserved by a different payout resolution"
             );
@@ -1107,7 +1109,10 @@ impl Disburse {
         evidence: &PayoutResolutionEvidence,
         expected_outcome: PayoutResolutionOutcome,
     ) -> Option<SettlementExecutionKey> {
-        require!(evidence.payout_id == payout_id, "Resolution payout ID does not match");
+        require!(
+            evidence.payout_id == payout_id,
+            "Resolution payout ID does not match"
+        );
         require!(
             &evidence.verifier_id == actor_id,
             "Resolution verifier must match the calling account"
@@ -1160,8 +1165,7 @@ impl Disburse {
             );
             if let Some(event_identifier) = &identity.transaction_event_identifier {
                 require!(
-                    validate_identifier(event_identifier).is_ok()
-                        && event_identifier.len() <= 128,
+                    validate_identifier(event_identifier).is_ok() && event_identifier.len() <= 128,
                     "Transaction event identifier must be nonempty and at most 128 bytes"
                 );
             }
@@ -1218,7 +1222,8 @@ impl Disburse {
         evidence: &PayoutResolutionEvidence,
         execution_key: Option<SettlementExecutionKey>,
     ) {
-        Self::settlement_reference_index().insert(evidence.evidence_reference.clone(), evidence.payout_id);
+        Self::settlement_reference_index()
+            .insert(evidence.evidence_reference.clone(), evidence.payout_id);
         if let Some(execution_key) = execution_key {
             Self::settlement_execution_index().insert(execution_key, evidence.payout_id);
         }
@@ -1232,7 +1237,10 @@ impl Disburse {
         event: &str,
     ) {
         require!(
-            matches!(payout.status, PayoutStatus::Failed | PayoutStatus::ManualReview),
+            matches!(
+                payout.status,
+                PayoutStatus::Failed | PayoutStatus::ManualReview
+            ),
             "Payout is not eligible for reservation release"
         );
         let mut campaign = self.campaign_or_panic(payout.campaign_id);
@@ -1719,8 +1727,8 @@ mod tests {
             reason: "Verifier confirmed final non-settlement state".to_string(),
             external_execution: Some(ExternalExecutionIdentity {
                 provider_id: "evm-rpc".to_string(),
-                destination_chain_id:
-                    types::destination::ChainId::new("eip155:1".to_string()).unwrap(),
+                destination_chain_id: types::destination::ChainId::new("eip155:1".to_string())
+                    .unwrap(),
                 execution_reference: format!("0xtx{payout_id}"),
                 transaction_event_identifier: Some("7".to_string()),
             }),
@@ -3743,10 +3751,12 @@ mod tests {
                 PayoutResolutionOutcome::NonSettlementConfirmed,
                 "recover:failed-auth",
             );
-            assert!(catch_unwind(AssertUnwindSafe(|| {
-                contract.release_failed_payout_reservation(payout_id, evidence)
-            }))
-            .is_err());
+            assert!(
+                catch_unwind(AssertUnwindSafe(|| {
+                    contract.release_failed_payout_reservation(payout_id, evidence)
+                }))
+                .is_err()
+            );
             assert_eq!(contract.get_campaign(campaign_id).unwrap(), before_campaign);
             assert_eq!(contract.get_payout(payout_id).unwrap(), before_payout);
         }
@@ -3754,15 +3764,17 @@ mod tests {
         grant_verifier(&mut contract, accounts(5));
         let mut wrong_verifier = resolution_evidence(
             payout_id,
-            accounts(6),
+            accounts(3),
             PayoutResolutionOutcome::NonSettlementConfirmed,
             "recover:failed-auth",
         );
         set_context(accounts(5));
-        assert!(catch_unwind(AssertUnwindSafe(|| {
-            contract.release_failed_payout_reservation(payout_id, wrong_verifier.clone())
-        }))
-        .is_err());
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| {
+                contract.release_failed_payout_reservation(payout_id, wrong_verifier.clone())
+            }))
+            .is_err()
+        );
         assert_eq!(contract.get_campaign(campaign_id).unwrap(), before_campaign);
 
         wrong_verifier.verifier_id = accounts(5);
@@ -3775,12 +3787,18 @@ mod tests {
         let released = contract.get_payout(payout_id).unwrap();
         assert_eq!(released.status, PayoutStatus::ReservationReleased);
         assert!(released.resolution_evidence.is_some());
-        let event = get_logs().last().unwrap();
+        let logs = get_logs();
+        let event = logs.last().unwrap();
         assert!(event.contains("failed_payout_reservation_released"));
         assert!(event.contains("\"released_input_amount\":\"10\""));
 
-        let missing_evidence_payout =
-            failed_test_payout(&mut contract, campaign_id, "recover-missing-failure-evidence");
+        set_context(accounts(2));
+        let missing_evidence_payout = failed_test_payout(
+            &mut contract,
+            campaign_id,
+            "recover-missing-failure-evidence",
+        );
+        set_context(accounts(5));
         let resolution = resolution_evidence(
             missing_evidence_payout,
             accounts(5),
@@ -3788,17 +3806,21 @@ mod tests {
             "recover:missing-failure",
         );
         Disburse::payout_failure_evidence().remove(&missing_evidence_payout);
-        assert!(catch_unwind(AssertUnwindSafe(|| {
-            contract.release_failed_payout_reservation(missing_evidence_payout, resolution)
-        }))
-        .is_err());
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| {
+                contract.release_failed_payout_reservation(missing_evidence_payout, resolution)
+            }))
+            .is_err()
+        );
     }
 
     #[test]
     fn manual_review_execution_confirmation_preserves_reservation_then_settles_normally() {
         let (mut contract, campaign_id) = funded_active_campaign(100);
         let payout_id = manual_review_test_payout(&mut contract, campaign_id, "recover-executed");
-        let before = contract.get_campaign_payout_accounting(campaign_id).unwrap();
+        let before = contract
+            .get_campaign_payout_accounting(campaign_id)
+            .unwrap();
         grant_verifier(&mut contract, accounts(5));
         let evidence = resolution_evidence(
             payout_id,
@@ -3810,28 +3832,43 @@ mod tests {
 
         let pending = contract.get_payout(payout_id).unwrap();
         assert_eq!(pending.status, PayoutStatus::PendingVerification);
-        assert_eq!(pending.execution_reference, Some("execution:recover-executed".into()));
+        assert_eq!(
+            pending.execution_reference,
+            Some("execution:recover-executed".into())
+        );
         assert_eq!(pending.resolution_evidence, Some(evidence));
-        let after_resolution = contract.get_campaign_payout_accounting(campaign_id).unwrap();
+        let after_resolution = contract
+            .get_campaign_payout_accounting(campaign_id)
+            .unwrap();
         assert_eq!(after_resolution.reserved, before.reserved);
         assert_eq!(after_resolution.spent, before.spent);
-        assert!(get_logs().last().unwrap().contains("manual_review_execution_confirmed"));
+        assert!(
+            get_logs()
+                .last()
+                .unwrap()
+                .contains("manual_review_execution_confirmed")
+        );
 
         contract.settle_payout(payout_id, settlement_evidence(payout_id, accounts(5)));
         assert_eq!(
             contract.get_payout(payout_id).unwrap().status,
             PayoutStatus::Succeeded
         );
-        let settled = contract.get_campaign_payout_accounting(campaign_id).unwrap();
-        assert_eq!(settled.reserved, before.reserved - 10);
-        assert_eq!(settled.spent, before.spent + 10);
+        let settled = contract
+            .get_campaign_payout_accounting(campaign_id)
+            .unwrap();
+        assert_eq!(settled.reserved.0, before.reserved.0 - 10);
+        assert_eq!(settled.spent.0, before.spent.0 + 10);
     }
 
     #[test]
     fn manual_review_non_settlement_releases_only_reserved_funds() {
         let (mut contract, campaign_id) = funded_active_campaign(100);
-        let payout_id = manual_review_test_payout(&mut contract, campaign_id, "recover-not-executed");
-        let before = contract.get_campaign_payout_accounting(campaign_id).unwrap();
+        let payout_id =
+            manual_review_test_payout(&mut contract, campaign_id, "recover-not-executed");
+        let before = contract
+            .get_campaign_payout_accounting(campaign_id)
+            .unwrap();
         grant_verifier(&mut contract, accounts(5));
         let evidence = resolution_evidence(
             payout_id,
@@ -3844,13 +3881,20 @@ mod tests {
         let released = contract.get_payout(payout_id).unwrap();
         assert_eq!(released.status, PayoutStatus::ReservationReleased);
         assert_eq!(released.resolution_evidence, Some(evidence));
-        let after = contract.get_campaign_payout_accounting(campaign_id).unwrap();
-        assert_eq!(after.reserved, before.reserved - 10);
+        let after = contract
+            .get_campaign_payout_accounting(campaign_id)
+            .unwrap();
+        assert_eq!(after.reserved.0, before.reserved.0 - 10);
         assert_eq!(after.spent, before.spent);
         assert_eq!(after.funded, before.funded);
         assert_eq!(after.budget, before.budget);
-        assert_eq!(after.available, before.available + 10);
-        assert!(get_logs().last().unwrap().contains("manual_review_non_settlement_confirmed"));
+        assert_eq!(after.available.0, before.available.0 + 10);
+        assert!(
+            get_logs()
+                .last()
+                .unwrap()
+                .contains("manual_review_non_settlement_confirmed")
+        );
 
         let unchanged = after.clone();
         let repeat = resolution_evidence(
@@ -3859,26 +3903,38 @@ mod tests {
             PayoutResolutionOutcome::NonSettlementConfirmed,
             "recover:not-executed-again",
         );
-        assert!(catch_unwind(AssertUnwindSafe(|| {
-            contract.release_manual_review_reservation(payout_id, repeat)
-        }))
-        .is_err());
-        assert_eq!(contract.get_campaign(campaign_id).unwrap(), unchanged);
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| {
+                contract.release_manual_review_reservation(payout_id, repeat)
+            }))
+            .is_err()
+        );
+        assert_eq!(
+            contract
+                .get_campaign_payout_accounting(campaign_id)
+                .unwrap(),
+            unchanged
+        );
 
-        assert!(catch_unwind(AssertUnwindSafe(|| {
-            contract.start_payout_execution(payout_id, "again".into())
-        }))
-        .is_err());
-        assert!(catch_unwind(AssertUnwindSafe(|| {
-            contract.settle_payout(payout_id, settlement_evidence(payout_id, accounts(5)))
-        }))
-        .is_err());
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| {
+                contract.start_payout_execution(payout_id, "again".into())
+            }))
+            .is_err()
+        );
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| {
+                contract.settle_payout(payout_id, settlement_evidence(payout_id, accounts(5)))
+            }))
+            .is_err()
+        );
     }
 
     #[test]
     fn recovery_evidence_and_nonsettlement_execution_identity_share_settlement_replay_indexes() {
         let (mut contract, campaign_id) = funded_active_campaign(100);
-        let released_id = manual_review_test_payout(&mut contract, campaign_id, "cross-replay-release");
+        let released_id =
+            manual_review_test_payout(&mut contract, campaign_id, "cross-replay-release");
         let pending_id = pending_test_payout(&mut contract, campaign_id, "cross-replay-settle");
         grant_verifier(&mut contract, accounts(5));
 
@@ -3898,29 +3954,84 @@ mod tests {
         contract.release_manual_review_reservation(released_id, release.clone());
 
         later_settlement.evidence_reference = Some("cross-path:settlement-ref".into());
-        assert!(catch_unwind(AssertUnwindSafe(|| {
-            contract.settle_payout(pending_id, later_settlement.clone())
-        }))
-        .is_err());
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| {
+                contract.settle_payout(pending_id, later_settlement.clone())
+            }))
+            .is_err()
+        );
         assert_eq!(
             contract.get_payout(pending_id).unwrap().status,
             PayoutStatus::PendingVerification
         );
 
+        set_context(accounts(2));
         let second_failed = failed_test_payout(&mut contract, campaign_id, "cross-replay-ref");
+        set_context(accounts(5));
         let conflicting_reference = resolution_evidence(
             second_failed,
             accounts(5),
             PayoutResolutionOutcome::NonSettlementConfirmed,
             release.evidence_reference.as_str(),
         );
-        assert!(catch_unwind(AssertUnwindSafe(|| {
-            contract.release_failed_payout_reservation(second_failed, conflicting_reference)
-        }))
-        .is_err());
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| {
+                contract.release_failed_payout_reservation(second_failed, conflicting_reference)
+            }))
+            .is_err()
+        );
         assert_eq!(
             contract.get_payout(second_failed).unwrap().status,
             PayoutStatus::Failed
+        );
+    }
+
+    #[test]
+    fn settlement_reference_cannot_be_reused_for_recovery_and_recovery_identity_is_not_consumed_on_failure()
+     {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        let settled_id = pending_test_payout(&mut contract, campaign_id, "settled-before-recovery");
+        let failed_id = failed_test_payout(&mut contract, campaign_id, "recovery-after-settlement");
+        grant_verifier(&mut contract, accounts(5));
+        let mut settlement = settlement_evidence(settled_id, accounts(5));
+        settlement.evidence_reference = Some("shared:reference".into());
+        contract.settle_payout(settled_id, settlement);
+
+        let mut recovery = resolution_evidence(
+            failed_id,
+            accounts(5),
+            PayoutResolutionOutcome::NonSettlementConfirmed,
+            "shared:reference",
+        );
+        let failed_key = recovery.external_execution.as_ref().unwrap();
+        let index_key = Disburse::external_execution_key(failed_key);
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| {
+                contract.release_failed_payout_reservation(failed_id, recovery.clone())
+            }))
+            .is_err()
+        );
+        assert!(
+            Disburse::settlement_execution_index()
+                .get(&index_key)
+                .is_none()
+        );
+        assert!(
+            Disburse::payout_resolution_evidence()
+                .get(&failed_id)
+                .is_none()
+        );
+        assert_eq!(
+            contract.get_payout(failed_id).unwrap().status,
+            PayoutStatus::Failed
+        );
+
+        recovery.evidence_reference = "recovery:unique-reference".into();
+        contract.release_failed_payout_reservation(failed_id, recovery);
+        assert!(
+            Disburse::settlement_execution_index()
+                .get(&index_key)
+                .is_some()
         );
     }
 
@@ -3983,10 +4094,12 @@ mod tests {
             },
         ];
         for evidence in invalid_evidence {
-            assert!(catch_unwind(AssertUnwindSafe(|| {
-                contract.release_failed_payout_reservation(payout_id, evidence)
-            }))
-            .is_err());
+            assert!(
+                catch_unwind(AssertUnwindSafe(|| {
+                    contract.release_failed_payout_reservation(payout_id, evidence)
+                }))
+                .is_err()
+            );
             assert_eq!(contract.get_campaign(campaign_id).unwrap(), before);
             assert_eq!(
                 contract.get_payout(payout_id).unwrap().status,
@@ -4003,14 +4116,22 @@ mod tests {
         let mut inconsistent = contract.campaigns.get(&campaign_id).unwrap().clone();
         inconsistent.reserved = 9;
         contract.campaigns.insert(campaign_id, inconsistent.clone());
-        assert!(catch_unwind(AssertUnwindSafe(|| {
-            contract.release_failed_payout_reservation(payout_id, good.clone())
-        }))
-        .is_err());
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| {
+                contract.release_failed_payout_reservation(payout_id, good.clone())
+            }))
+            .is_err()
+        );
         assert_eq!(contract.campaigns.get(&campaign_id), Some(&inconsistent));
-        assert!(Disburse::settlement_reference_index()
-            .get(&good.evidence_reference)
-            .is_none());
-        assert!(Disburse::payout_resolution_evidence().get(&payout_id).is_none());
+        assert!(
+            Disburse::settlement_reference_index()
+                .get(&good.evidence_reference)
+                .is_none()
+        );
+        assert!(
+            Disburse::payout_resolution_evidence()
+                .get(&payout_id)
+                .is_none()
+        );
     }
 }

@@ -47,7 +47,30 @@ accounting.
 Settlement is allowed while the global pause is active. Pausing blocks new operations, while
 allowing a verifier to reconcile an external execution that is already pending verification.
 
-`Failed` and `ManualReview` payouts retain their reservations. This milestone does not provide a
-recovery or reservation-release path for them; those require a separately reviewed lifecycle.
-There are no refunds, withdrawals, retries, external transaction submission, or trustless
-cross-chain proof verification in this implementation.
+## Failure recovery and reservation release
+
+Only an explicitly assigned Verifier may recover a `Failed` or `ManualReview` payout. Failed
+payout release requires its persisted typed failure evidence. ManualReview can be resolved as
+confirmed execution, which returns it to `PendingVerification` while preserving the original
+execution reference and reservation; the existing `settle_payout` remains the only path to
+`Succeeded`. Alternatively, a verifier can attest definite non-settlement and release the
+reservation, moving the payout to terminal `ReservationReleased`.
+
+Resolution attestations include the payout and verifier IDs, outcome, method, timestamp, unique
+evidence reference, SHA-256 content hash, bounded reason, and optional provider-scoped external
+execution identity. They are stored under `payout-resolution-records-v1`. The existing global
+settlement reference and execution indexes are shared with recovery, preventing cross-path
+replay. A confirmed execution claims its identity for that payout, allowing that same payout to
+settle against the identity but preventing any other payout from using it. A non-settlement
+identity is permanently unavailable to settlement.
+
+Reservation release validates the campaign token and accounting invariant, subtracts only from
+`reserved` using checked arithmetic, and leaves `spent`, `funded`, and `budget` unchanged. It
+does not transfer or refund tokens. Recovery remains available during global pause to reconcile
+existing payouts. Failed and uncertain payouts remain reserved until a verifier makes a
+structured, final non-settlement attestation; timeouts and missing provider responses alone are
+not sufficient. This remains a trusted-verifier model: the contract records and checks the
+attestation but cannot independently prove the external execution outcome.
+
+This milestone adds no withdrawals, automatic retries, external transaction submission, or
+trustless cross-chain proof verification.

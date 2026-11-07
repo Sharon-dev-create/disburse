@@ -109,6 +109,18 @@ mod tests {
     }
 
     #[test]
+    fn reservation_released_status_appends_without_reordering_borsh_variants() {
+        let prior_last_status = borsh::to_vec(&PayoutStatus::ManualReview).unwrap();
+        let appended_status = borsh::to_vec(&PayoutStatus::ReservationReleased).unwrap();
+        assert_eq!(prior_last_status, [9]);
+        assert_eq!(appended_status, [10]);
+        assert_eq!(
+            round_trip_borsh(&PayoutStatus::ReservationReleased),
+            PayoutStatus::ReservationReleased
+        );
+    }
+
+    #[test]
     fn token_amount_keeps_atomic_value_decimals_and_token_identity() {
         let amount = token_amount(TokenId::external("token.one".to_string()).unwrap(), 42, 8);
         assert_eq!(amount.atomic_amount(), 42);
