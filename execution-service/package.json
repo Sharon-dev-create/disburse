@@ -1,0 +1,23 @@
+{
+  "name": "@disburse/execution-service-foundation",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Provider-neutral architecture foundation for Disburse payout execution",
+  "scripts": {
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"*.json\" \"sql/**/*.sql\"",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tests --ext .ts",
+    "test": "tsx --test tests/*.test.ts",
+    "check": "pnpm format:check && pnpm typecheck && pnpm lint && pnpm test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.30.0",
+    "@types/node": "^22.15.0",
+    "eslint": "^9.30.0",
+    "prettier": "^3.5.3",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.34.1"
+  }
+}
