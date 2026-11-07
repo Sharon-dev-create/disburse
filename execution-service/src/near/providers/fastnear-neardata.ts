@@ -173,8 +173,10 @@ export class FastNearNearDataEventSource implements NearEventSource {
     fetchImpl: typeof fetch = fetch,
   ): FastNearNearDataEventSource {
     const network = env.NEAR_NETWORK;
-    if (network !== "mainnet" && network !== "testnet")
-      throw new Error("NEAR_NETWORK must be mainnet or testnet");
+    if (network !== "testnet")
+      throw new Error(
+        "Milestone 11 environment configuration requires NEAR_NETWORK=testnet",
+      );
     const contractId = env.DISBURSE_CONTRACT_ID;
     if (!contractId?.trim())
       throw new Error("DISBURSE_CONTRACT_ID must be configured");

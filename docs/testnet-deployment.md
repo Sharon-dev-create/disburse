@@ -9,22 +9,22 @@ this audit. No test-token account, funded testnet account, or authorized signer 
 provided. The strict preflight parser rejects mainnet values and accepts only the official testnet
 RPC and FastNear endpoint values; it does not sign, submit, or inspect secrets.
 
-| Readiness item | Value/status |
-|---|---|
-| Network | NEAR testnet only |
-| RPC | `https://rpc.testnet.near.org` |
-| FastNear | `https://testnet.neardata.xyz` |
-| Deployment account | BLOCKED — must be supplied and verified as disposable testnet account |
-| Contract account | BLOCKED — must be supplied; no deployed account found |
-| Initializer signer / expected owner | BLOCKED — initializer predecessor becomes `owner_id`; must match the explicitly approved owner |
-| Operator | BLOCKED — must be a separate account; owner cannot self-grant Operator |
-| Verifier | BLOCKED — must be identified separately from owner and Operator |
-| NEP-141 token contract and metadata | BLOCKED — no token selected or verified |
-| Token funder and balance | BLOCKED — no funded testnet account supplied |
-| Minimum testnet NEAR | BLOCKED — depends on approved account, current gas/storage costs, deployment, and possible token storage registration |
-| WASM artifact | `target/near/disburse_contract.wasm` |
-| WASM SHA-256 | `4d4001c6b26623e6aa1d3326fdf35976d214a38c666a24b4d9d9218323b37bc5` |
-| Source revision used for this build | `c0ec6fea0dac0d4a80b71047515b2de55a49a14d` at build time |
+| Readiness item                      | Value/status                                                                                                          |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Network                             | NEAR testnet only                                                                                                     |
+| RPC                                 | `https://rpc.testnet.near.org`                                                                                        |
+| FastNear                            | `https://testnet.neardata.xyz`                                                                                        |
+| Deployment account                  | BLOCKED — must be supplied and verified as disposable testnet account                                                 |
+| Contract account                    | BLOCKED — must be supplied; no deployed account found                                                                 |
+| Initializer signer / expected owner | BLOCKED — initializer predecessor becomes `owner_id`; must match the explicitly approved owner                        |
+| Operator                            | BLOCKED — must be a separate account; owner cannot self-grant Operator                                                |
+| Verifier                            | BLOCKED — must be identified separately from owner and Operator                                                       |
+| NEP-141 token contract and metadata | BLOCKED — no token selected or verified                                                                               |
+| Token funder and balance            | BLOCKED — no funded testnet account supplied                                                                          |
+| Minimum testnet NEAR                | BLOCKED — depends on approved account, current gas/storage costs, deployment, and possible token storage registration |
+| WASM artifact                       | `target/near/disburse_contract.wasm`                                                                                  |
+| WASM SHA-256                        | `4d4001c6b26623e6aa1d3326fdf35976d214a38c666a24b4d9d9218323b37bc5`                                                    |
+| Source revision used for this build | `c0ec6fea0dac0d4a80b71047515b2de55a49a14d` at build time                                                              |
 
 The build uses the current Rust contract source, which was unchanged from the prior validation.
 Because the worktree contains execution-service and documentation changes, record the final source

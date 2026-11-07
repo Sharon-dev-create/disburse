@@ -373,6 +373,18 @@ void test("provider rejects timeouts, malformed JSON, and block/network mismatch
   );
 });
 
+void test("environment-based FastNear configuration is testnet-only", () => {
+  assert.throws(
+    () =>
+      FastNearNearDataEventSource.fromEnvironment({
+        NEAR_NETWORK: "mainnet",
+        DISBURSE_CONTRACT_ID: "disburse.near",
+        NEAR_DISCOVERY_START_BLOCK: "1",
+      }),
+    /requires NEAR_NETWORK=testnet/,
+  );
+});
+
 const reservedLog = `EVENT_JSON:${JSON.stringify({
   standard: "disburse",
   version: "1.0.0",

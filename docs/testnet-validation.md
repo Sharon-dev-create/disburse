@@ -10,15 +10,15 @@ not been given. No testnet transaction was submitted.
 
 ## Automated validation
 
-| Check                                             | Result                               | Evidence                                                                                                                                         |
-| ------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `cargo fmt --all -- --check`                      | PASS                                 | Completed with the Milestone 11 preflight audit                                                                                                  |
-| `cargo test --locked`                             | PASS                                 | 98 passed; 0 failed; 0 doc tests                                                                                                                 |
-| `cargo near build non-reproducible-wasm --locked` | PASS                                 | `target/near/disburse_contract.wasm`, 298,523 bytes                                                                                              |
-| WASM SHA-256                                      | PASS                                 | `4d4001c6b26623e6aa1d3326fdf35976d214a38c666a24b4d9d9218323b37bc5`                                                                               |
-| `cargo near abi`                                  | PASS                                 | Generated `target/near/disburse_contract_abi.json`                                                                                               |
-| `pnpm check`                                      | PASS                                 | Prettier, strict TypeScript typecheck, ESLint, and 41 tests passed, including testnet environment validation                                    |
-| `git diff --check`                                | PASS                                 | Verified after the final documentation and test edits                                                                                            |
+| Check                                             | Result | Evidence                                                                                                     |
+| ------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------ |
+| `cargo fmt --all -- --check`                      | PASS   | Completed with the Milestone 11 preflight audit                                                              |
+| `cargo test --locked`                             | PASS   | 98 passed; 0 failed; 0 doc tests                                                                             |
+| `cargo near build non-reproducible-wasm --locked` | PASS   | `target/near/disburse_contract.wasm`, 298,523 bytes                                                          |
+| WASM SHA-256                                      | PASS   | `4d4001c6b26623e6aa1d3326fdf35976d214a38c666a24b4d9d9218323b37bc5`                                           |
+| `cargo near abi`                                  | PASS   | Generated `target/near/disburse_contract_abi.json`                                                           |
+| `pnpm check`                                      | PASS   | Prettier, strict TypeScript typecheck, ESLint, and 42 tests passed, including testnet environment validation |
+| `git diff --check`                                | PASS   | Verified after the final documentation and test edits                                                        |
 
 The WASM build contains no Milestone 11 contract changes. The requested artifact is local build
 output and is not deployed.
