@@ -597,14 +597,16 @@ impl Disburse {
             payout.status == PayoutStatus::PendingVerification,
             "Only PendingVerification payouts can be settled"
         );
-        require!(evidence.payout_id == payout_id, "Evidence payout ID does not match");
+        require!(
+            evidence.payout_id == payout_id,
+            "Evidence payout ID does not match"
+        );
         require!(
             evidence.verifier_id == actor_id,
             "Evidence verifier must match the calling account"
         );
         require!(
-            validate_identifier(&evidence.provider_id).is_ok()
-                && evidence.provider_id.len() <= 64,
+            validate_identifier(&evidence.provider_id).is_ok() && evidence.provider_id.len() <= 64,
             "Provider identifier must be nonempty and at most 64 bytes"
         );
         require!(
@@ -614,17 +616,17 @@ impl Disburse {
         );
         if let Some(event_identifier) = &evidence.transaction_event_identifier {
             require!(
-                validate_identifier(event_identifier).is_ok()
-                    && event_identifier.len() <= 128,
+                validate_identifier(event_identifier).is_ok() && event_identifier.len() <= 128,
                 "Transaction event identifier must be nonempty and at most 128 bytes"
             );
         }
         let evidence_reference = evidence
             .evidence_reference
             .as_ref()
-            .unwrap_or_else(|| env::panic_str("Evidence reference is required"));
+            .unwrap_or_else(|| env::panic_str("Evidence reference is required"))
+            .clone();
         require!(
-            validate_identifier(evidence_reference).is_ok() && evidence_reference.len() <= 256,
+            validate_identifier(&evidence_reference).is_ok() && evidence_reference.len() <= 256,
             "Evidence reference must be nonempty and at most 256 bytes"
         );
         require!(
@@ -634,9 +636,10 @@ impl Disburse {
         );
         require!(
             evidence.content_hash.len() == 64
-                && evidence.content_hash.bytes().all(|byte| {
-                    byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)
-                }),
+                && evidence
+                    .content_hash
+                    .bytes()
+                    .all(|byte| { byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte) }),
             "Content hash must be 64 lowercase hexadecimal SHA-256 characters"
         );
         require!(
@@ -652,8 +655,7 @@ impl Disburse {
             "Evidence output token does not match payout"
         );
         require!(
-            evidence.output_amount.atomic_amount()
-                == payout.expected_output_amount.atomic_amount(),
+            evidence.output_amount.atomic_amount() == payout.expected_output_amount.atomic_amount(),
             "Evidence output amount does not match payout"
         );
 
@@ -671,14 +673,14 @@ impl Disburse {
         );
         require!(
             Self::settlement_reference_index()
-                .get(evidence_reference)
+                .get(&evidence_reference)
                 .is_none(),
             "Settlement evidence reference has already been used"
         );
 
         let mut campaign = self.campaign_or_panic(payout.campaign_id);
         require!(
-            evidence.input_token_matches_campaign(&payout, &campaign),
+            payout.input_amount.token_id().near_account_id() == Some(&campaign.token_id),
             "Payout input token does not match campaign funding token"
         );
         require!(
@@ -972,8 +974,7 @@ impl Disburse {
         LookupMap::new(b"payout-settlement-records-v1".to_vec())
     }
 
-    fn settlement_execution_index(
-    ) -> LookupMap<(String, String, String, Option<String>), u64> {
+    fn settlement_execution_index() -> LookupMap<(String, String, String, Option<String>), u64> {
         LookupMap::new(b"payout-settlement-executions-v1".to_vec())
     }
 
@@ -1045,6 +1046,7 @@ impl Disburse {
             settlement_evidence_reference: payout.settlement_evidence_reference.clone(),
             lifecycle_reason: Self::payout_lifecycle_reasons().get(&payout.id).cloned(),
             failure_evidence: Self::payout_failure_evidence().get(&payout.id).cloned(),
+            settlement_evidence: Self::payout_settlement_evidence().get(&payout.id).cloned(),
         }
     }
 
@@ -1335,6 +1337,44 @@ mod tests {
             evidence_reference: reference.to_string(),
             reason: "Source transaction has a terminal reverted status".to_string(),
         }
+    }
+
+    fn settlement_evidence(payout_id: u64, verifier_id: AccountId) -> SettlementEvidence {
+        SettlementEvidence {
+            payout_id,
+            provider_id: "evm-rpc".to_string(),
+            destination_chain_id: types::destination::ChainId::new("eip155:1".to_string())
+                .unwrap(),
+            destination_transaction_reference: format!("0xtx{payout_id}"),
+            transaction_event_identifier: Some("7".to_string()),
+            recipient_address: types::destination::RecipientAddress::new(
+                "0xrecipient".to_string(),
+            )
+            .unwrap(),
+            output_amount: payout_amount(
+                TokenId::external("sol:usdc".to_string()).unwrap(),
+                95,
+                18,
+            ),
+            verifier_id,
+            verification_method: "receipt-transfer-log".to_string(),
+            verified_at_ns: 123,
+            evidence_reference: Some(format!("evidence:{payout_id}")),
+            content_hash: "a".repeat(64),
+        }
+    }
+
+    fn pending_test_payout(contract: &mut Disburse, campaign_id: u64, key: &str) -> u64 {
+        let payout_id = reserve_test_payout(contract, campaign_id, key);
+        contract.start_payout_execution(payout_id, format!("execution:{key}"));
+        contract.mark_payout_pending_verification(payout_id);
+        payout_id
+    }
+
+    fn grant_verifier(contract: &mut Disburse, verifier: AccountId) {
+        set_context(accounts(1));
+        contract.grant_role(verifier.clone(), UserRole::Verifier);
+        set_context(verifier);
     }
 
     #[test]
