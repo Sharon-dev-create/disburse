@@ -7,7 +7,8 @@ configured Disburse account or deployment record. `execution-service/.env.exampl
 contains placeholders. No `near` CLI or local `~/.near-credentials` directory was present during
 this audit. No test-token account, funded testnet account, or authorized signer identities were
 provided. The strict preflight parser rejects mainnet values and accepts only the official testnet
-RPC and FastNear endpoint values; it does not sign, submit, or inspect secrets.
+RPC and FastNear endpoint values; the environment-based FastNear source also rejects mainnet. These
+checks do not sign, submit, or inspect secrets.
 
 | Readiness item                      | Value/status                                                                                                          |
 | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
