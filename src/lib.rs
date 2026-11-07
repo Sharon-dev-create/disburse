@@ -802,9 +802,8 @@ impl Disburse {
             let resolution_map = Self::payout_resolution_evidence();
             let resolution = resolution_map.get(&payout_id);
             require!(
-                resolution
-                    .and_then(|records| records.last())
-                    .is_some_and(|resolution| {
+                resolution.is_some_and(|records| {
+                    records.iter().any(|resolution| {
                         resolution.outcome == PayoutResolutionOutcome::ExecutionConfirmed
                             && resolution
                                 .external_execution
@@ -812,7 +811,8 @@ impl Disburse {
                                 .is_some_and(|identity| {
                                     Self::external_execution_key(identity) == execution_key
                                 })
-                    }),
+                    })
+                }),
                 "Execution identity is reserved by a different payout resolution"
             );
         }
@@ -3897,6 +3897,104 @@ mod tests {
             .unwrap();
         assert_eq!(settled.reserved.0, before.reserved.0 - 10);
         assert_eq!(settled.spent.0, before.spent.0 + 10);
+    }
+
+    #[test]
+    fn settlement_accepts_any_matching_execution_confirmed_record_in_payout_history() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        let payout_id =
+            manual_review_test_payout(&mut contract, campaign_id, "history-two-executions");
+        grant_verifier(&mut contract, accounts(5));
+
+        let mut identity_a = resolution_evidence(
+            payout_id,
+            accounts(5),
+            PayoutResolutionOutcome::ExecutionConfirmed,
+            "history:resolution-a",
+        );
+        let external_a = identity_a.external_execution.as_mut().unwrap();
+        external_a.execution_reference = "0xexecution-A".into();
+        external_a.transaction_event_identifier = Some("1".into());
+        contract.confirm_manual_review_execution(payout_id, identity_a.clone());
+
+        set_context(accounts(2));
+        contract.move_payout_to_manual_review(payout_id, "Second verifier review".into());
+        set_context(accounts(5));
+
+        let mut identity_b = resolution_evidence(
+            payout_id,
+            accounts(5),
+            PayoutResolutionOutcome::ExecutionConfirmed,
+            "history:resolution-b",
+        );
+        let external_b = identity_b.external_execution.as_mut().unwrap();
+        external_b.execution_reference = "0xexecution-B".into();
+        external_b.transaction_event_identifier = Some("2".into());
+        contract.confirm_manual_review_execution(payout_id, identity_b.clone());
+
+        let pending = contract.get_payout(payout_id).unwrap();
+        assert_eq!(pending.status, PayoutStatus::PendingVerification);
+        assert_eq!(
+            pending.resolution_evidence,
+            vec![identity_a.clone(), identity_b.clone()]
+        );
+        let before = contract
+            .get_campaign_payout_accounting(campaign_id)
+            .unwrap();
+
+        let mut settlement = settlement_evidence(payout_id, accounts(5));
+        settlement.destination_transaction_reference = "0xexecution-A".into();
+        settlement.transaction_event_identifier = Some("1".into());
+        settlement.evidence_reference = Some("history:settlement-a".into());
+        contract.settle_payout(payout_id, settlement);
+
+        let succeeded = contract.get_payout(payout_id).unwrap();
+        assert_eq!(succeeded.status, PayoutStatus::Succeeded);
+        assert_eq!(
+            succeeded.resolution_evidence,
+            vec![identity_a.clone(), identity_b.clone()]
+        );
+        let after = contract
+            .get_campaign_payout_accounting(campaign_id)
+            .unwrap();
+        assert_eq!(after.reserved.0, before.reserved.0 - 10);
+        assert_eq!(after.spent.0, before.spent.0 + 10);
+
+        let index_a =
+            Disburse::external_execution_key(identity_a.external_execution.as_ref().unwrap());
+        let index_b =
+            Disburse::external_execution_key(identity_b.external_execution.as_ref().unwrap());
+        assert_eq!(
+            Disburse::settlement_execution_index().get(&index_a),
+            Some(&payout_id)
+        );
+        assert_eq!(
+            Disburse::settlement_execution_index().get(&index_b),
+            Some(&payout_id)
+        );
+
+        set_context(accounts(2));
+        let other_payout = pending_test_payout(&mut contract, campaign_id, "history-cross-payout");
+        set_context(accounts(5));
+        for (execution_reference, event_identifier, evidence_reference) in [
+            ("0xexecution-A", Some("1"), "history:reuse-a"),
+            ("0xexecution-B", Some("2"), "history:reuse-b"),
+        ] {
+            let mut replay = settlement_evidence(other_payout, accounts(5));
+            replay.destination_transaction_reference = execution_reference.into();
+            replay.transaction_event_identifier = event_identifier.map(str::to_string);
+            replay.evidence_reference = Some(evidence_reference.into());
+            assert!(
+                catch_unwind(AssertUnwindSafe(|| {
+                    contract.settle_payout(other_payout, replay)
+                }))
+                .is_err()
+            );
+        }
+        assert_eq!(
+            contract.get_payout(other_payout).unwrap().status,
+            PayoutStatus::PendingVerification
+        );
     }
 
     #[test]
