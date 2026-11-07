@@ -1343,15 +1343,12 @@ mod tests {
         SettlementEvidence {
             payout_id,
             provider_id: "evm-rpc".to_string(),
-            destination_chain_id: types::destination::ChainId::new("eip155:1".to_string())
-                .unwrap(),
+            destination_chain_id: types::destination::ChainId::new("eip155:1".to_string()).unwrap(),
             destination_transaction_reference: format!("0xtx{payout_id}"),
             transaction_event_identifier: Some("7".to_string()),
-            recipient_address: types::destination::RecipientAddress::new(
-                "0xrecipient".to_string(),
-            )
-            .unwrap(),
-            output_amount: payout_amount(
+            recipient_address: types::destination::RecipientAddress::new("0xrecipient".to_string())
+                .unwrap(),
+            output_amount: TokenAmount::new(
                 TokenId::external("sol:usdc".to_string()).unwrap(),
                 95,
                 18,
@@ -3030,7 +3027,12 @@ mod tests {
         for caller in [accounts(2), accounts(4), accounts(1)] {
             set_context(caller.clone());
             let evidence = settlement_evidence(payout_id, caller);
-            assert!(catch_unwind(AssertUnwindSafe(|| contract.settle_payout(payout_id, evidence))).is_err());
+            assert!(
+                catch_unwind(AssertUnwindSafe(
+                    || contract.settle_payout(payout_id, evidence)
+                ))
+                .is_err()
+            );
             assert_eq!(contract.get_campaign(campaign_id).unwrap(), before_campaign);
             assert_eq!(contract.get_payout(payout_id).unwrap(), before_payout);
             assert!(get_logs().iter().all(|log| !log.contains("payout_settled")));
@@ -3045,10 +3047,7 @@ mod tests {
         set_context(accounts(1));
         contract.grant_role(accounts(2), UserRole::Verifier);
         set_context(accounts(2));
-        contract.settle_payout(
-            both_roles,
-            settlement_evidence(both_roles, accounts(2)),
-        );
+        contract.settle_payout(both_roles, settlement_evidence(both_roles, accounts(2)));
     }
 
     #[test]
@@ -3057,7 +3056,12 @@ mod tests {
         set_context(accounts(1));
         contract.grant_role(accounts(5), UserRole::Verifier);
         set_context(accounts(5));
-        assert!(catch_unwind(AssertUnwindSafe(|| contract.grant_role(accounts(5), UserRole::Verifier))).is_err());
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || contract.grant_role(accounts(5), UserRole::Verifier)
+            ))
+            .is_err()
+        );
         assert!(contract.has_role(accounts(5), UserRole::Verifier));
     }
 
@@ -3072,16 +3076,20 @@ mod tests {
 
         let mut variants = Vec::new();
         let mut evidence = original.clone();
-        evidence.destination_chain_id = types::destination::ChainId::new("unknown:chain".into()).unwrap();
+        evidence.destination_chain_id =
+            types::destination::ChainId::new("unknown:chain".into()).unwrap();
         variants.push(evidence);
         let mut evidence = original.clone();
-        evidence.recipient_address = types::destination::RecipientAddress::new("wrong-recipient".into()).unwrap();
+        evidence.recipient_address =
+            types::destination::RecipientAddress::new("wrong-recipient".into()).unwrap();
         variants.push(evidence);
         let mut evidence = original.clone();
-        evidence.output_amount = payout_amount(TokenId::external("other:token".into()).unwrap(), 95, 18);
+        evidence.output_amount =
+            TokenAmount::new(TokenId::external("other:token".into()).unwrap(), 95, 18);
         variants.push(evidence);
         let mut evidence = original.clone();
-        evidence.output_amount = payout_amount(TokenId::external("sol:usdc".into()).unwrap(), 94, 18);
+        evidence.output_amount =
+            TokenAmount::new(TokenId::external("sol:usdc".into()).unwrap(), 94, 18);
         variants.push(evidence);
         let mut evidence = original.clone();
         evidence.payout_id = 999;
@@ -3113,22 +3121,38 @@ mod tests {
 
         for invalid in variants {
             set_context(accounts(5));
-            assert!(catch_unwind(AssertUnwindSafe(|| contract.settle_payout(payout_id, invalid))).is_err());
+            assert!(
+                catch_unwind(AssertUnwindSafe(
+                    || contract.settle_payout(payout_id, invalid)
+                ))
+                .is_err()
+            );
             assert_eq!(contract.get_campaign(campaign_id).unwrap(), before_campaign);
             assert_eq!(contract.get_payout(payout_id).unwrap(), before_payout);
-            assert!(Self::settlement_execution_index().get(&(
-                original.provider_id.clone(),
-                original.destination_chain_id.as_str().to_string(),
-                original.destination_transaction_reference.clone(),
-                original.transaction_event_identifier.clone(),
-            )).is_none());
-            assert!(Self::settlement_reference_index().get(original.evidence_reference.as_ref().unwrap()).is_none());
+            assert!(
+                Disburse::settlement_execution_index()
+                    .get(&(
+                        original.provider_id.clone(),
+                        original.destination_chain_id.as_str().to_string(),
+                        original.destination_transaction_reference.clone(),
+                        original.transaction_event_identifier.clone(),
+                    ))
+                    .is_none()
+            );
+            assert!(
+                Disburse::settlement_reference_index()
+                    .get(original.evidence_reference.as_ref().unwrap())
+                    .is_none()
+            );
             assert!(get_logs().iter().all(|log| !log.contains("payout_settled")));
         }
 
         // The identical valid evidence remains usable after all rejected attempts.
         contract.settle_payout(payout_id, original);
-        assert_eq!(contract.get_payout(payout_id).unwrap().status, PayoutStatus::Succeeded);
+        assert_eq!(
+            contract.get_payout(payout_id).unwrap().status,
+            PayoutStatus::Succeeded
+        );
     }
 
     #[test]
@@ -3146,18 +3170,44 @@ mod tests {
         let mut same_execution = evidence1.clone();
         same_execution.payout_id = second;
         same_execution.evidence_reference = Some("evidence:other-ref".into());
-        assert!(catch_unwind(AssertUnwindSafe(|| contract.settle_payout(second, same_execution))).is_err());
-        assert_eq!(contract.get_payout(second).unwrap().status, PayoutStatus::PendingVerification);
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || contract.settle_payout(second, same_execution)
+            ))
+            .is_err()
+        );
+        assert_eq!(
+            contract.get_payout(second).unwrap().status,
+            PayoutStatus::PendingVerification
+        );
 
         let mut different_log = evidence1.clone();
         different_log.payout_id = second;
         different_log.transaction_event_identifier = Some("4".into());
         different_log.evidence_reference = Some("evidence:shared-4".into());
         contract.settle_payout(second, different_log);
-        assert_eq!(contract.get_payout(second).unwrap().status, PayoutStatus::Succeeded);
+        assert_eq!(
+            contract.get_payout(second).unwrap().status,
+            PayoutStatus::Succeeded
+        );
 
-        assert!(catch_unwind(AssertUnwindSafe(|| contract.settle_payout(first, evidence1.clone()))).is_err());
-        assert_eq!(get_logs().iter().filter(|log| log.contains("\"event\":\"payout_settled\"")).count(), 0);
+        let event_count = get_logs()
+            .iter()
+            .filter(|log| log.contains("\"event\":\"payout_settled\""))
+            .count();
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || contract.settle_payout(first, evidence1.clone())
+            ))
+            .is_err()
+        );
+        assert_eq!(
+            get_logs()
+                .iter()
+                .filter(|log| log.contains("\"event\":\"payout_settled\""))
+                .count(),
+            event_count
+        );
     }
 
     #[test]
@@ -3178,12 +3228,23 @@ mod tests {
             second_evidence.destination_transaction_reference.clone(),
             second_evidence.transaction_event_identifier.clone(),
         );
-        assert!(catch_unwind(AssertUnwindSafe(|| contract.settle_payout(second, second_evidence.clone()))).is_err());
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || contract.settle_payout(second, second_evidence.clone())
+            ))
+            .is_err()
+        );
         assert!(Disburse::settlement_execution_index().get(&key).is_none());
-        assert_eq!(contract.get_payout(second).unwrap().status, PayoutStatus::PendingVerification);
+        assert_eq!(
+            contract.get_payout(second).unwrap().status,
+            PayoutStatus::PendingVerification
+        );
         second_evidence.evidence_reference = Some("unique-reference".into());
         contract.settle_payout(second, second_evidence);
-        assert_eq!(contract.get_payout(second).unwrap().status, PayoutStatus::Succeeded);
+        assert_eq!(
+            contract.get_payout(second).unwrap().status,
+            PayoutStatus::Succeeded
+        );
     }
 
     #[test]
@@ -3203,12 +3264,21 @@ mod tests {
         grant_verifier(&mut contract, accounts(5));
         for payout_id in [reserved, executing, failed, manual] {
             let payout_before = contract.get_payout(payout_id).unwrap();
-            assert!(catch_unwind(AssertUnwindSafe(|| contract.settle_payout(
-                payout_id,
-                settlement_evidence(payout_id, accounts(5)),
-            ))).is_err());
+            assert!(
+                catch_unwind(AssertUnwindSafe(|| contract.settle_payout(
+                    payout_id,
+                    settlement_evidence(payout_id, accounts(5)),
+                )))
+                .is_err()
+            );
             assert_eq!(contract.get_payout(payout_id).unwrap(), payout_before);
-            assert!(contract.get_payout(payout_id).unwrap().settlement_evidence.is_none());
+            assert!(
+                contract
+                    .get_payout(payout_id)
+                    .unwrap()
+                    .settlement_evidence
+                    .is_none()
+            );
         }
         assert_eq!(contract.get_campaign(campaign_id).unwrap(), before);
     }
@@ -3222,22 +3292,46 @@ mod tests {
         let mut campaign = contract.get_campaign(campaign_id).unwrap();
         campaign.reserved = 9;
         contract.campaigns.insert(campaign_id, campaign.clone());
-        assert!(catch_unwind(AssertUnwindSafe(|| contract.settle_payout(payout_id, evidence.clone()))).is_err());
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || contract.settle_payout(payout_id, evidence.clone())
+            ))
+            .is_err()
+        );
         assert_eq!(contract.get_campaign(campaign_id).unwrap(), campaign);
-        assert_eq!(contract.get_payout(payout_id).unwrap().status, PayoutStatus::PendingVerification);
-        assert!(Self::payout_settlement_evidence().get(&payout_id).is_none());
+        assert_eq!(
+            contract.get_payout(payout_id).unwrap().status,
+            PayoutStatus::PendingVerification
+        );
+        assert!(
+            Disburse::payout_settlement_evidence()
+                .get(&payout_id)
+                .is_none()
+        );
 
         campaign.reserved = 10;
         campaign.spent = u128::MAX;
         contract.campaigns.insert(campaign_id, campaign.clone());
-        assert!(catch_unwind(AssertUnwindSafe(|| contract.settle_payout(payout_id, evidence.clone()))).is_err());
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || contract.settle_payout(payout_id, evidence.clone())
+            ))
+            .is_err()
+        );
         assert_eq!(contract.get_campaign(campaign_id).unwrap(), campaign);
-        assert!(Self::payout_settlement_evidence().get(&payout_id).is_none());
+        assert!(
+            Disburse::payout_settlement_evidence()
+                .get(&payout_id)
+                .is_none()
+        );
 
         // Restore a consistent campaign and prove failed attempts left the identifiers available.
         campaign.spent = 0;
         contract.campaigns.insert(campaign_id, campaign);
         contract.settle_payout(payout_id, evidence);
-        assert_eq!(contract.get_payout(payout_id).unwrap().status, PayoutStatus::Succeeded);
+        assert_eq!(
+            contract.get_payout(payout_id).unwrap().status,
+            PayoutStatus::Succeeded
+        );
     }
 }
