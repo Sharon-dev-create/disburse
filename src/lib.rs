@@ -583,8 +583,11 @@ impl Disburse {
     }
 
     /// Settle only a pending payout based on an explicit trusted-verifier attestation.
-    /// The contract matches normalized claims and updates reservation accounting, but does not
-    /// independently verify the destination-chain transaction or content hash.
+    /// Settlement remains available while globally paused so already-submitted external
+    /// executions can be reconciled. The contract matches normalized claims and updates
+    /// reservation accounting, but does not independently verify the destination-chain
+    /// transaction or content hash. Token decimals are not authoritative; equality uses token
+    /// identity and atomic amount.
     pub fn settle_payout(&mut self, payout_id: u64, evidence: SettlementEvidence) {
         let actor_id = env::predecessor_account_id();
         require!(
@@ -608,6 +611,18 @@ impl Disburse {
         require!(
             validate_identifier(&evidence.provider_id).is_ok() && evidence.provider_id.len() <= 64,
             "Provider identifier must be nonempty and at most 64 bytes"
+        );
+        require!(
+            evidence.destination_chain_id.as_str().len() <= 128,
+            "Destination chain identifier cannot exceed 128 bytes"
+        );
+        require!(
+            evidence.recipient_address.as_str().len() <= 256,
+            "Recipient address cannot exceed 256 bytes"
+        );
+        require!(
+            Self::token_id_string(evidence.output_amount.token_id()).len() <= 256,
+            "Output token identifier cannot exceed 256 bytes"
         );
         require!(
             validate_identifier(&evidence.destination_transaction_reference).is_ok()
