@@ -1,4 +1,6 @@
+import { createHash } from "node:crypto";
 import type { RawNearEvent } from "../../discovery/events.ts";
+import type { DiscoveryBlockObservation } from "../../discovery/repository.ts";
 import type { NearEventPage, NearEventSource } from "../../discovery/source.ts";
 
 export type NearDataNetwork = "mainnet" | "testnet";
@@ -7,17 +9,28 @@ export type NearDataErrorKind =
   | "timeout"
   | "unavailable"
   | "rate-limited"
-  | "http"
+  | "missing-history"
+  | "configuration"
   | "malformed"
+  | "cursor-corruption"
+  | "block-continuity-failure"
   | "network-mismatch";
 
 export class NearDataProviderError extends Error {
   readonly kind: NearDataErrorKind;
+  readonly retryable: boolean;
+  readonly context: Readonly<Record<string, unknown>>;
 
-  constructor(kind: NearDataErrorKind, message: string) {
+  constructor(
+    kind: NearDataErrorKind,
+    message: string,
+    context: Readonly<Record<string, unknown>> = {},
+  ) {
     super(message);
     this.name = "NearDataProviderError";
     this.kind = kind;
+    this.retryable = ["timeout", "unavailable", "rate-limited"].includes(kind);
+    this.context = context;
   }
 }
 
@@ -25,6 +38,7 @@ export interface FastNearNearDataConfig {
   readonly network: NearDataNetwork;
   readonly contractId: string;
   readonly startBlockHeight: string;
+  readonly firstBlockHeight?: string;
   readonly endpoint?: string;
   readonly apiKey?: string;
   readonly timeoutMs?: number;
@@ -52,6 +66,7 @@ interface FinalizedBlock {
   readonly hash: string;
   readonly previousHash: string;
   readonly logs: readonly ContractLog[];
+  readonly observation: DiscoveryBlockObservation;
 }
 
 export interface NearDataDiagnostics {
@@ -76,9 +91,11 @@ export interface NearDataDiagnostics {
  * Cursors point to the next raw contract log (or next block when a block is drained).
  */
 export class FastNearNearDataEventSource implements NearEventSource {
+  readonly providerId = "fastnear-neardata";
   private readonly network: NearDataNetwork;
   private readonly contractId: string;
   private readonly startBlockHeight: bigint;
+  private readonly firstBlockHeight: bigint;
   private readonly endpoint: URL;
   private readonly apiKey: string | undefined;
   private readonly timeoutMs: number;
@@ -94,6 +111,7 @@ export class FastNearNearDataEventSource implements NearEventSource {
   private lastPageCursor: string | null = null;
   private lastSuccessfulPollAtMs: number | null = null;
   private connected = false;
+  private networkVerified = false;
 
   constructor(config: FastNearNearDataConfig, fetchImpl: typeof fetch = fetch) {
     this.network = config.network;
@@ -101,6 +119,11 @@ export class FastNearNearDataEventSource implements NearEventSource {
     this.startBlockHeight = parseHeight(
       config.startBlockHeight,
       "start block height",
+    );
+    this.firstBlockHeight = parseHeight(
+      config.firstBlockHeight ??
+        (config.network === "testnet" ? "42376888" : "9820210"),
+      "first block height",
     );
     this.endpoint = new URL(
       config.endpoint ??
@@ -163,6 +186,9 @@ export class FastNearNearDataEventSource implements NearEventSource {
         network,
         contractId,
         startBlockHeight,
+        ...(env.NEAR_DATA_FIRST_BLOCK_HEIGHT
+          ? { firstBlockHeight: env.NEAR_DATA_FIRST_BLOCK_HEIGHT }
+          : {}),
         ...(env.NEAR_DATA_ENDPOINT ? { endpoint: env.NEAR_DATA_ENDPOINT } : {}),
         ...(env.FASTNEAR_API_KEY ? { apiKey: env.FASTNEAR_API_KEY } : {}),
       },
@@ -205,20 +231,49 @@ export class FastNearNearDataEventSource implements NearEventSource {
     return this.read(initialCursor(height), limit);
   }
 
+  async readRange(
+    startBlockHeight: string,
+    endBlockHeight: string,
+    cursor: string | null,
+    limit: number,
+  ): Promise<NearEventPage> {
+    const start = parseHeight(startBlockHeight, "recovery start height");
+    const end = parseHeight(endBlockHeight, "recovery end height");
+    if (end < start)
+      throw new NearDataProviderError(
+        "configuration",
+        "Recovery range end precedes its start",
+        { startBlockHeight, endBlockHeight },
+      );
+    return this.read(
+      cursor === null ? initialCursor(start) : decodeCursor(cursor),
+      limit,
+      end,
+    );
+  }
+
   private async read(
     position: BlockCursor,
     limit: number,
+    endHeight: bigint | null = null,
   ): Promise<NearEventPage> {
     if (!Number.isSafeInteger(limit) || limit <= 0)
       throw new Error("Event page limit must be a positive safe integer");
     const events: RawNearEvent[] = [];
+    const blocks: DiscoveryBlockObservation[] = [];
     let current = position;
     let blocksScanned = 0;
+    await this.verifyNetwork();
     const head = await this.getFinalizedHead();
-    while (BigInt(current.nextBlockHeight) <= BigInt(head.height)) {
+    const effectiveHead =
+      endHeight === null || endHeight > BigInt(head.height)
+        ? BigInt(head.height)
+        : endHeight;
+    while (BigInt(current.nextBlockHeight) <= effectiveHead) {
       if (blocksScanned >= this.maxBlocksPerPage) break;
       const block = await this.getFinalizedBlock(current.nextBlockHeight);
       validateCanonicalBlock(block, current);
+      blocks.push(block.observation);
       this.lastObservedBlock = block.height;
       this.scannedBlocks += 1;
       blocksScanned += 1;
@@ -228,14 +283,16 @@ export class FastNearNearDataEventSource implements NearEventSource {
         current.currentBlockHash !== block.hash
       )
         throw new NearDataProviderError(
-          "network-mismatch",
+          "block-continuity-failure",
           "Finalized block hash changed while resuming an event cursor",
+          { blockHeight: block.height, expectedBlockHash: current.currentBlockHash, observedBlockHash: block.hash },
         );
       const offset = current.currentBlockHash === null ? 0 : current.logOffset;
       if (offset > block.logs.length)
         throw new NearDataProviderError(
-          "malformed",
+          "cursor-corruption",
           "NEAR Data cursor exceeds block log count",
+          { blockHeight: block.height, logOffset: offset, availableLogs: block.logs.length },
         );
 
       for (let index = offset; index < block.logs.length; index += 1) {
@@ -259,20 +316,20 @@ export class FastNearNearDataEventSource implements NearEventSource {
         if (events.length >= limit) {
           const drainedBlock = index + 1 >= block.logs.length;
           const checkpoint = drainedBlock ? nextBlockCursor(block) : afterEvent;
-          const hasMore =
-            BigInt(checkpoint.nextBlockHeight) <= BigInt(head.height);
-          return this.finish(events, checkpoint, hasMore);
+          const hasMore = BigInt(checkpoint.nextBlockHeight) <= effectiveHead;
+          return this.finish(events, blocks, checkpoint, hasMore);
         }
       }
 
       current = nextBlockCursor(block);
     }
-    const hasMore = BigInt(current.nextBlockHeight) <= BigInt(head.height);
-    return this.finish(events, current, hasMore);
+    const hasMore = BigInt(current.nextBlockHeight) <= effectiveHead;
+    return this.finish(events, blocks, current, hasMore);
   }
 
   private finish(
     events: readonly RawNearEvent[],
+    blocks: readonly DiscoveryBlockObservation[],
     cursor: BlockCursor,
     hasMore: boolean,
   ): NearEventPage {
@@ -282,12 +339,33 @@ export class FastNearNearDataEventSource implements NearEventSource {
     this.lastPageCursor = encoded;
     this.lastSuccessfulPollAtMs = Date.now();
     this.connected = true;
-    return { events, nextCursor: encoded, hasMore };
+    return { events, blocks, nextCursor: encoded, hasMore };
+  }
+
+  private async verifyNetwork(): Promise<void> {
+    if (this.networkVerified) return;
+    const body = await this.getJson("/v0/first_block");
+    const block = parseBlock(
+      body,
+      this.firstBlockHeight.toString(),
+      this.network,
+      this.contractId,
+    );
+    if (BigInt(block.height) !== this.firstBlockHeight)
+      throw new NearDataProviderError(
+        "network-mismatch",
+        "NEAR Data first block does not match the configured network",
+        {
+          expectedFirstBlockHeight: this.firstBlockHeight.toString(),
+          observedFirstBlockHeight: block.height,
+        },
+      );
+    this.networkVerified = true;
   }
 
   private async getFinalizedHead(): Promise<FinalizedBlock> {
     const body = await this.getJson("/v0/last_block/final");
-    const block = parseBlock(body, null, this.contractId);
+    const block = parseBlock(body, null, this.network, this.contractId);
     this.lastFinalizedBlockHeight = block.height;
     return block;
   }
@@ -296,10 +374,11 @@ export class FastNearNearDataEventSource implements NearEventSource {
     const body = await this.getJson(`/v0/block/${height}`);
     if (body === null)
       throw new NearDataProviderError(
-        "unavailable",
+        "missing-history",
         `NEAR Data has no finalized block at requested height ${height}`,
+        { blockHeight: height },
       );
-    return parseBlock(body, height, this.contractId);
+    return parseBlock(body, height, this.network, this.contractId);
   }
 
   private async getJson(path: string): Promise<unknown> {
@@ -326,9 +405,20 @@ export class FastNearNearDataEventSource implements NearEventSource {
             "unavailable",
             `NEAR Data returned HTTP ${response.status}`,
           );
+        } else if (response.status === 404) {
+          throw new NearDataProviderError(
+            "missing-history",
+            "NEAR Data does not have the requested historical resource",
+            { path },
+          );
+        } else if (response.status === 401 || response.status === 403) {
+          throw new NearDataProviderError(
+            "configuration",
+            `NEAR Data rejected the configured credentials (HTTP ${response.status})`,
+          );
         } else if (!response.ok) {
           throw new NearDataProviderError(
-            "http",
+            "malformed",
             `NEAR Data returned HTTP ${response.status}`,
           );
         } else {
@@ -345,7 +435,7 @@ export class FastNearNearDataEventSource implements NearEventSource {
         }
       } catch (error) {
         if (error instanceof NearDataProviderError) {
-          if (error.kind === "http" || error.kind === "malformed") throw error;
+          if (!error.retryable) throw error;
           lastError = error;
         } else if (controller.signal.aborted) {
           lastError = new NearDataProviderError(
@@ -375,6 +465,7 @@ export class FastNearNearDataEventSource implements NearEventSource {
 function parseBlock(
   value: unknown,
   expectedHeight: string | null,
+  networkId: string,
   contractId: string,
 ): FinalizedBlock {
   const root = record(value, "block response");
@@ -385,8 +476,9 @@ function parseBlock(
   const previousHash = nonEmptyString(header.prev_hash, "previous block hash");
   if (expectedHeight !== null && height !== expectedHeight)
     throw new NearDataProviderError(
-      "network-mismatch",
+      "block-continuity-failure",
       "NEAR Data returned a different block height",
+      { expectedBlockHeight: expectedHeight, observedBlockHeight: height },
     );
   if (!Array.isArray(root.shards))
     throw new NearDataProviderError(
@@ -410,8 +502,10 @@ function parseBlock(
     );
 
   const logs: ContractLog[] = [];
+  const contractReceipts: unknown[] = [];
+  let contractLogCount = 0;
   for (const shard of shards) {
-    for (const outcomeValue of shard.outcomes) {
+    for (const [outcomeIndex, outcomeValue] of shard.outcomes.entries()) {
       const outcomeWithReceipt = record(
         outcomeValue,
         "receipt execution outcome",
@@ -433,10 +527,12 @@ function parseBlock(
       );
       if (blockHash !== hash)
         throw new NearDataProviderError(
-          "network-mismatch",
+          "block-continuity-failure",
           "Receipt outcome block hash differs from its block header",
+          { blockHeight: height, expectedBlockHash: hash, observedBlockHash: blockHash, receiptId },
         );
       const rawLogs = array(result.logs, "execution logs");
+      const receiptLogs: string[] = [];
       rawLogs.forEach((log, eventIndex) => {
         if (typeof log !== "string")
           throw new NearDataProviderError(
@@ -444,10 +540,37 @@ function parseBlock(
             "NEAR Data execution log is not a string",
           );
         logs.push({ receiptId, transactionHash, eventIndex, log });
+        receiptLogs.push(log);
       });
+      contractReceipts.push({
+        shardId: shard.shardId.toString(),
+        outcomeIndex,
+        receiptId,
+        transactionHash,
+        blockHash,
+        logs: receiptLogs,
+      });
+      contractLogCount += receiptLogs.length;
     }
   }
-  return { height, hash, previousHash, logs };
+  const canonicalPayloadHash = sha256(JSON.stringify(contractReceipts));
+  return {
+    height,
+    hash,
+    previousHash,
+    logs,
+    observation: {
+      networkId,
+      contractId,
+      blockHeight: height,
+      blockHash: hash,
+      parentBlockHash: previousHash,
+      providerId: "fastnear-neardata",
+      contractReceiptCount: contractReceipts.length,
+      contractLogCount,
+      canonicalPayloadHash,
+    },
+  };
 }
 
 function validateCanonicalBlock(
@@ -459,8 +582,9 @@ function validateCanonicalBlock(
     cursor.currentBlockHash !== block.hash
   )
     throw new NearDataProviderError(
-      "network-mismatch",
+      "block-continuity-failure",
       "Finalized block hash changed while resuming an event cursor",
+      { blockHeight: block.height, expectedBlockHash: cursor.currentBlockHash, observedBlockHash: block.hash },
     );
   if (
     cursor.currentBlockHash === null &&
@@ -468,13 +592,15 @@ function validateCanonicalBlock(
     block.previousHash !== cursor.previousBlockHash
   )
     throw new NearDataProviderError(
-      "network-mismatch",
+      "block-continuity-failure",
       "Finalized block chain does not connect to the persisted cursor",
+      { blockHeight: block.height, expectedParentHash: cursor.previousBlockHash, observedParentHash: block.previousHash },
     );
   if (cursor.currentBlockHash !== null && cursor.logOffset > block.logs.length)
     throw new NearDataProviderError(
-      "malformed",
+      "cursor-corruption",
       "NEAR Data cursor exceeds block log count",
+      { blockHeight: block.height, logOffset: cursor.logOffset, availableLogs: block.logs.length },
     );
 }
 
@@ -519,7 +645,7 @@ function decodeCursor(cursor: string): BlockCursor {
   const prefix = "near-data:v1:";
   if (!cursor.startsWith(prefix))
     throw new NearDataProviderError(
-      "malformed",
+      "cursor-corruption",
       "Unknown NEAR Data cursor format",
     );
   try {
@@ -554,7 +680,7 @@ function decodeCursor(cursor: string): BlockCursor {
       currentBlockHash,
     };
   } catch {
-    throw new NearDataProviderError("malformed", "Invalid NEAR Data cursor");
+    throw new NearDataProviderError("cursor-corruption", "Invalid NEAR Data cursor");
   }
 }
 
@@ -611,6 +737,10 @@ function nonEmptyString(value: unknown, label: string): string {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function sha256(value: string): string {
+  return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
 /** Small base64url codec avoids adding a dependency to the execution package. */

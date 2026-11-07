@@ -31,7 +31,71 @@ export interface DiscoveryDiscrepancy {
 export interface IndexedEventRecord {
   readonly eventKey: string;
   readonly event: DecodedNearEvent;
+  readonly providerId: string;
+  readonly canonicalPayloadHash: string;
+  readonly firstObservedAtMs: number;
   readonly processedAtMs: number;
+}
+
+export interface DiscoveryBlockObservation {
+  readonly networkId: string;
+  readonly contractId: string;
+  readonly blockHeight: string;
+  readonly blockHash: string;
+  readonly parentBlockHash: string;
+  readonly providerId: string;
+  readonly contractReceiptCount: number;
+  readonly contractLogCount: number;
+  readonly canonicalPayloadHash: string;
+}
+
+export interface ArchivedDiscoveryBlock extends DiscoveryBlockObservation {
+  readonly firstObservedAtMs: number;
+  readonly lastObservedAtMs: number;
+}
+
+export type DiscoveryIncidentType =
+  | "provider-outage"
+  | "rate-limit"
+  | "missing-history"
+  | "malformed-provider-response"
+  | "block-continuity-failure"
+  | "network-mismatch"
+  | "conflicting-historical-block"
+  | "conflicting-historical-event"
+  | "cursor-corruption"
+  | "archive-write-failure"
+  | "reconciliation-failure";
+
+export interface DiscoveryIncident {
+  readonly incidentId: string;
+  readonly type: DiscoveryIncidentType;
+  readonly networkId: string;
+  readonly contractId: string;
+  readonly blockHeight: string | null;
+  readonly eventKey: string | null;
+  readonly expected: unknown;
+  readonly observed: unknown;
+  readonly detectedAtMs: number;
+  readonly lastSeenAtMs: number;
+  readonly occurrences: number;
+  readonly status: "open" | "resolved" | "unverifiable";
+  readonly actionRequired: string;
+}
+
+export interface HistoricalRecoveryRecord {
+  readonly recoveryId: string;
+  readonly networkId: string;
+  readonly contractId: string;
+  readonly startBlockHeight: string;
+  readonly endBlockHeight: string;
+  readonly status: "running" | "validated" | "conflict" | "unavailable";
+  readonly startedAtMs: number;
+  readonly updatedAtMs: number;
+  readonly cursor: string | null;
+  readonly blocksChecked: number;
+  readonly eventsChecked: number;
+  readonly summary: string;
 }
 
 export interface DiscoveryFailure {
@@ -60,6 +124,9 @@ export interface DiscoveryEventCommit {
 export interface DiscoveryStateSnapshot {
   readonly cursors: ReadonlyMap<string, string>;
   readonly events: ReadonlyMap<string, IndexedEventRecord>;
+  readonly blocks: ReadonlyMap<string, ArchivedDiscoveryBlock>;
+  readonly incidents: ReadonlyMap<string, DiscoveryIncident>;
+  readonly recoveries: ReadonlyMap<string, HistoricalRecoveryRecord>;
   readonly observations: ReadonlyMap<string, DiscoveryObservation>;
   readonly discrepancies: readonly (DiscoveryDiscrepancy & {
     readonly payoutKey: string | null;
@@ -72,6 +139,18 @@ export interface DiscoveryRepository extends JobRepository {
   getCursor(sourceKey: string): Promise<string | null>;
   /** Durably checkpoints source progress across ranges containing no events. */
   commitCursor(sourceKey: string, cursor: string): Promise<void>;
+  archiveBlocks(
+    observations: readonly DiscoveryBlockObservation[],
+    nowMs: number,
+  ): Promise<void>;
+  recordIncident(incident: Omit<DiscoveryIncident, "incidentId" | "detectedAtMs" | "lastSeenAtMs" | "occurrences" | "status"> & { readonly status?: DiscoveryIncident["status"] }, nowMs: number): Promise<void>;
+  startRecovery(
+    recovery: Omit<HistoricalRecoveryRecord, "status" | "updatedAtMs" | "cursor" | "blocksChecked" | "eventsChecked" | "summary">,
+  ): Promise<HistoricalRecoveryRecord>;
+  updateRecovery(
+    recoveryId: string,
+    update: Pick<HistoricalRecoveryRecord, "status" | "updatedAtMs" | "cursor" | "blocksChecked" | "eventsChecked" | "summary">,
+  ): Promise<void>;
   commitEvent(
     commit: DiscoveryEventCommit,
   ): Promise<{ readonly duplicate: boolean }>;
