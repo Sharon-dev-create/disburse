@@ -70,6 +70,8 @@ export interface DiscoveryStateSnapshot {
 
 export interface DiscoveryRepository extends JobRepository {
   getCursor(sourceKey: string): Promise<string | null>;
+  /** Durably checkpoints source progress across ranges containing no events. */
+  commitCursor(sourceKey: string, cursor: string): Promise<void>;
   commitEvent(
     commit: DiscoveryEventCommit,
   ): Promise<{ readonly duplicate: boolean }>;

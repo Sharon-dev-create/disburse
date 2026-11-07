@@ -28,6 +28,8 @@ export interface DiscoveryRunResult {
   readonly processed: number;
   readonly duplicates: number;
   readonly jobsCreated: number;
+  readonly unknownEvents: number;
+  readonly malformedEvents: number;
   readonly cursor: string | null;
   readonly hasMore: boolean;
 }
@@ -121,29 +123,33 @@ export class PayoutDiscoveryProcessor {
     page: Awaited<ReturnType<NearEventSource["readAfter"]>>,
     nowMs: number,
   ): Promise<DiscoveryRunResult> {
-    if (
-      (page.events.length === 0 && page.nextCursor !== savedCursor) ||
-      (page.events.length > 0 && page.nextCursor !== page.events.at(-1)?.cursor)
-    ) {
-      throw new Error(
-        "Event source advanced a cursor without returning events",
-      );
-    }
+    if (page.nextCursor !== null && !page.nextCursor.trim())
+      throw new Error("Event source returned an invalid page cursor");
+    if (page.events.length > 0 && page.nextCursor === null)
+      throw new Error("Event source returned events without a page cursor");
     if (page.events.length > this.pageSize)
       throw new Error("Event source exceeded the requested page size");
     let duplicates = 0;
     let jobsCreated = 0;
+    let unknownEvents = 0;
+    let malformedEvents = 0;
     for (const raw of page.events) {
       const decoded = decodeNearEvent(raw);
+      if (decoded.kind === "unknown") unknownEvents += 1;
+      if (decoded.kind === "malformed") malformedEvents += 1;
       const result = await this.processDecoded(decoded, sourceKey, nowMs);
       if (result.duplicate) duplicates += 1;
       if (result.jobCreated) jobsCreated += 1;
     }
-    const cursor = page.events.at(-1)?.cursor ?? savedCursor;
+    if (page.nextCursor !== null && page.nextCursor !== savedCursor)
+      await this.repository.commitCursor(sourceKey, page.nextCursor);
+    const cursor = page.nextCursor ?? savedCursor;
     return {
       processed: page.events.length,
       duplicates,
       jobsCreated,
+      unknownEvents,
+      malformedEvents,
       cursor,
       hasMore: page.hasMore,
     };

@@ -14,4 +14,5 @@ export * from "./discovery/reconciler.ts";
 export * from "./discovery/repository.ts";
 export * from "./discovery/source.ts";
 export * from "./near/rpc.ts";
+export * from "./near/providers/fastnear-neardata.ts";
 export * from "./coordinator/near-discovery.ts";

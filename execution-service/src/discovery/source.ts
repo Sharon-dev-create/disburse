@@ -8,6 +8,11 @@ export interface NearEventSource {
 
 export interface NearEventPage {
   readonly events: readonly RawNearEvent[];
+  /**
+   * Source checkpoint after the page, including scanned positions without events.
+   * It must not pass an event omitted from this page and is committed only after
+   * all returned events commit.
+   */
   readonly nextCursor: string | null;
   readonly hasMore: boolean;
 }

@@ -96,6 +96,16 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
     return this.state.cursors.get(sourceKey) ?? null;
   }
 
+  async commitCursor(sourceKey: string, cursor: string): Promise<void> {
+    await this.exclusive(async () => {
+      if (this.state.cursors.get(sourceKey) === cursor) return;
+      const next = cloneState(this.state);
+      next.cursors.set(sourceKey, cursor);
+      await this.persist(next);
+      this.state = next;
+    });
+  }
+
   async enqueueDiscovered(
     event: PayoutReservedEvent,
     payout: PayoutSnapshot,

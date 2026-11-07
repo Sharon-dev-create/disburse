@@ -430,6 +430,35 @@ void test("event-source outage is recorded and cleared after a successful cursor
   }
 });
 
+void test("empty-range checkpoints are durable and failed checkpoint writes do not advance", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "disburse-discovery-"));
+  try {
+    let failCommit = true;
+    const path = join(directory, "empty-range.json");
+    const repository = await DurableFileDiscoveryRepository.open(path, {
+      beforeCommit: () => {
+        if (failCommit) throw new Error("checkpoint disk unavailable");
+      },
+    });
+    await assert.rejects(
+      repository.commitCursor("source", "near-data:v1:checkpoint"),
+      /checkpoint disk unavailable/,
+    );
+    assert.equal(await repository.getCursor("source"), null);
+
+    failCommit = false;
+    await repository.commitCursor("source", "near-data:v1:checkpoint");
+    const restarted = await DurableFileDiscoveryRepository.open(path);
+    assert.equal(
+      await restarted.getCursor("source"),
+      "near-data:v1:checkpoint",
+    );
+    assert.equal((await restarted.getSnapshot()).events.size, 0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 void test("reconciliation refreshes stale observations and records missing or unavailable payouts without authorizing work", async () => {
   const directory = await mkdtemp(join(tmpdir(), "disburse-discovery-"));
   try {
@@ -521,7 +550,8 @@ void test("historical backfill and live replay share idempotent payout jobs; unk
     assert.equal(live.duplicates, 1);
     const repeated = await processor.processNextPage(102);
     assert.equal(repeated.duplicates, 1);
-    await processor.processNextPage(103);
+    const unsupported = await processor.processNextPage(103);
+    assert.equal(unsupported.unknownEvents, 1);
     const snapshot = await repository.getSnapshot();
     assert.equal(snapshot.jobs.size, 1);
     assert.equal(snapshot.events.size, 2);

@@ -3,48 +3,68 @@
 ## Available strategy
 
 The contract emits NEP-297 `EVENT_JSON:` logs and exposes current payout views, but has no payout
-enumeration method or payout ID upper bound. The only complete discovery path is therefore a
-replayable historical log/receipt index. A basic contract view query is not an event history API.
+enumeration method or payout ID upper bound. Complete discovery therefore requires replayable
+historical receipt logs; a normal view call is not an event history API.
 
-Milestone 9 adds `NearEventSource` with `readAfter(cursor, limit)` and
-`readFrom(startPosition, limit)`. `RawNearEvent` carries network, contract, block height/hash,
-transaction hash, receipt ID, event/log index, raw log, and an opaque source cursor. The source must
-return deterministic finalized ordering and a cursor that resumes immediately after the event.
-`MockNearEventSource` implements these semantics for deterministic tests only.
-
-No third-party indexer was selected or connected. Provider selection requires operational review of
-historical retention, finality, reorg behavior, receipt-level event ordering, cursor guarantees,
-rate limits, outage behavior, and the ability to replay from an earlier finalized position. Until
-such an adapter is implemented and exercised, historical backfill, complete event coverage, and
-event-gap detection are not claimed.
+Milestone 10 adds `FastNearNearDataEventSource` behind the Milestone 9 `NearEventSource` interface.
+It walks provider finalized blocks from an inclusive block-height start point, filters execution
+outcomes by the configured contract account, and emits receipt-level log identities. Provider
+evaluation, finality policy, and cursor details are documented in
+[`near-event-provider-evaluation.md`](near-event-provider-evaluation.md) and
+[`near-event-provider-integration.md`](near-event-provider-integration.md).
 
 ## Event identity and cursor rules
 
 The persisted uniqueness key combines network ID, contract account, block hash, transaction hash,
-receipt ID, and event index. Transaction hashes alone are insufficient because a transaction may
-produce multiple receipts or logs. The opaque provider cursor is stored separately and must not be
-used as the permanent event identity.
+receipt ID, and original log index within that receipt. Transaction hashes alone are insufficient
+because one transaction may produce multiple receipts or logs. The provider cursor remains opaque
+and is not a permanent event identity.
 
-The processor commits each event and its cursor in one durable repository transaction. A failed
-view call or persistence operation does not advance the cursor. Unknown and malformed events are
-persisted with bounded raw text and a classification before the cursor advances, so one unfamiliar
-event does not block later events and remains visible for investigation. A duplicate delivery does
-not create a second event or job but can advance to the duplicate delivery's later source cursor.
+The source returns logs in ascending block order, then numeric shard order, provider receipt outcome
+order within each shard, and original log order within the receipt. It uses provider-supplied
+receipt IDs and transaction hashes and fails if matching contract outcomes omit them. The event
+index is the original array index, including preceding non-NEP-297 logs.
 
-Use finalized events to avoid routine reorg rollback. If a selected indexer can return provisional
-events, its adapter must add an explicit finality gate and reorg/retraction model before exposing
-those events to the processor. The current interfaces do not implement rollback of finalized data.
+Each event and its cursor commit atomically with its observation, discrepancy, and optional job.
+Only after every event in a fetched page is committed does the processor persist the page
+checkpoint. This checkpoint may advance across empty blocks. A failed event write leaves the source
+at the last committed event; a failed page checkpoint causes a safe reread of any trailing empty
+blocks. Unknown and malformed events are persisted before their cursor advances, so unfamiliar
+events remain observable without blocking later events.
+
+## Finality and reorganization behavior
+
+The adapter reads `/v0/block/{height}` and `/v0/last_block/final`; it never requests optimistic
+blocks. It validates the requested block height, execution outcome block hashes, the block hash
+while resuming mid-block, and previous-hash continuity at the cursor boundary. The provider exposes
+finalized rather than provisional event data, so the indexer does not need to retract ordinary
+unfinalized observations.
+
+There is no provider-documented finalized-event retraction feed and no repository operation for
+rolling back finalized events. Parent-hash checks detect a discontinuity at the next block boundary,
+but do not continuously audit every prior finalized block or detect arbitrary provider rewrites of
+older history. A suspected provider/consensus integrity incident requires stopping ingestion,
+preserving the index for audit, rebuilding from a trusted height, and reconciling known payout views.
 
 ## Offline behavior and gaps
 
-If the indexer process is offline but the provider retains history, it resumes from the saved cursor
-and replays missed events. If provider history has expired or the cursor is irrecoverable, the index
-cannot infer that no payouts were created during the gap. A payout absent from an incomplete event
-feed is not evidence that the payout never existed and is not authorization to execute.
+If the indexer is offline while the provider retains history, it resumes from the durable cursor and
+replays blocks. Provider archive retention and uptime are not claimed as an SLA. If history has
+expired or the cursor is irrecoverable, the index cannot infer that no payouts occurred in the gap.
+A payout absent from an incomplete event feed is not evidence that it never existed or that it is
+safe to execute.
 
-Reconciliation can only recheck payout IDs already learned from events or persisted records. It
-cannot discover an unknown ID because the contract stores payouts in a non-enumerable `LookupMap`
-and exposes neither listing nor count. The smallest durable future remedy is a reviewed contract
-view such as paginated payout IDs/count (storage-layout neutral if derived safely, but still an ABI
-change) or a complete trusted indexer replay from contract deployment. This milestone does not
-change the contract.
+Reconciliation can only recheck payout identities learned from indexed events or persisted
+observations. The contract's non-enumerable `LookupMap` means it cannot discover an unknown payout
+ID on its own. The smallest durable remedy for indexer gaps is replay from a trusted deployment
+height or a future reviewed payout enumeration view; this milestone does not modify the contract.
+
+## Repository and testnet limits
+
+`DurableFileDiscoveryRepository` is single-writer local storage. It commits through fsync and atomic
+rename and can be reopened after restart, but is not a multi-process transactional database.
+`execution-service/sql/schema.sql` remains a reference schema and is never applied automatically.
+
+No deployed Disburse testnet account is configured in this repository. Provider fixtures validate
+the adapter and pipeline contracts but are not live Disburse event evidence. See the integration
+document for the deployment dependency and production-readiness steps.

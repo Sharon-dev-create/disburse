@@ -60,19 +60,19 @@ deployment; it is never applied by package commands.
 
 Event uniqueness uses network, contract, block hash, transaction hash, receipt ID, and event
 position. Payout uniqueness uses network, contract, and payout ID. Repeated delivery is idempotent;
-conflicting content under the same chain identity is rejected. The cursor is advanced only in the
-same repository commit as the event, observation, discrepancy, and optional initial job.
+conflicting content under the same chain identity is rejected. Each event cursor advances in the
+same repository commit as the event, observation, discrepancy, and optional initial job. A page
+cursor can then move across trailing empty blocks after all returned events have committed.
 
 ## Historical retrieval and limits
 
 NEP-297 events are contract log strings. A normal view call cannot enumerate historical logs.
-There is no live/indexer-specific event source in this package, so historical backfill and gap
-detection are **not operationally complete**. `MockNearEventSource` is deterministic test support,
-not evidence of production event availability. A production adapter must use a provider that offers
-replayable historical events, stable receipt/log identity, finalized ordering, and documented
-retention and reorg behavior. The adapter must expose opaque cursors and return all events after the
-saved position. If the provider's retention starts after deployment, payouts before that point
-cannot be proven absent from event data.
+`FastNearNearDataEventSource` now supports sequential historical backfill and finalized incremental
+polling. Deterministic HTTP tests verify provider response parsing, receipt/log identity, filtering,
+pagination, and empty-range checkpoints. Live Disburse-specific backfill is not yet validated
+because no deployed testnet contract account is configured. Provider retention and uptime are not
+an SLA; if retention starts after deployment, payouts before that point cannot be proven absent
+from event data.
 
 If an event source is unavailable, processing stops before cursor advancement. If a source returns
 a finalized reservation event but the current view is missing, the discrepancy is persisted; that
@@ -82,21 +82,22 @@ block/receipt position or replay from a known earlier position. Replay is safe d
 uniqueness.
 
 Event-source and contract-view failures are retained with retry classification, attempt count, and
-bounded exponential retry time. A successful source read clears its active source failure; a
+bounded exponential retry time. Provider GET requests also use bounded retries for rate limits,
+timeouts, and service failures. A successful source read clears its active source failure; a
 successfully committed event clears its active view failure. Failed reconciliation reads retain
 the previous observed payout view and append an RPC error record.
 
 ## Operational setup before testnet
 
-1. Select a historical NEAR event indexer and configure network, contract, endpoint, timeout, and
-   finality/reorg policy.
+1. Obtain an authorized deployed contract account and deployment block, then configure the selected
+   NEAR Data provider, network, endpoint, timeout, and contract view RPC endpoint.
 2. Replace the local file store with a transactional PostgreSQL adapter that commits event,
    observation/job, and cursor in one database transaction and serializes competing indexers.
 3. Establish a trusted initial backfill position and validate source retention and event identity.
 4. Monitor cursor lag, malformed/unknown events, discrepancies, RPC errors, and reconciliation
    age. Do not turn these alerts into automatic payout retries.
-5. Exercise backfill, restart, provider outage, source reorg, and contract-view mismatch against a
-   controlled testnet before connecting execution workers.
+5. Exercise live testnet backfill, restart, provider outage, finalized-block discontinuity, and
+   contract-view mismatch before connecting execution workers.
 
 No event-provider credentials, database connection, migration, signing key, or transaction
 submission is included in this milestone.
