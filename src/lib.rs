@@ -3900,6 +3900,42 @@ mod tests {
     }
 
     #[test]
+    fn prior_execution_confirmation_cannot_later_be_released_as_non_settlement() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        let payout_id =
+            manual_review_test_payout(&mut contract, campaign_id, "confirmed-not-release");
+        grant_verifier(&mut contract, accounts(5));
+        let confirmation = resolution_evidence(
+            payout_id,
+            accounts(5),
+            PayoutResolutionOutcome::ExecutionConfirmed,
+            "confirmed:execution",
+        );
+        contract.confirm_manual_review_execution(payout_id, confirmation.clone());
+        set_context(accounts(2));
+        contract.move_payout_to_manual_review(payout_id, "Needs additional review".into());
+        set_context(accounts(5));
+
+        let before_campaign = contract.get_campaign(campaign_id).unwrap();
+        let before_payout = contract.get_payout(payout_id).unwrap();
+        let contradictory = resolution_evidence(
+            payout_id,
+            accounts(5),
+            PayoutResolutionOutcome::NonSettlementConfirmed,
+            "confirmed:contradiction",
+        );
+        assert!(
+            catch_unwind(AssertUnwindSafe(|| {
+                contract.release_manual_review_reservation(payout_id, contradictory)
+            }))
+            .is_err()
+        );
+        assert_eq!(contract.get_campaign(campaign_id).unwrap(), before_campaign);
+        assert_eq!(contract.get_payout(payout_id).unwrap(), before_payout);
+        assert_eq!(before_payout.resolution_evidence, vec![confirmation]);
+    }
+
+    #[test]
     fn manual_review_non_settlement_releases_only_reserved_funds() {
         let (mut contract, campaign_id) = funded_active_campaign(100);
         let payout_id =
