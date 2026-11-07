@@ -111,7 +111,7 @@ void test("reserved creation maps one job after event identity and contract data
     ];
     const repository = await DurableFileDiscoveryRepository.open(join(directory, "index.json"));
     const reader = new MutableReader(makePayout());
-    const processor = new PayoutDiscoveryProcessor(config, new MockNearEventSource(events), reader, repository);
+    const processor = new PayoutDiscoveryProcessor({ ...config, pageSize: 1 }, new MockNearEventSource(events), reader, repository);
     const first = await processor.processNextPage(100);
     assert.equal(first.jobsCreated, 1);
     reader.payout = makePayout({ status: "Executing", executionReference: "exec-42" });
@@ -249,14 +249,14 @@ function nearJsonPayout(payout: NearPayoutView): unknown {
     decimals: amount.decimals,
   });
   return {
-    id: Number(payout.id),
-    campaign_id: Number(payout.campaignId),
+    id: payout.id,
+    campaign_id: payout.campaignId,
     recipient_near_account_id: payout.recipientNearAccountId,
     input_amount: token(payout.inputAmount),
     destination: { chain_id: payout.destination.chainId, recipient_address: payout.destination.recipientAddress },
     expected_output_amount: token(payout.expectedOutputAmount),
     status: payout.status,
-    created_at_ns: Number(payout.createdAtNs),
+    created_at_ns: payout.createdAtNs,
     execution_reference: payout.executionReference,
     settlement_evidence_reference: payout.settlementEvidenceReference,
     lifecycle_reason: payout.lifecycleReason,

@@ -30,8 +30,8 @@ export function makeRawEvent(
   const payoutId = overrides.payoutId ?? "42";
   const campaignId = overrides.campaignId ?? "7";
   const defaultFields: Record<string, unknown> = {
-    payout_id: Number(payoutId),
-    campaign_id: Number(campaignId),
+    payout_id: BigInt(payoutId) <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(payoutId) : payoutId,
+    campaign_id: BigInt(campaignId) <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(campaignId) : campaignId,
     actor_id: "operator.testnet",
     input_token_id: "token.testnet",
     input_amount: "100",

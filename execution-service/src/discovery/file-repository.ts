@@ -5,6 +5,7 @@ import type { ExecutionJobRecord } from "../persistence/repository.ts";
 import type {
   DiscoveryDiscrepancy,
   DiscoveryEventCommit,
+  DiscoveryFailure,
   DiscoveryObservation,
   DiscoveryRepository,
   DiscoveryStateSnapshot,
@@ -18,6 +19,7 @@ interface FileState {
   observations: Map<string, DiscoveryObservation>;
   discrepancies: (DiscoveryDiscrepancy & { payoutKey: string | null })[];
   jobs: Map<string, ExecutionJobRecord>;
+  failures: Map<string, DiscoveryFailure>;
 }
 
 interface SerializedState {
@@ -27,6 +29,7 @@ interface SerializedState {
   readonly observations: readonly (readonly [string, DiscoveryObservation])[];
   readonly discrepancies: readonly (DiscoveryDiscrepancy & { payoutKey: string | null })[];
   readonly jobs: readonly (readonly [string, ExecutionJobRecord])[];
+  readonly failures: readonly (readonly [string, DiscoveryFailure])[];
 }
 
 /**
@@ -109,6 +112,7 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
       observations: new Map(state.observations),
       discrepancies: [...state.discrepancies],
       jobs: new Map(state.jobs),
+      failures: new Map(state.failures),
     };
   }
 
@@ -121,6 +125,34 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
       const next = cloneState(this.state);
       if (observation) next.observations.set(payoutKey, observation);
       if (discrepancy) next.discrepancies.push({ ...discrepancy, payoutKey });
+      await this.persist(next);
+      this.state = next;
+    });
+  }
+
+  async recordFailure(
+    event: DiscoveryEventCommit["event"],
+    sourceKey: string,
+    error: unknown,
+    nowMs: number,
+  ): Promise<void> {
+    await this.exclusive(async () => {
+      const failureKey = nearEventKey(event);
+      const previous = this.state.failures.get(failureKey);
+      const attempts = (previous?.attempts ?? 0) + 1;
+      const next = cloneState(this.state);
+      next.failures.set(failureKey, {
+        failureKey,
+        sourceKey,
+        eventIdentity: event.identity,
+        stage: "contract-view",
+        classification: error instanceof Error && "kind" in error ? String(error.kind) : "unknown",
+        retryable: true,
+        attempts,
+        nextRetryAtMs: nowMs + Math.min(60_000, 1_000 * 2 ** Math.min(attempts - 1, 6)),
+        message: error instanceof Error ? error.message : "Unknown contract view failure",
+        occurredAtMs: nowMs,
+      });
       await this.persist(next);
       this.state = next;
     });
@@ -164,7 +196,7 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
 }
 
 function emptyState(): FileState {
-  return { cursors: new Map(), events: new Map(), observations: new Map(), discrepancies: [], jobs: new Map() };
+  return { cursors: new Map(), events: new Map(), observations: new Map(), discrepancies: [], jobs: new Map(), failures: new Map() };
 }
 
 function cloneState(state: FileState): FileState {
@@ -174,6 +206,7 @@ function cloneState(state: FileState): FileState {
     observations: new Map(state.observations),
     discrepancies: [...state.discrepancies],
     jobs: new Map(state.jobs),
+    failures: new Map(state.failures),
   };
 }
 
@@ -185,6 +218,7 @@ function serialize(state: FileState): SerializedState {
     observations: [...state.observations],
     discrepancies: state.discrepancies,
     jobs: [...state.jobs],
+    failures: [...state.failures],
   };
 }
 
@@ -197,6 +231,7 @@ function deserialize(text: string): FileState {
     observations: mapFrom(value.observations),
     discrepancies: arrayOf(value.discrepancies),
     jobs: mapFrom(value.jobs),
+    failures: mapFrom(value.failures),
   };
 }
 

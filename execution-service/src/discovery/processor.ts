@@ -118,10 +118,15 @@ export class PayoutDiscoveryProcessor {
     }
 
     let payout: NearPayoutView | null;
-    if (event.name === "payout_reserved") {
-      payout = await this.reader.getCampaignPayout(event.campaignId, event.payoutId);
-    } else {
-      payout = await this.reader.getPayout(event.payoutId);
+    try {
+      if (event.name === "payout_reserved") {
+        payout = await this.reader.getCampaignPayout(event.campaignId, event.payoutId);
+      } else {
+        payout = await this.reader.getPayout(event.payoutId);
+      }
+    } catch (error) {
+      await this.repository.recordFailure(event, this.sourceKey, error, nowMs);
+      throw error;
     }
     const discrepancy = this.compareEventAndView(event, payout, nowMs);
     const observation = payout && payout.id === event.payoutId && payout.campaignId === event.campaignId

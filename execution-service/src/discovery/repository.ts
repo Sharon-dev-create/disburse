@@ -31,6 +31,19 @@ export interface IndexedEventRecord {
   readonly processedAtMs: number;
 }
 
+export interface DiscoveryFailure {
+  readonly failureKey: string;
+  readonly sourceKey: string;
+  readonly eventIdentity: DecodedNearEvent["identity"];
+  readonly stage: "contract-view";
+  readonly classification: string;
+  readonly retryable: true;
+  readonly attempts: number;
+  readonly nextRetryAtMs: number;
+  readonly message: string;
+  readonly occurredAtMs: number;
+}
+
 export interface DiscoveryEventCommit {
   readonly sourceKey: string;
   readonly event: DecodedNearEvent;
@@ -47,6 +60,7 @@ export interface DiscoveryStateSnapshot {
   readonly observations: ReadonlyMap<string, DiscoveryObservation>;
   readonly discrepancies: readonly (DiscoveryDiscrepancy & { readonly payoutKey: string | null })[];
   readonly jobs: ReadonlyMap<string, ExecutionJobRecord>;
+  readonly failures: ReadonlyMap<string, DiscoveryFailure>;
 }
 
 export interface DiscoveryRepository {
@@ -57,6 +71,7 @@ export interface DiscoveryRepository {
     observation: DiscoveryObservation | null,
     discrepancy: DiscoveryDiscrepancy | null,
   ): Promise<void>;
+  recordFailure(event: DecodedNearEvent, sourceKey: string, error: unknown, nowMs: number): Promise<void>;
   getSnapshot(): Promise<DiscoveryStateSnapshot>;
 }
 
