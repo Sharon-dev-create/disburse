@@ -1,3 +1,5 @@
+import { Buffer } from "node:buffer";
+
 export interface NearEventIdentity {
   readonly networkId: string;
   readonly contractId: string;
@@ -88,7 +90,7 @@ export function decodeNearEvent(raw: RawNearEvent): DecodedNearEvent {
   }
   let envelope: unknown;
   try {
-    envelope = JSON.parse(raw.log.slice(prefix.length)) as unknown;
+    envelope = JSON.parse(preserveEventIds(raw.log.slice(prefix.length))) as unknown;
   } catch {
     return malformed(raw, null, "Event log contains malformed JSON", rawLog);
   }
@@ -151,6 +153,13 @@ function isUnsigned(value: unknown): boolean {
   return typeof value === "string" && /^\d+$/.test(value) && BigInt(value) <= (1n << 128n) - 1n;
 }
 
+function preserveEventIds(json: string): string {
+  return json.replace(
+    /("(?:payout_id|campaign_id)"\s*:\s*)(\d+)(?=\s*[,}])/g,
+    (_match, prefix: string, digits: string) => `${prefix}"${digits}"`,
+  );
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -162,3 +171,4 @@ function unknown(raw: RawNearEvent, eventName: string | null, reason: string, ra
 function malformed(raw: RawNearEvent, eventName: string | null, reason: string, rawLog: string): MalformedNearEvent {
   return { kind: "malformed", eventName, reason, rawLog, identity: raw.identity, cursor: raw.cursor };
 }
+

@@ -148,3 +148,86 @@ CREATE TABLE reconciliation_history (
     details JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Milestone 9 read-only NEAR discovery tables. These are reference definitions only.
+-- The NEAR contract remains authoritative; these rows are operational observations.
+CREATE TABLE near_discovered_payouts (
+    network_id TEXT NOT NULL,
+    contract_id TEXT NOT NULL,
+    payout_id NUMERIC(20, 0) NOT NULL CHECK (payout_id >= 0),
+    campaign_id NUMERIC(20, 0) NOT NULL CHECK (campaign_id >= 0),
+    latest_contract_status TEXT NOT NULL,
+    payout_snapshot JSONB NOT NULL,
+    discovered_event_key TEXT NOT NULL,
+    last_observed_at TIMESTAMPTZ NOT NULL,
+    reconciliation_status TEXT NOT NULL CHECK (reconciliation_status IN (
+        'current', 'stale', 'missing', 'discrepant', 'rpc-error'
+    )),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (network_id, contract_id, payout_id)
+);
+
+CREATE TABLE near_indexed_events (
+    event_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    network_id TEXT NOT NULL,
+    contract_id TEXT NOT NULL,
+    block_height NUMERIC(20, 0) NOT NULL CHECK (block_height >= 0),
+    block_hash TEXT NOT NULL,
+    transaction_hash TEXT NOT NULL,
+    receipt_id TEXT NOT NULL,
+    event_index INTEGER NOT NULL CHECK (event_index >= 0),
+    event_name TEXT,
+    event_version TEXT,
+    decode_status TEXT NOT NULL CHECK (decode_status IN ('known', 'unknown', 'malformed')),
+    payout_id NUMERIC(20, 0),
+    campaign_id NUMERIC(20, 0),
+    raw_log TEXT NOT NULL,
+    decoded_payload JSONB,
+    source_cursor TEXT NOT NULL,
+    processed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (network_id, contract_id, block_hash, transaction_hash, receipt_id, event_index)
+);
+
+CREATE INDEX near_indexed_events_payout_idx
+    ON near_indexed_events (network_id, contract_id, payout_id, block_height, event_index);
+
+CREATE TABLE near_event_cursors (
+    network_id TEXT NOT NULL,
+    contract_id TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    cursor_value TEXT NOT NULL,
+    cursor_updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_successful_event_key TEXT,
+    PRIMARY KEY (network_id, contract_id, source_id)
+);
+
+CREATE TABLE near_discovery_errors (
+    error_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    network_id TEXT NOT NULL,
+    contract_id TEXT NOT NULL,
+    event_key TEXT,
+    payout_id NUMERIC(20, 0),
+    stage TEXT NOT NULL,
+    classification TEXT NOT NULL,
+    retryable BOOLEAN NOT NULL,
+    retry_count INTEGER NOT NULL DEFAULT 0 CHECK (retry_count >= 0),
+    next_retry_at TIMESTAMPTZ,
+    message TEXT NOT NULL,
+    occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    resolved_at TIMESTAMPTZ
+);
+
+CREATE TABLE near_reconciliation_history (
+    reconciliation_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    network_id TEXT NOT NULL,
+    contract_id TEXT NOT NULL,
+    payout_id NUMERIC(20, 0) NOT NULL CHECK (payout_id >= 0),
+    indexed_status TEXT,
+    observed_status TEXT,
+    outcome TEXT NOT NULL CHECK (outcome IN (
+        'matched', 'refreshed', 'missing', 'discrepant', 'rpc-error'
+    )),
+    details JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

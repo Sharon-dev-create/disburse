@@ -2,7 +2,6 @@ import type { ContractReader } from "../near/clients.ts";
 import type {
   DiscoveryObservation,
   DiscoveryRepository,
-  nearPayoutKey,
 } from "./repository.ts";
 import { nearPayoutKey as payoutKeyFor } from "./repository.ts";
 

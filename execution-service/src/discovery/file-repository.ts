@@ -130,14 +130,14 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
     await this.beforeCommit();
     await mkdir(dirname(this.path), { recursive: true });
     const temporary = `${this.path}.${randomUUID()}.tmp`;
-    const handle = await open(temporary, "wx", 0o600);
     try {
-      await handle.writeFile(JSON.stringify(serialize(state)), "utf8");
-      await handle.sync();
-    } finally {
-      await handle.close();
-    }
-    try {
+      const handle = await open(temporary, "wx", 0o600);
+      try {
+        await handle.writeFile(JSON.stringify(serialize(state)), "utf8");
+        await handle.sync();
+      } finally {
+        await handle.close();
+      }
       await rename(temporary, this.path);
       const directory = await open(dirname(this.path), "r");
       try {
@@ -145,9 +145,8 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
       } finally {
         await directory.close();
       }
-    } catch (error) {
+    } finally {
       await rm(temporary, { force: true });
-      throw error;
     }
   }
 
