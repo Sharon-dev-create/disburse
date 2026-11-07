@@ -50,9 +50,10 @@ pub struct PayoutView {
     pub execution_reference: Option<String>,
     pub settlement_evidence_reference: Option<String>,
     pub lifecycle_reason: Option<String>,
+    pub failure_evidence: Option<ExecutionFailureEvidence>,
 }
 
-#[near(serializers = [json])]
+#[near(serializers = [json, borsh])]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ExecutionFailureKind {
     /// The transaction was conclusively rejected before any broadcast occurred.
@@ -61,7 +62,7 @@ pub enum ExecutionFailureKind {
     TransactionReverted,
 }
 
-#[near(serializers = [json])]
+#[near(serializers = [json, borsh])]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecutionFailureEvidence {
     pub kind: ExecutionFailureKind,
@@ -430,12 +431,12 @@ impl Disburse {
             payout.status == PayoutStatus::Reserved,
             "Payout must be Reserved to start execution"
         );
-        if let Some(existing_id) = Self::execution_references().get(&execution_reference) {
-            require!(
-                *existing_id == payout_id,
-                "Execution reference is already assigned to another payout"
-            );
-        }
+        require!(
+            Self::execution_references()
+                .get(&execution_reference)
+                .is_none(),
+            "Execution reference has already been used"
+        );
 
         let previous_status = payout.status;
         payout.status = PayoutStatus::Executing;
@@ -525,6 +526,7 @@ impl Disburse {
         payout.status = PayoutStatus::Failed;
         self.payouts.insert(payout_id, payout.clone());
         Self::payout_lifecycle_reasons().insert(payout_id, evidence.reason.clone());
+        Self::payout_failure_evidence().insert(payout_id, evidence.clone());
         self.emit_event(
             "payout_execution_failed",
             near_sdk::serde_json::json!({
@@ -800,6 +802,10 @@ impl Disburse {
         LookupMap::new(b"payout-lifecycle-reasons".to_vec())
     }
 
+    fn payout_failure_evidence() -> LookupMap<u64, ExecutionFailureEvidence> {
+        LookupMap::new(b"payout-failure-evidence-v1".to_vec())
+    }
+
     fn campaign_or_panic(&self, campaign_id: u64) -> Campaign {
         self.campaigns
             .get(&campaign_id)
@@ -863,6 +869,7 @@ impl Disburse {
             execution_reference: payout.execution_reference.clone(),
             settlement_evidence_reference: payout.settlement_evidence_reference.clone(),
             lifecycle_reason: Self::payout_lifecycle_reasons().get(&payout.id).cloned(),
+            failure_evidence: Self::payout_failure_evidence().get(&payout.id).cloned(),
         }
     }
 
@@ -2335,7 +2342,7 @@ mod tests {
     }
 
     #[test]
-    fn execution_reference_validation_uniqueness_and_same_payout_index_are_safe() {
+    fn execution_reference_validation_is_strictly_unique_even_for_same_payout() {
         let (mut contract, campaign_id) = funded_active_campaign(100);
         let first = reserve_test_payout(&mut contract, campaign_id, "reference-first");
         let second = reserve_test_payout(&mut contract, campaign_id, "reference-second");
@@ -2361,18 +2368,29 @@ mod tests {
             contract.get_payout(second).unwrap().status,
             PayoutStatus::Reserved
         );
-        // A duplicate index entry for the same payout is not treated as another payout's claim.
+        // Existing index entry for this same payout must also cause a rejection.
         let third = reserve_test_payout(&mut contract, campaign_id, "reference-third");
         Disburse::execution_references().insert("same-owner-ref".into(), third);
-        contract.start_payout_execution(third, "same-owner-ref".into());
-        assert_eq!(
-            contract
-                .get_payout(third)
-                .unwrap()
-                .execution_reference
-                .as_deref(),
-            Some("same-owner-ref")
+        set_context(accounts(2));
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || contract.start_payout_execution(third, "same-owner-ref".into())
+            ))
+            .is_err()
         );
+        assert_eq!(
+            contract.get_payout(third).unwrap().status,
+            PayoutStatus::Reserved
+        );
+        assert_eq!(
+            contract.get_payout(third).unwrap().execution_reference,
+            None
+        );
+        assert_eq!(
+            Disburse::execution_references().get(&"same-owner-ref".to_string()),
+            Some(&third)
+        );
+        assert!(get_logs().is_empty());
     }
 
     #[test]
@@ -2457,6 +2475,10 @@ mod tests {
         let failed = contract.get_payout(executing).unwrap();
         assert_eq!(failed.status, PayoutStatus::Failed);
         assert_eq!(
+            failed.failure_evidence,
+            Some(definitive_failure("receipt:reverted-a"))
+        );
+        assert_eq!(
             failed.lifecycle_reason.as_deref(),
             Some("Source transaction has a terminal reverted status")
         );
@@ -2495,7 +2517,85 @@ mod tests {
             contract.get_payout(pending).unwrap().status,
             PayoutStatus::Failed
         );
+        assert_eq!(
+            contract
+                .get_campaign_payout(campaign_id, pending)
+                .unwrap()
+                .failure_evidence,
+            Some(definitive_failure("receipt:reverted-b"))
+        );
         assert_eq!(contract.get_campaign(campaign_id).unwrap(), before_pending);
+    }
+
+    #[test]
+    fn failure_evidence_persists_all_fields_and_is_scoped_to_its_payout() {
+        let (mut contract, campaign_id) = funded_active_campaign(100);
+        let rejected = reserve_test_payout(&mut contract, campaign_id, "evidence-rejected");
+        let unfailed = reserve_test_payout(&mut contract, campaign_id, "evidence-absent");
+        let rejected_evidence = ExecutionFailureEvidence {
+            kind: ExecutionFailureKind::RejectedBeforeSubmission,
+            evidence_reference: "signer:reject-42".into(),
+            reason: "Transaction was definitively rejected before broadcast".into(),
+        };
+        assert_eq!(
+            contract.get_payout(rejected).unwrap().failure_evidence,
+            None
+        );
+        assert_eq!(
+            contract
+                .get_campaign_payout(campaign_id, unfailed)
+                .unwrap()
+                .failure_evidence,
+            None
+        );
+        contract.start_payout_execution(rejected, "attempt:reject-42".into());
+        contract.mark_payout_failed(rejected, rejected_evidence.clone());
+
+        let reverted = reserve_test_payout(&mut contract, campaign_id, "evidence-reverted");
+        let reverted_evidence = ExecutionFailureEvidence {
+            kind: ExecutionFailureKind::TransactionReverted,
+            evidence_reference: "chain:receipt-99".into(),
+            reason: "Source transaction has a terminal reverted status".into(),
+        };
+        contract.start_payout_execution(reverted, "attempt:reverted-99".into());
+        contract.mark_payout_pending_verification(reverted);
+        contract.mark_payout_failed(reverted, reverted_evidence.clone());
+
+        assert_eq!(
+            contract.get_payout(rejected).unwrap().failure_evidence,
+            Some(rejected_evidence.clone())
+        );
+        assert_eq!(
+            contract
+                .get_campaign_payout(campaign_id, rejected)
+                .unwrap()
+                .failure_evidence,
+            Some(rejected_evidence)
+        );
+        assert_eq!(
+            contract.get_payout(reverted).unwrap().failure_evidence,
+            Some(reverted_evidence.clone())
+        );
+        assert_eq!(
+            contract
+                .get_campaign_payout(campaign_id, reverted)
+                .unwrap()
+                .failure_evidence,
+            Some(reverted_evidence)
+        );
+        assert_eq!(
+            contract.get_payout(unfailed).unwrap().failure_evidence,
+            None
+        );
+        assert_eq!(
+            contract
+                .get_campaign_payout(campaign_id, unfailed)
+                .unwrap()
+                .failure_evidence,
+            None
+        );
+        assert_eq!(contract.get_payout(999), None);
+        assert_eq!(contract.get_campaign_payout(campaign_id, 999), None);
     }
 
     #[test]
