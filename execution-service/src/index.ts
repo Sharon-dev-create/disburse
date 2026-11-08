@@ -8,6 +8,7 @@ export * from "./providers/adapter.ts";
 export * from "./providers/quote.ts";
 export * from "./providers/refund.ts";
 export * from "./providers/recipient.ts";
+export * from "./providers/networks.ts";
 export * from "./providers/signing.ts";
 export * from "./providers/near-intents/adapter.ts";
 export * from "./providers/near-intents/client.ts";

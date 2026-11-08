@@ -5,6 +5,7 @@ import type {
   QuoteFee,
 } from "../quote.ts";
 import { NearIntentsError, type NearIntentsClient } from "./client.ts";
+import { getSupportedNetwork } from "../networks.ts";
 
 export interface NearIntentsAssetMapping {
   readonly assetId: string;
@@ -100,10 +101,19 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
       this.config.providerNetworkByDisburseNetwork[intent.sourceNetworkId];
     const destinationChain =
       this.config.providerNetworkByDisburseNetwork[intent.destinationNetworkId];
-    if (!originChain || !destinationChain) {
+    const originNetwork = getSupportedNetwork(intent.sourceNetworkId);
+    const destinationNetwork = getSupportedNetwork(intent.destinationNetworkId);
+    if (
+      !originChain ||
+      !destinationChain ||
+      !originNetwork ||
+      !destinationNetwork ||
+      originChain !== originNetwork.providerNetworkId ||
+      destinationChain !== destinationNetwork.providerNetworkId
+    ) {
       throw unsupported(
         "network",
-        "Requested source or destination network is not configured",
+        "Requested source or destination network is unsupported or has conflicting provider identity",
       );
     }
     const origin = this.findAsset(intent.input.tokenId, intent.sourceNetworkId);
