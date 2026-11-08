@@ -286,14 +286,14 @@ function adapter(
       },
       {
         assetId: "nep141:eth-usdc",
-        networkId: "eth:mainnet",
+        networkId: "eip155:1",
         tokenId: "token:eth-usdc",
         decimals: 6,
       },
     ],
     providerNetworkByDisburseNetwork: {
       "near:mainnet": "near",
-      "eth:mainnet": "eth",
+      "eip155:1": "eth",
     },
     maxQuoteAgeMs: overrides.maxQuoteAgeMs ?? 30_000,
     slippageToleranceBps: overrides.slippageToleranceBps ?? 0,
@@ -303,9 +303,10 @@ function adapter(
 
 function intent(): QuoteIntent {
   return {
+    executionAttemptId: "attempt-1",
     sourceNetworkId: "near:mainnet",
     input: { tokenId: "token:near-usdc", atomicAmount: "1000", decimals: 6 },
-    destinationNetworkId: "eth:mainnet",
+    destinationNetworkId: "eip155:1",
     recipientAddress: "alice.destination",
     expectedOutput: {
       tokenId: "token:eth-usdc",
