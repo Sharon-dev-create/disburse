@@ -80,6 +80,7 @@ export interface ExecutionAuthorization extends SigningRequest {
 }
 
 export interface AuthorizationLifecycleTimestamps {
+  readonly createdAt: string;
   readonly approvedAt: string | null;
   readonly consumedAt: string | null;
   readonly revokedAt: string | null;
@@ -177,6 +178,7 @@ export class InMemoryAuthorizationRepository implements AuthorizationRepository 
     }
     const stored = Object.freeze({
       ...authorization,
+      createdAt: authorization.authorizedAt,
       approvedAt: null,
       consumedAt: null,
       revokedAt: null,
@@ -478,6 +480,7 @@ export function hashExecutionAuthorization(
   const excluded = new Set([
     "authorizationHash",
     "lifecycle",
+    "createdAt",
     "approvedAt",
     "consumedAt",
     "revokedAt",

@@ -409,6 +409,7 @@ function mapStoredAuthorization(
     authorizedAt: timestampText(row, "authorized_at"),
     authorizationExpiresAt: timestampText(row, "authorization_expires_at"),
     lifecycle: lifecycleValue(row),
+    createdAt: timestampText(row, "authorized_at"),
     approvedAt: nullableTimestampText(row, "approved_at"),
     consumedAt: nullableTimestampText(row, "consumed_at"),
     revokedAt: nullableTimestampText(row, "revoked_at"),

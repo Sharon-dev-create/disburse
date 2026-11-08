@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -34,6 +35,7 @@ void test("PostgreSQL authorization adapter persists exact fields and survives r
 
   const created = await repository.create(authorization);
   assert.equal(created.lifecycle, "Created");
+  assert.equal(created.createdAt, authorization.authorizedAt);
   assert.equal(created.approvedAt, null);
   assert.equal(created.maximumInputAtomicAmount, "4000");
   assert.equal(created.expectedOutputAtomicAmount, "300");
@@ -66,8 +68,21 @@ void test("PostgreSQL authorization adapter persists exact fields and survives r
   const persistedLarge = await repository.create(largeAuthorization);
   assert.equal(persistedLarge.maximumInputAtomicAmount, largeAmount);
   assert.equal(persistedLarge.quoteRequiredInputAtomicAmount, largeAmount);
+  database.corruptAuthorizationField(
+    authorization.authorizationId,
+    "recipient_address",
+    "attacker.near",
+  );
+  await assert.rejects(
+    afterRestart.get(authorization.authorizationId),
+    /integrity hash mismatch/,
+  );
 
   const afterRestart = new PostgresAuthorizationRepository(database.query);
+  assert.equal(
+    (await afterRestart.create(authorization)).lifecycle,
+    "Created",
+  );
   assert.equal(
     (await afterRestart.get(authorization.authorizationId))?.authorizationHash,
     authorization.authorizationHash,
@@ -105,6 +120,7 @@ void test("PostgreSQL conditional lifecycle updates admit one concurrent consume
   assert.equal(approvedA.lifecycle, "Approved");
   assert.equal(approvedB.lifecycle, "Approved");
   assert.ok(approvedA.approvedAt);
+  assert.equal(approvedA.approvedAt, approvedB.approvedAt);
 
   const results = await Promise.allSettled([
     repository.consume(
@@ -130,6 +146,7 @@ void test("PostgreSQL conditional lifecycle updates admit one concurrent consume
     (await repository.get(authorization.authorizationId))?.lifecycle,
     "Consumed",
   );
+  assert.ok((await repository.get(authorization.authorizationId))?.consumedAt);
   await assert.rejects(
     repository.approve(authorization.authorizationId, now),
     /Consumed/,
@@ -188,6 +205,16 @@ void test("PostgreSQL adapter expires records by database time and keeps termina
   );
 });
 
+void test("reference schema declares atomic lifecycle and immutable-record database guards", async () => {
+  const schema = await readFile(new URL("../sql/schema.sql", import.meta.url), "utf8");
+  assert.match(schema, /UNIQUE \(campaign_id, payout_id, execution_attempt_id\)/);
+  assert.match(schema, /CHECK \(authorization_expires_at > authorized_at\)/);
+  assert.match(schema, /BEFORE INSERT OR UPDATE OR DELETE ON execution_authorizations/);
+  assert.match(schema, /authorization payload is immutable/);
+  assert.match(schema, /invalid authorization lifecycle transition/);
+  assert.match(schema, /BEFORE UPDATE OR DELETE ON payout_refund_policies/);
+});
+
 const authorizationColumns = [
   "authorization_id",
   "campaign_id",
@@ -239,6 +266,15 @@ class MockPostgres {
   corruptRefundFingerprint(campaignId: string, payoutId: string): void {
     const row = this.refundPolicies.get(`${campaignId}:${payoutId}`);
     if (row) row.policy_fingerprint = "0".repeat(64);
+  }
+
+  corruptAuthorizationField(
+    authorizationId: string,
+    field: string,
+    value: string,
+  ): void {
+    const row = this.authorizations.get(authorizationId);
+    if (row) row[field] = value;
   }
 
   readonly query: PostgresQuery = async (
