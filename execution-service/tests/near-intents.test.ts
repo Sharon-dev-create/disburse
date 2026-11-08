@@ -236,10 +236,7 @@ void test("rejects missing IDs, invalid amounts, bad metadata, unsupported route
     ...baseIntent,
     destinationNetworkId: "eip155:8453",
   };
-  await assert.rejects(
-    adapter().quote(unsupportedRoute),
-    /unsupported/,
-  );
+  await assert.rejects(adapter().quote(unsupportedRoute), /unsupported/);
 
   const badDecimals = {
     ...baseIntent,

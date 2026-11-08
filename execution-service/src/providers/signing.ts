@@ -76,6 +76,17 @@ export interface ExecutionAuthorization extends SigningRequest {
   readonly lifecycle: AuthorizationLifecycle;
 }
 
+export interface AuthorizationLifecycleTimestamps {
+  readonly approvedAt: string | null;
+  readonly consumedAt: string | null;
+  readonly revokedAt: string | null;
+  readonly expiredAt: string | null;
+}
+
+export interface StoredExecutionAuthorization
+  extends ExecutionAuthorization,
+    AuthorizationLifecycleTimestamps {}
+
 export interface SigningDecision {
   readonly approved: boolean;
   readonly reason: string | null;
@@ -100,10 +111,19 @@ export interface Signer {
 }
 
 export interface AuthorizationRepository {
-  createApproved(
+  create(
     authorization: ExecutionAuthorization,
-  ): Promise<ExecutionAuthorization>;
-  get(authorizationId: string): Promise<ExecutionAuthorization | null>;
+  ): Promise<StoredExecutionAuthorization>;
+  get(authorizationId: string): Promise<StoredExecutionAuthorization | null>;
+  getByCampaignPayoutAttempt(
+    campaignId: string,
+    payoutId: string,
+    executionAttemptId: string,
+  ): Promise<StoredExecutionAuthorization | null>;
+  approve(
+    authorizationId: string,
+    nowMs: number,
+  ): Promise<StoredExecutionAuthorization>;
   consume(
     authorizationId: string,
     request: SigningRequest,
@@ -111,13 +131,19 @@ export interface AuthorizationRepository {
     reservation: PayoutReservationSnapshot,
     quote: ExecutionOpportunity,
     nowMs: number,
-  ): Promise<ExecutionAuthorization>;
-  revoke(authorizationId: string): Promise<void>;
-  expire(authorizationId: string, nowMs: number): Promise<void>;
+  ): Promise<StoredExecutionAuthorization>;
+  revoke(
+    authorizationId: string,
+    nowMs: number,
+  ): Promise<StoredExecutionAuthorization>;
+  expire(
+    authorizationId: string,
+    nowMs: number,
+  ): Promise<StoredExecutionAuthorization>;
 }
 
 export interface AuthorizationMemoryState {
-  readonly records: Map<string, ExecutionAuthorization>;
+  readonly records: Map<string, StoredExecutionAuthorization>;
 }
 
 export function newAuthorizationMemoryState(): AuthorizationMemoryState {
@@ -132,12 +158,12 @@ export class InMemoryAuthorizationRepository implements AuthorizationRepository 
     this.state = state;
   }
 
-  async createApproved(
+  async create(
     authorization: ExecutionAuthorization,
-  ): Promise<ExecutionAuthorization> {
+  ): Promise<StoredExecutionAuthorization> {
     verifyAuthorizationHash(authorization);
-    if (authorization.lifecycle !== "Approved")
-      throw new Error("Only approved authorizations can be persisted");
+    if (authorization.lifecycle !== "Created")
+      throw new Error("Only Created authorizations can be persisted");
     const existing = this.state.records.get(authorization.authorizationId);
     if (existing) {
       if (existing.authorizationHash !== authorization.authorizationHash) {
@@ -147,16 +173,68 @@ export class InMemoryAuthorizationRepository implements AuthorizationRepository 
       }
       return cloneAuthorization(existing);
     }
+    const stored = Object.freeze({
+      ...authorization,
+      approvedAt: null,
+      consumedAt: null,
+      revokedAt: null,
+      expiredAt: null,
+    });
     this.state.records.set(
       authorization.authorizationId,
-      cloneAuthorization(authorization),
+      stored,
     );
-    return cloneAuthorization(authorization);
+    return cloneAuthorization(stored);
   }
 
-  async get(authorizationId: string): Promise<ExecutionAuthorization | null> {
+  async get(
+    authorizationId: string,
+  ): Promise<StoredExecutionAuthorization | null> {
     const authorization = this.state.records.get(authorizationId);
     return authorization ? cloneAuthorization(authorization) : null;
+  }
+
+  async getByCampaignPayoutAttempt(
+    campaignId: string,
+    payoutId: string,
+    executionAttemptId: string,
+  ): Promise<StoredExecutionAuthorization | null> {
+    const authorization = [...this.state.records.values()].find(
+      (item) =>
+        item.campaignId === campaignId &&
+        item.payoutId === payoutId &&
+        item.executionAttemptId === executionAttemptId,
+    );
+    return authorization ? cloneAuthorization(authorization) : null;
+  }
+
+  async approve(
+    authorizationId: string,
+    nowMs: number,
+  ): Promise<StoredExecutionAuthorization> {
+    const current = this.state.records.get(authorizationId);
+    if (!current) throw new Error("Authorization does not exist");
+    if (current.lifecycle === "Approved") return cloneAuthorization(current);
+    if (current.lifecycle === "Expired" || current.lifecycle === "Revoked")
+      throw new Error(`Authorization is ${current.lifecycle} and cannot be approved`);
+    if (current.lifecycle !== "Created")
+      throw new Error(`Authorization is ${current.lifecycle} and cannot be approved`);
+    if (nowMs >= Date.parse(current.authorizationExpiresAt)) {
+      const expired = Object.freeze({
+        ...current,
+        lifecycle: "Expired" as const,
+        expiredAt: new Date(nowMs).toISOString(),
+      });
+      this.state.records.set(authorizationId, expired);
+      throw new Error("Authorization has expired");
+    }
+    const approved = Object.freeze({
+      ...current,
+      lifecycle: "Approved" as const,
+      approvedAt: new Date(nowMs).toISOString(),
+    });
+    this.state.records.set(authorizationId, approved);
+    return cloneAuthorization(approved);
   }
 
   async consume(
@@ -166,7 +244,7 @@ export class InMemoryAuthorizationRepository implements AuthorizationRepository 
     reservation: PayoutReservationSnapshot,
     quote: ExecutionOpportunity,
     nowMs: number,
-  ): Promise<ExecutionAuthorization> {
+  ): Promise<StoredExecutionAuthorization> {
     const current = this.state.records.get(authorizationId);
     if (!current) throw new Error("Authorization does not exist");
     if (current.lifecycle !== "Approved")
@@ -184,38 +262,58 @@ export class InMemoryAuthorizationRepository implements AuthorizationRepository 
     const consumed = Object.freeze({
       ...current,
       lifecycle: "Consumed" as const,
+      consumedAt: new Date(nowMs).toISOString(),
     });
     // Synchronous map mutation before returning makes this mock atomic only within this JS process.
     this.state.records.set(authorizationId, consumed);
     return cloneAuthorization(consumed);
   }
 
-  async revoke(authorizationId: string): Promise<void> {
+  async revoke(
+    authorizationId: string,
+    nowMs: number,
+  ): Promise<StoredExecutionAuthorization> {
     const current = this.state.records.get(authorizationId);
     if (!current) throw new Error("Authorization does not exist");
-    if (current.lifecycle !== "Approved")
+    if (current.lifecycle === "Revoked") return cloneAuthorization(current);
+    if (current.lifecycle !== "Created" && current.lifecycle !== "Approved")
       throw new Error(
         `Authorization is ${current.lifecycle} and cannot be revoked`,
       );
+    if (nowMs >= Date.parse(current.authorizationExpiresAt))
+      return this.expire(authorizationId, nowMs);
+    const revoked = Object.freeze({
+      ...current,
+      lifecycle: "Revoked" as const,
+      revokedAt: new Date(nowMs).toISOString(),
+    });
     this.state.records.set(
       authorizationId,
-      Object.freeze({ ...current, lifecycle: "Revoked" }),
+      revoked,
     );
+    return cloneAuthorization(revoked);
   }
 
-  async expire(authorizationId: string, nowMs: number): Promise<void> {
+  async expire(
+    authorizationId: string,
+    nowMs: number,
+  ): Promise<StoredExecutionAuthorization> {
     const current = this.state.records.get(authorizationId);
     if (!current) throw new Error("Authorization does not exist");
-    if (current.lifecycle !== "Approved")
+    if (current.lifecycle === "Expired") return cloneAuthorization(current);
+    if (current.lifecycle !== "Created" && current.lifecycle !== "Approved")
       throw new Error(
         `Authorization is ${current.lifecycle} and cannot expire`,
       );
     if (nowMs < Date.parse(current.authorizationExpiresAt))
       throw new Error("Authorization has not expired");
-    this.state.records.set(
-      authorizationId,
-      Object.freeze({ ...current, lifecycle: "Expired" }),
-    );
+    const expired = Object.freeze({
+      ...current,
+      lifecycle: "Expired" as const,
+      expiredAt: new Date(nowMs).toISOString(),
+    });
+    this.state.records.set(authorizationId, expired);
+    return cloneAuthorization(expired);
   }
 }
 
@@ -338,7 +436,14 @@ export function hashExecutionAuthorization(
   authorization: ExecutionAuthorization,
 ): string {
   const payload = JSON.stringify(authorization, (key, value: unknown) =>
-    key === "authorizationHash" || key === "lifecycle" ? undefined : value,
+    key === "authorizationHash" ||
+    key === "lifecycle" ||
+    key === "approvedAt" ||
+    key === "consumedAt" ||
+    key === "revokedAt" ||
+    key === "expiredAt"
+      ? undefined
+      : value,
   );
   return createHash("sha256").update(payload, "utf8").digest("hex");
 }
@@ -721,7 +826,7 @@ function canonicalAtomic(value: string): string {
 }
 
 function cloneAuthorization(
-  authorization: ExecutionAuthorization,
-): ExecutionAuthorization {
+  authorization: StoredExecutionAuthorization,
+): StoredExecutionAuthorization {
   return Object.freeze({ ...authorization });
 }

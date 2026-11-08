@@ -74,7 +74,10 @@ export class InMemoryRefundPolicyRepository implements RefundPolicyRepository {
     const policy = this.state.policies.get(
       refundPolicyKey(campaignId, payoutId),
     );
-    return policy ? Object.freeze({ ...policy }) : null;
+    if (!policy) return null;
+    if (fingerprintRefundPolicy(policy) !== policy.fingerprint)
+      throw new Error("Persisted refund policy fingerprint mismatch");
+    return Object.freeze({ ...policy });
   }
 }
 

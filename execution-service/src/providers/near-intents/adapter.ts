@@ -85,12 +85,29 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
     validateAmount(intent.expectedOutput.atomicAmount, "expected output");
     validateTokenAmount(intent.input);
     validateTokenAmount(intent.expectedOutput);
-    const refundPolicy = bindRefundPolicy(intent.refundPolicy, intent.refundPolicy);
-    if (refundPolicy.campaignId !== intent.campaignId || refundPolicy.payoutId !== intent.payoutId || refundPolicy.sourceNetworkId !== intent.sourceNetworkId || refundPolicy.sourceTokenId !== intent.input.tokenId) {
-      throw invalid("refund-policy-binding", "Approved refund policy does not belong to this campaign, payout, source network, and token");
+    const refundPolicy = bindRefundPolicy(
+      intent.refundPolicy,
+      intent.refundPolicy,
+    );
+    if (
+      refundPolicy.campaignId !== intent.campaignId ||
+      refundPolicy.payoutId !== intent.payoutId ||
+      refundPolicy.sourceNetworkId !== intent.sourceNetworkId ||
+      refundPolicy.sourceTokenId !== intent.input.tokenId
+    ) {
+      throw invalid(
+        "refund-policy-binding",
+        "Approved refund policy does not belong to this campaign, payout, source network, and token",
+      );
     }
-    if (!validateRecipient(intent.destinationNetworkId, intent.recipientAddress).valid) {
-      throw invalid("invalid-recipient", "Payout recipient is invalid for the configured destination network");
+    if (
+      !validateRecipient(intent.destinationNetworkId, intent.recipientAddress)
+        .valid
+    ) {
+      throw invalid(
+        "invalid-recipient",
+        "Payout recipient is invalid for the configured destination network",
+      );
     }
     if (!/^[A-Za-z0-9._:-]{1,128}$/.test(intent.executionAttemptId)) {
       throw invalid(
@@ -218,7 +235,11 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
       "DESTINATION_CHAIN",
       "echoed recipient type",
     );
-    assertEqual(echo.refundTo, refundPolicy.refundAddress, "echoed refund address");
+    assertEqual(
+      echo.refundTo,
+      refundPolicy.refundAddress,
+      "echoed refund address",
+    );
     assertEqual(echo.refundType, "ORIGIN_CHAIN", "echoed refund type");
     assertEqual(echo.deadline, intent.deadline, "echoed deadline");
 
@@ -388,12 +409,19 @@ function isNonEmptyString(value: unknown): value is string {
 }
 
 function isIsoDate(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,9})?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/.test(
+  if (
+    typeof value !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,9})?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/.test(
       value,
-    ) &&
-    Number.isFinite(Date.parse(value))
+    )
+  )
+    return false;
+  const timestamp = Date.parse(value);
+  const calendar = new Date(`${value.slice(0, 10)}T00:00:00.000Z`);
+  return (
+    Number.isFinite(timestamp) &&
+    Number.isFinite(calendar.getTime()) &&
+    calendar.toISOString().slice(0, 10) === value.slice(0, 10)
   );
 }
 
