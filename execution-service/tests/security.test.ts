@@ -230,6 +230,10 @@ void test("authorization binds exact payout reservation, quote, attempt, route, 
   assert.equal(auth.lifecycle, "Approved");
   assert.equal(auth.quoteRequiredInputAtomicAmount, "4000");
   assert.equal(
+    auth.authorizationExpiresAt,
+    new Date(now + 25_000).toISOString(),
+  );
+  assert.equal(
     auth.reservationIdentity,
     JSON.stringify([
       "near-payout-reservation-v1",
@@ -604,7 +608,7 @@ void test("authorization consumption is single-use, atomic in-process, revocable
       },
     },
     now,
-  ).authorization!;
+  );
   await repo1.create(revokeAuth);
   await repo1.approve(revokeAuth.authorizationId, now);
   assert.equal(
@@ -643,7 +647,7 @@ void test("authorization consumption is single-use, atomic in-process, revocable
     reservation,
     expiringQuote,
     now,
-  ).authorization!;
+  );
   await repo1.create(expiring);
   await repo1.approve(expiring.authorizationId, now);
   await assert.rejects(

@@ -4,6 +4,7 @@ export * from "./domain/payout.ts";
 export * from "./near/clients.ts";
 export * from "./persistence/in-memory.ts";
 export * from "./persistence/repository.ts";
+export * from "./persistence/postgres-security-repositories.ts";
 export * from "./providers/adapter.ts";
 export * from "./providers/quote.ts";
 export * from "./providers/refund.ts";

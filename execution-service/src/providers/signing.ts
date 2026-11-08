@@ -67,9 +67,12 @@ export interface ExecutionAuthorization extends SigningRequest {
   readonly policyFingerprint: string;
   readonly reservationIdentity: string;
   readonly reservationObservedAtBlock: string;
+  readonly quoteFingerprint: string;
   readonly quoteIssuedAt: string;
   readonly quoteExpiresAt: string;
+  readonly quoteFreshUntil: string;
   readonly quoteRequiredInputAtomicAmount: string;
+  readonly quoteMinimumOutputAtomicAmount: string;
   readonly authorizedAt: string;
   readonly authorizationExpiresAt: string;
   readonly authorizationHash: string;
@@ -84,8 +87,7 @@ export interface AuthorizationLifecycleTimestamps {
 }
 
 export interface StoredExecutionAuthorization
-  extends ExecutionAuthorization,
-    AuthorizationLifecycleTimestamps {}
+  extends ExecutionAuthorization, AuthorizationLifecycleTimestamps {}
 
 export interface SigningDecision {
   readonly approved: boolean;
@@ -180,10 +182,7 @@ export class InMemoryAuthorizationRepository implements AuthorizationRepository 
       revokedAt: null,
       expiredAt: null,
     });
-    this.state.records.set(
-      authorization.authorizationId,
-      stored,
-    );
+    this.state.records.set(authorization.authorizationId, stored);
     return cloneAuthorization(stored);
   }
 
@@ -216,9 +215,13 @@ export class InMemoryAuthorizationRepository implements AuthorizationRepository 
     if (!current) throw new Error("Authorization does not exist");
     if (current.lifecycle === "Approved") return cloneAuthorization(current);
     if (current.lifecycle === "Expired" || current.lifecycle === "Revoked")
-      throw new Error(`Authorization is ${current.lifecycle} and cannot be approved`);
+      throw new Error(
+        `Authorization is ${current.lifecycle} and cannot be approved`,
+      );
     if (current.lifecycle !== "Created")
-      throw new Error(`Authorization is ${current.lifecycle} and cannot be approved`);
+      throw new Error(
+        `Authorization is ${current.lifecycle} and cannot be approved`,
+      );
     if (nowMs >= Date.parse(current.authorizationExpiresAt)) {
       const expired = Object.freeze({
         ...current,
@@ -287,10 +290,7 @@ export class InMemoryAuthorizationRepository implements AuthorizationRepository 
       lifecycle: "Revoked" as const,
       revokedAt: new Date(nowMs).toISOString(),
     });
-    this.state.records.set(
-      authorizationId,
-      revoked,
-    );
+    this.state.records.set(authorizationId, revoked);
     return cloneAuthorization(revoked);
   }
 
@@ -390,9 +390,12 @@ export function createExecutionAuthorization(
     policyFingerprint: fingerprintSigningPolicy(policy),
     reservationIdentity: reservationIdentity(reservation),
     reservationObservedAtBlock: reservation.observedAtBlock,
+    quoteFingerprint: fingerprintExecutionOpportunity(quote),
     quoteIssuedAt: quote.providerMetadata.responseTimestamp ?? "",
     quoteExpiresAt: quote.expiresAt ?? "",
+    quoteFreshUntil: quote.freshUntil,
     quoteRequiredInputAtomicAmount: quote.quotedInputAtomicAmount,
+    quoteMinimumOutputAtomicAmount: quote.minimumOutputAtomicAmount ?? "",
     authorizedAt: new Date(nowMs).toISOString(),
     authorizationExpiresAt: authorizationExpiry(policy, quote, nowMs),
     authorizationHash: "",
@@ -432,18 +435,60 @@ export function fingerprintSigningPolicy(policy: SigningPolicy): string {
   return createHash("sha256").update(canonical, "utf8").digest("hex");
 }
 
+export function fingerprintExecutionOpportunity(
+  quote: ExecutionOpportunity,
+): string {
+  const compareLexically = (left: string, right: string): number =>
+    left < right ? -1 : left > right ? 1 : 0;
+  const canonical = JSON.stringify([
+    "disburse-execution-opportunity-v1",
+    quote.providerId,
+    quote.sourceNetworkId,
+    quote.sourceTokenId,
+    canonicalAtomic(quote.quotedInputAtomicAmount),
+    quote.maximumInputAtomicAmount === null
+      ? null
+      : canonicalAtomic(quote.maximumInputAtomicAmount),
+    quote.destinationNetworkId,
+    quote.destinationTokenId,
+    quote.recipientAddress,
+    canonicalAtomic(quote.expectedOutputAtomicAmount),
+    quote.minimumOutputAtomicAmount === null
+      ? null
+      : canonicalAtomic(quote.minimumOutputAtomicAmount),
+    quote.quoteReference,
+    quote.expiresAt,
+    quote.freshUntil,
+    [...quote.fees]
+      .map((fee) => [fee.kind, fee.tokenId, canonicalAtomic(fee.atomicAmount)])
+      .sort((left, right) =>
+        compareLexically(JSON.stringify(left), JSON.stringify(right)),
+      ),
+    quote.estimatedExecutionSeconds,
+    Object.entries(quote.providerMetadata).sort(([left], [right]) =>
+      compareLexically(left, right),
+    ),
+  ]);
+  return createHash("sha256").update(canonical, "utf8").digest("hex");
+}
+
 export function hashExecutionAuthorization(
   authorization: ExecutionAuthorization,
 ): string {
-  const payload = JSON.stringify(authorization, (key, value: unknown) =>
-    key === "authorizationHash" ||
-    key === "lifecycle" ||
-    key === "approvedAt" ||
-    key === "consumedAt" ||
-    key === "revokedAt" ||
-    key === "expiredAt"
-      ? undefined
-      : value,
+  const excluded = new Set([
+    "authorizationHash",
+    "lifecycle",
+    "approvedAt",
+    "consumedAt",
+    "revokedAt",
+    "expiredAt",
+  ]);
+  const payload = JSON.stringify(
+    Object.fromEntries(
+      Object.entries(authorization)
+        .filter(([key]) => !excluded.has(key))
+        .sort(([left], [right]) => left.localeCompare(right)),
+    ),
   );
   return createHash("sha256").update(payload, "utf8").digest("hex");
 }
@@ -526,11 +571,26 @@ function authorizationExpiry(
     throw new Error(
       "Authorization expiry exceeds the supported timestamp range",
     );
-  if (quote.expiresAt === null) return new Date(policyExpiry).toISOString();
-  const quoteExpiry = parseRfc3339(quote.expiresAt);
-  if (!Number.isFinite(quoteExpiry) || quoteExpiry <= nowMs)
-    throw new Error("Quote expiry is invalid or already elapsed");
-  return new Date(Math.min(policyExpiry, quoteExpiry)).toISOString();
+  const expiryBounds = [policyExpiry];
+  if (quote.expiresAt !== null) {
+    const quoteExpiry = parseRfc3339(quote.expiresAt);
+    if (!Number.isFinite(quoteExpiry) || quoteExpiry <= nowMs)
+      throw new Error("Quote expiry is invalid or already elapsed");
+    expiryBounds.push(quoteExpiry);
+  }
+  if (policy.requireFreshQuote) {
+    const issuedAt = parseRfc3339(
+      quote.providerMetadata.responseTimestamp ?? "",
+    );
+    const localExpiry = parseRfc3339(quote.freshUntil);
+    if (!Number.isFinite(issuedAt) || !Number.isFinite(localExpiry))
+      throw new Error("Quote freshness timestamps are invalid");
+    expiryBounds.push(issuedAt + policy.maxQuoteAgeMs!, localExpiry);
+  }
+  const expiresAt = Math.min(...expiryBounds);
+  if (expiresAt <= nowMs)
+    throw new Error("Authorization would expire immediately");
+  return new Date(expiresAt).toISOString();
 }
 
 function validateAuthorizationInputs(

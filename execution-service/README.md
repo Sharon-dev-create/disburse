@@ -2,7 +2,7 @@
 
 This is a separate strict TypeScript package containing provider-neutral execution interfaces and
 a read-only NEAR payout discovery foundation. It does not submit transactions, sign NEAR
-transactions, connect to PostgreSQL, or move funds.
+transactions, configure a PostgreSQL connection, or move funds.
 
 ## What is here
 
@@ -10,12 +10,12 @@ transactions, connect to PostgreSQL, or move funds.
 - `src/state-machine`: allowed operational transitions and safety preconditions.
 - `src/providers`: provider adapter boundary and restart reconciliation policy.
 - `src/providers/networks.ts`, `recipient.ts`, and `refund.ts`: canonical network identities,
-  chain-aware recipient checks, and payout-bound refund policy fingerprints. The refund repository
-  currently has only a deterministic in-memory implementation.
+  chain-aware recipient checks, and payout-bound refund policy fingerprints. The in-memory refund
+  repository is a test double; a PostgreSQL adapter is also available under `src/persistence`.
 - `src/providers/signing.ts`: policy evaluation and a Created/Approved/Consumed/Expired/Revoked
-  authorization lifecycle with local hash integrity checks. Its signer and repository are mocks;
-  neither hash integrity nor in-process consumption is cryptographic authorization or durable replay
-  protection.
+  authorization lifecycle with local hash integrity checks. The deterministic in-memory repository
+  is a test double; the PostgreSQL adapter provides durable state transitions. Neither a hash nor a
+  repository substitutes for an authenticated signer.
 - `src/providers/quote.ts` and `src/providers/near-intents`: provider-neutral quote-only types and a deterministic-testable NEAR Intents 1Click `dry: true` adapter. It has no deposit, execution, tracking, signing, or settlement methods.
 - `src/verification`: independent evidence-verification interface.
 - `src/near`: read-only, Operator/Admin, and Verifier contract client boundaries.
@@ -25,6 +25,10 @@ transactions, connect to PostgreSQL, or move funds.
 - `src/discovery`: NEP-297 decoder, replayable source interface, durable local file repository,
   discovery processor, and chain-view reconciler.
 - `src/persistence`: job/lease repository interface plus test-only in-memory implementation.
+- `src/persistence/postgres-security-repositories.ts`: PostgreSQL authorization and refund-policy
+  repository adapters behind an injected query function. They reuse the existing PostgreSQL
+  operational store and add no driver dependency. The reference DDL is in `sql/schema.sql` and
+  must be applied through a reviewed migration before constructing these adapters in a service.
 - `src/coordinator`: coordinator/discovery ports and deterministic bounded references.
 - `tests`: deterministic execution and discovery tests, including provider HTTP fixtures, restart,
   duplicate delivery, cursor atomicity, and RPC failures.
@@ -68,8 +72,9 @@ pnpm check
 
 ## Not production-ready
 
-There is no PostgreSQL repository, production worker loop, destination-chain verifier, signer
-integration, secret store, or testnet execution flow yet.
+There is no PostgreSQL driver/configuration, production worker loop, destination-chain verifier,
+signer integration, secret store, or testnet execution flow yet. The durable adapters exist but are not wired into
+application composition; their tests use a deterministic SQL mock, not a live PostgreSQL server.
 EVM mixed-case recipients use a local Keccak-256 EIP-55 implementation because this package does not
 currently include an audited Ethereum checksum library; replace it with a reviewed maintained
 dependency before production use. NEAR Intents quotes remain preview-only and exact-output committed

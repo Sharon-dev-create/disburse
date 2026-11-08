@@ -286,8 +286,8 @@ CREATE TABLE near_reconciliation_history (
 -- PostgreSQL row-level update locking admits only one competing lifecycle transition.
 CREATE TABLE execution_authorizations (
     authorization_id TEXT PRIMARY KEY,
-    campaign_id TEXT NOT NULL CHECK (campaign_id ~ '^(0|[1-9][0-9]{0,19})$'),
-    payout_id TEXT NOT NULL CHECK (payout_id ~ '^(0|[1-9][0-9]{0,19})$'),
+    campaign_id TEXT NOT NULL CHECK (campaign_id ~ '^(0|[1-9][0-9]{0,19})$' AND campaign_id::numeric <= 18446744073709551615),
+    payout_id TEXT NOT NULL CHECK (payout_id ~ '^(0|[1-9][0-9]{0,19})$' AND payout_id::numeric <= 18446744073709551615),
     execution_attempt_id TEXT NOT NULL,
     policy_version TEXT NOT NULL,
     policy_fingerprint CHAR(64) NOT NULL CHECK (policy_fingerprint ~ '^[a-f0-9]{64}$'),
@@ -296,7 +296,10 @@ CREATE TABLE execution_authorizations (
     quote_reference TEXT NOT NULL,
     quote_issued_at TEXT NOT NULL,
     quote_expires_at TEXT NOT NULL,
+    quote_fingerprint CHAR(64) NOT NULL CHECK (quote_fingerprint ~ '^[a-f0-9]{64}$'),
+    quote_fresh_until TEXT NOT NULL,
     quote_required_input_atomic_amount TEXT NOT NULL CHECK (quote_required_input_atomic_amount ~ '^(0|[1-9][0-9]{0,38})$'),
+    quote_minimum_output_atomic_amount TEXT NOT NULL CHECK (quote_minimum_output_atomic_amount ~ '^(0|[1-9][0-9]{0,38})$'),
     reservation_identity TEXT NOT NULL,
     reservation_observed_at_block TEXT NOT NULL CHECK (reservation_observed_at_block ~ '^(0|[1-9][0-9]{0,19})$'),
     near_network_id TEXT NOT NULL,
@@ -325,9 +328,96 @@ CREATE TABLE execution_authorizations (
 CREATE INDEX execution_authorizations_lifecycle_idx
     ON execution_authorizations (lifecycle, authorization_expires_at);
 
+CREATE FUNCTION disburse_validate_authorization_update() RETURNS trigger
+    LANGUAGE plpgsql AS $$
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        RAISE EXCEPTION 'authorization records cannot be deleted';
+    END IF;
+    IF TG_OP = 'INSERT' THEN
+        IF NEW.lifecycle <> 'Created' OR NEW.approved_at IS NOT NULL
+           OR NEW.consumed_at IS NOT NULL OR NEW.revoked_at IS NOT NULL
+           OR NEW.expired_at IS NOT NULL THEN
+            RAISE EXCEPTION 'authorizations must be inserted in Created state';
+        END IF;
+        RETURN NEW;
+    END IF;
+
+    IF ROW(
+        NEW.authorization_id, NEW.campaign_id, NEW.payout_id,
+        NEW.execution_attempt_id, NEW.policy_version, NEW.policy_fingerprint,
+        NEW.authorization_hash, NEW.provider_id, NEW.quote_reference,
+        NEW.quote_issued_at, NEW.quote_expires_at, NEW.quote_fingerprint,
+        NEW.quote_fresh_until, NEW.quote_required_input_atomic_amount,
+        NEW.quote_minimum_output_atomic_amount, NEW.reservation_identity,
+        NEW.reservation_observed_at_block, NEW.near_network_id, NEW.contract_id,
+        NEW.source_network_id, NEW.source_token_id, NEW.destination_network_id,
+        NEW.destination_token_id, NEW.recipient_address, NEW.refund_address,
+        NEW.refund_policy_fingerprint, NEW.maximum_input_atomic_amount,
+        NEW.expected_output_atomic_amount, NEW.authorized_at,
+        NEW.authorization_expires_at
+    ) IS DISTINCT FROM ROW(
+        OLD.authorization_id, OLD.campaign_id, OLD.payout_id,
+        OLD.execution_attempt_id, OLD.policy_version, OLD.policy_fingerprint,
+        OLD.authorization_hash, OLD.provider_id, OLD.quote_reference,
+        OLD.quote_issued_at, OLD.quote_expires_at, OLD.quote_fingerprint,
+        OLD.quote_fresh_until, OLD.quote_required_input_atomic_amount,
+        OLD.quote_minimum_output_atomic_amount, OLD.reservation_identity,
+        OLD.reservation_observed_at_block, OLD.near_network_id, OLD.contract_id,
+        OLD.source_network_id, OLD.source_token_id, OLD.destination_network_id,
+        OLD.destination_token_id, OLD.recipient_address, OLD.refund_address,
+        OLD.refund_policy_fingerprint, OLD.maximum_input_atomic_amount,
+        OLD.expected_output_atomic_amount, OLD.authorized_at,
+        OLD.authorization_expires_at
+    ) THEN
+        RAISE EXCEPTION 'authorization payload is immutable';
+    END IF;
+
+    IF NOT (
+        (OLD.lifecycle = 'Created' AND NEW.lifecycle IN ('Approved', 'Expired', 'Revoked'))
+        OR (OLD.lifecycle = 'Approved' AND NEW.lifecycle IN ('Consumed', 'Expired', 'Revoked'))
+    ) THEN
+        RAISE EXCEPTION 'invalid authorization lifecycle transition: % -> %', OLD.lifecycle, NEW.lifecycle;
+    END IF;
+    IF OLD.lifecycle = 'Created' AND NEW.lifecycle = 'Approved'
+       AND (NEW.approved_at IS NULL OR NEW.consumed_at IS NOT NULL
+            OR NEW.revoked_at IS NOT NULL OR NEW.expired_at IS NOT NULL) THEN
+        RAISE EXCEPTION 'approval lifecycle timestamps are inconsistent';
+    ELSIF OLD.lifecycle = 'Created' AND NEW.lifecycle = 'Expired'
+       AND (NEW.approved_at IS NOT NULL OR NEW.consumed_at IS NOT NULL
+            OR NEW.revoked_at IS NOT NULL OR NEW.expired_at IS NULL) THEN
+        RAISE EXCEPTION 'expiry lifecycle timestamps are inconsistent';
+    ELSIF OLD.lifecycle = 'Created' AND NEW.lifecycle = 'Revoked'
+       AND (NEW.approved_at IS NOT NULL OR NEW.consumed_at IS NOT NULL
+            OR NEW.expired_at IS NOT NULL OR NEW.revoked_at IS NULL) THEN
+        RAISE EXCEPTION 'revocation lifecycle timestamps are inconsistent';
+    ELSIF OLD.lifecycle = 'Approved' AND NEW.lifecycle = 'Consumed'
+       AND (NEW.approved_at IS DISTINCT FROM OLD.approved_at
+            OR NEW.consumed_at IS NULL OR NEW.revoked_at IS NOT NULL
+            OR NEW.expired_at IS NOT NULL) THEN
+        RAISE EXCEPTION 'consumption lifecycle timestamps are inconsistent';
+    ELSIF OLD.lifecycle = 'Approved' AND NEW.lifecycle = 'Expired'
+       AND (NEW.approved_at IS DISTINCT FROM OLD.approved_at
+            OR NEW.consumed_at IS NOT NULL OR NEW.revoked_at IS NOT NULL
+            OR NEW.expired_at IS NULL) THEN
+        RAISE EXCEPTION 'expiry lifecycle timestamps are inconsistent';
+    ELSIF OLD.lifecycle = 'Approved' AND NEW.lifecycle = 'Revoked'
+       AND (NEW.approved_at IS DISTINCT FROM OLD.approved_at
+            OR NEW.consumed_at IS NOT NULL OR NEW.expired_at IS NOT NULL
+            OR NEW.revoked_at IS NULL) THEN
+        RAISE EXCEPTION 'revocation lifecycle timestamps are inconsistent';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER execution_authorizations_transition_guard
+    BEFORE INSERT OR UPDATE OR DELETE ON execution_authorizations
+    FOR EACH ROW EXECUTE FUNCTION disburse_validate_authorization_update();
+
 CREATE TABLE payout_refund_policies (
-    campaign_id TEXT NOT NULL CHECK (campaign_id ~ '^(0|[1-9][0-9]{0,19})$'),
-    payout_id TEXT NOT NULL CHECK (payout_id ~ '^(0|[1-9][0-9]{0,19})$'),
+    campaign_id TEXT NOT NULL CHECK (campaign_id ~ '^(0|[1-9][0-9]{0,19})$' AND campaign_id::numeric <= 18446744073709551615),
+    payout_id TEXT NOT NULL CHECK (payout_id ~ '^(0|[1-9][0-9]{0,19})$' AND payout_id::numeric <= 18446744073709551615),
     source_network_id TEXT NOT NULL,
     source_token_id TEXT NOT NULL,
     refund_address TEXT NOT NULL,

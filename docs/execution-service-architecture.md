@@ -5,13 +5,15 @@
 Milestone 8 added provider-neutral execution boundaries, an operational state machine,
 deterministic mock adapters, and a reference PostgreSQL schema. Milestone 9 adds a read-only NEAR
 JSON-RPC client, strict event decoder, replayable event-source interface, durable single-writer
-local index, discovery processor, and contract-view reconciler. There is still no production
-event-indexer or PostgreSQL adapter, no NEAR Intents/destination-chain adapter, and no transaction
-submission. The Rust contract remains the authority for reservations, campaign accounting, payout
-state, settlement, and release.
+local index, discovery processor, and contract-view reconciler. Milestone 13.2 adds PostgreSQL
+adapters for security authorizations and payout refund policies, but there is still no production
+event indexer or job repository adapter, no configured database/migration, no destination-chain
+verification, and no transaction submission. The Rust contract remains the authority for
+reservations, campaign accounting, payout state, settlement, and release.
 
-The schema in `execution-service/sql/schema.sql` is a reference artifact. Package scripts never
-apply it, and no database was contacted.
+The schema in `execution-service/sql/schema.sql` is a reference artifact, including the security
+repository tables and lifecycle guards. Package scripts never apply it, and no database was
+contacted.
 
 ## Components
 
@@ -222,6 +224,11 @@ The reference schema separates:
 - `settlement_submission_attempts`: explicit Verifier signer, evidence reference/hash, tx hash,
   and transaction outcome.
 - `processing_errors` and `reconciliation_history`: durable error/reconciliation audit trail.
+- `execution_authorizations`: immutable authorization payload, policy/quote/reservation identities,
+  exact atomic amounts, lifecycle, and database timestamps. Conditional updates and a trigger enforce
+  allowed transitions; the adapter is in `src/persistence/postgres-security-repositories.ts`.
+- `payout_refund_policies`: payout-bound immutable policy fields and fingerprint; insert conflicts
+  cannot replace an existing approval.
 
 Use database transactions for job creation plus cursor advancement, attempt insertion plus state
 version update, and lease claim. Workers claim jobs with `SELECT ... FOR UPDATE SKIP LOCKED` or an
@@ -273,8 +280,9 @@ Future milestones before any testnet execution:
    contract listing view only after review.
 2. **NEAR contract client:** implement RPC reads, transaction status reconciliation, typed ABI
    codec, and separate Operator and Verifier signing capabilities.
-3. **PostgreSQL repository:** implement schema migrations in a controlled environment, row-lock
-   leases, cursor/job atomicity, fencing, and recovery integration tests.
+3. **PostgreSQL repositories:** review and apply the reference schema through controlled migrations,
+   connect the security repositories, then implement job/indexer persistence, row-lock leases,
+   cursor/job atomicity, fencing, and real-database concurrency/recovery tests.
 4. **NEAR Intents adapter:** research its documented request lifecycle, idempotency, lookup,
    cancellation, and evidence model before implementing any calls.
 5. **Destination-chain verification:** independent RPC/indexer sources, finality/reorg policy,
