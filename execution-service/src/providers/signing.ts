@@ -490,7 +490,7 @@ export function hashExecutionAuthorization(
     Object.fromEntries(
       Object.entries(authorization)
         .filter(([key]) => !excluded.has(key))
-        .sort(([left], [right]) => left.localeCompare(right)),
+        .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0)),
     ),
   );
   return createHash("sha256").update(payload, "utf8").digest("hex");
