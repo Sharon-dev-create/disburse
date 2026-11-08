@@ -23,7 +23,10 @@ export interface RefundPolicyValidation {
 
 export interface RefundPolicyRepository {
   approve(policy: RefundPolicy): Promise<ApprovedRefundPolicy>;
-  get(campaignId: string, payoutId: string): Promise<ApprovedRefundPolicy | null>;
+  get(
+    campaignId: string,
+    payoutId: string,
+  ): Promise<ApprovedRefundPolicy | null>;
 }
 
 export interface RefundPolicyMemoryState {
@@ -44,13 +47,19 @@ export class InMemoryRefundPolicyRepository implements RefundPolicyRepository {
 
   async approve(policy: RefundPolicy): Promise<ApprovedRefundPolicy> {
     const validation = validateRefundPolicy(policy);
-    if (!validation.valid) throw new Error(`Invalid refund policy: ${validation.errors.join(", ")}`);
+    if (!validation.valid)
+      throw new Error(`Invalid refund policy: ${validation.errors.join(", ")}`);
     const key = refundPolicyKey(policy.campaignId, policy.payoutId);
     const existing = this.state.policies.get(key);
-    const approved = Object.freeze({ ...policy, fingerprint: fingerprintRefundPolicy(policy) });
+    const approved = Object.freeze({
+      ...policy,
+      fingerprint: fingerprintRefundPolicy(policy),
+    });
     if (existing) {
       if (!sameApprovedRefundPolicy(existing, approved)) {
-        throw new Error("Refund policy already approved; replacement requires a separate revocation workflow");
+        throw new Error(
+          "Refund policy already approved; replacement requires a separate revocation workflow",
+        );
       }
       return Object.freeze({ ...existing });
     }
@@ -58,26 +67,49 @@ export class InMemoryRefundPolicyRepository implements RefundPolicyRepository {
     return Object.freeze({ ...approved });
   }
 
-  async get(campaignId: string, payoutId: string): Promise<ApprovedRefundPolicy | null> {
-    const policy = this.state.policies.get(refundPolicyKey(campaignId, payoutId));
+  async get(
+    campaignId: string,
+    payoutId: string,
+  ): Promise<ApprovedRefundPolicy | null> {
+    const policy = this.state.policies.get(
+      refundPolicyKey(campaignId, payoutId),
+    );
     return policy ? Object.freeze({ ...policy }) : null;
   }
 }
 
-export function validateRefundPolicy(policy: RefundPolicy): RefundPolicyValidation {
+export function validateRefundPolicy(
+  policy: RefundPolicy,
+): RefundPolicyValidation {
   const errors: string[] = [];
-  if (!isU64(policy.campaignId)) errors.push("campaignId must be a canonical unsigned u64 string");
-  if (!isU64(policy.payoutId)) errors.push("payoutId must be a canonical unsigned u64 string");
-  if (getSupportedNetwork(policy.sourceNetworkId) === null) errors.push("sourceNetworkId is unsupported or non-canonical");
-  if (typeof policy.sourceTokenId !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/.test(policy.sourceTokenId)) {
+  if (!isU64(policy.campaignId))
+    errors.push("campaignId must be a canonical unsigned u64 string");
+  if (!isU64(policy.payoutId))
+    errors.push("payoutId must be a canonical unsigned u64 string");
+  if (getSupportedNetwork(policy.sourceNetworkId) === null)
+    errors.push("sourceNetworkId is unsupported or non-canonical");
+  if (
+    typeof policy.sourceTokenId !== "string" ||
+    !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/.test(policy.sourceTokenId)
+  ) {
     errors.push("sourceTokenId must be a bounded canonical token identifier");
   }
-  const recipient = validateRecipient(policy.sourceNetworkId, policy.refundAddress);
-  if (!recipient.valid) errors.push(`refundAddress is invalid: ${recipient.reason ?? recipient.code}`);
-  if (typeof policy.policyVersion !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(policy.policyVersion)) {
+  const recipient = validateRecipient(
+    policy.sourceNetworkId,
+    policy.refundAddress,
+  );
+  if (!recipient.valid)
+    errors.push(
+      `refundAddress is invalid: ${recipient.reason ?? recipient.code}`,
+    );
+  if (
+    typeof policy.policyVersion !== "string" ||
+    !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(policy.policyVersion)
+  ) {
     errors.push("policyVersion must be a bounded identifier");
   }
-  if (!isCanonicalTimestamp(policy.approvedAt)) errors.push("approvedAt must be an explicit canonical UTC ISO timestamp");
+  if (!isCanonicalTimestamp(policy.approvedAt))
+    errors.push("approvedAt must be an explicit canonical UTC ISO timestamp");
   return { valid: errors.length === 0, errors };
 }
 
@@ -95,22 +127,41 @@ export function canonicalizeRefundPolicy(policy: RefundPolicy): string {
 }
 
 export function fingerprintRefundPolicy(policy: RefundPolicy): string {
-  return createHash("sha256").update(canonicalizeRefundPolicy(policy), "utf8").digest("hex");
+  return createHash("sha256")
+    .update(canonicalizeRefundPolicy(policy), "utf8")
+    .digest("hex");
 }
 
-export function sameRefundPolicy(left: RefundPolicy, right: RefundPolicy): boolean {
+export function sameRefundPolicy(
+  left: RefundPolicy,
+  right: RefundPolicy,
+): boolean {
   return canonicalizeRefundPolicy(left) === canonicalizeRefundPolicy(right);
 }
 
-export function sameApprovedRefundPolicy(left: ApprovedRefundPolicy, right: ApprovedRefundPolicy): boolean {
-  return left.fingerprint === right.fingerprint && sameRefundPolicy(left, right);
+export function sameApprovedRefundPolicy(
+  left: ApprovedRefundPolicy,
+  right: ApprovedRefundPolicy,
+): boolean {
+  return (
+    left.fingerprint === right.fingerprint && sameRefundPolicy(left, right)
+  );
 }
 
-export function bindRefundPolicy(desired: RefundPolicy, approved: ApprovedRefundPolicy): ApprovedRefundPolicy {
+export function bindRefundPolicy(
+  desired: RefundPolicy,
+  approved: ApprovedRefundPolicy,
+): ApprovedRefundPolicy {
   const validation = validateRefundPolicy(desired);
-  if (!validation.valid) throw new Error(`Invalid refund policy: ${validation.errors.join(", ")}`);
-  if (!sameRefundPolicy(desired, approved) || fingerprintRefundPolicy(approved) !== approved.fingerprint) {
-    throw new Error("Refund policy mismatch or integrity failure: every approved field must match");
+  if (!validation.valid)
+    throw new Error(`Invalid refund policy: ${validation.errors.join(", ")}`);
+  if (
+    !sameRefundPolicy(desired, approved) ||
+    fingerprintRefundPolicy(approved) !== approved.fingerprint
+  ) {
+    throw new Error(
+      "Refund policy mismatch or integrity failure: every approved field must match",
+    );
   }
   return Object.freeze({ ...approved });
 }
@@ -119,8 +170,14 @@ export function assertProviderRefundDestination(
   approved: ApprovedRefundPolicy,
   providerRefundAddress: string | null | undefined,
 ): void {
-  if (providerRefundAddress !== undefined && providerRefundAddress !== null && providerRefundAddress !== approved.refundAddress) {
-    throw new Error("Provider response refund destination differs from the approved payout policy");
+  if (
+    providerRefundAddress !== undefined &&
+    providerRefundAddress !== null &&
+    providerRefundAddress !== approved.refundAddress
+  ) {
+    throw new Error(
+      "Provider response refund destination differs from the approved payout policy",
+    );
   }
 }
 
@@ -133,7 +190,11 @@ function isU64(value: string): boolean {
 }
 
 function isCanonicalTimestamp(value: string): boolean {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) return false;
+  if (
+    typeof value !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)
+  )
+    return false;
   const millis = Date.parse(value);
   return Number.isFinite(millis) && new Date(millis).toISOString() === value;
 }

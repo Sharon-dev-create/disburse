@@ -51,6 +51,8 @@ export const SUPPORTED_NETWORKS: Readonly<Record<string, SupportedNetwork>> =
     }),
   });
 
-export function getSupportedNetwork(networkId: string): SupportedNetwork | null {
+export function getSupportedNetwork(
+  networkId: string,
+): SupportedNetwork | null {
   return SUPPORTED_NETWORKS[networkId] ?? null;
 }

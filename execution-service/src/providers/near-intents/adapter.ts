@@ -90,7 +90,10 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
       );
     }
     if (!/^[A-Za-z0-9._:-]{1,128}$/.test(intent.executionAttemptId)) {
-      throw invalid("execution-attempt", "A payout-bound execution attempt ID is required");
+      throw invalid(
+        "execution-attempt",
+        "A payout-bound execution attempt ID is required",
+      );
     }
     const deadlineMs = Date.parse(intent.deadline);
     if (!Number.isFinite(deadlineMs) || deadlineMs <= this.now()) {
