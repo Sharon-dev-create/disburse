@@ -37,7 +37,7 @@ void test("recipient validation fails closed on malformed or unsupported destina
   assert.equal(validateRecipient("eth:mainnet", "0x0000000000000000000000000000000000000000").valid, false);
   assert.equal(validateRecipient("eth:mainnet", "0x1234").valid, false);
   assert.equal(validateRecipient("chain:other", "0x1234").valid, false);
-  assert.equal(validateRecipient("eth:mainnet", "0xAbCdEf0123456789ABcdEf0123456789aBcDeF").valid, true);
+  assert.equal(validateRecipient("eth:mainnet", "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed").valid, true);
 });
 
 void test("execution signing enforces spending limits and payout binding", () => {
