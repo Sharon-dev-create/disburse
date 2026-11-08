@@ -68,21 +68,8 @@ void test("PostgreSQL authorization adapter persists exact fields and survives r
   const persistedLarge = await repository.create(largeAuthorization);
   assert.equal(persistedLarge.maximumInputAtomicAmount, largeAmount);
   assert.equal(persistedLarge.quoteRequiredInputAtomicAmount, largeAmount);
-  database.corruptAuthorizationField(
-    authorization.authorizationId,
-    "recipient_address",
-    "attacker.near",
-  );
-  await assert.rejects(
-    afterRestart.get(authorization.authorizationId),
-    /integrity hash mismatch/,
-  );
-
   const afterRestart = new PostgresAuthorizationRepository(database.query);
-  assert.equal(
-    (await afterRestart.create(authorization)).lifecycle,
-    "Created",
-  );
+  assert.equal((await afterRestart.create(authorization)).lifecycle, "Created");
   assert.equal(
     (await afterRestart.get(authorization.authorizationId))?.authorizationHash,
     authorization.authorizationHash,
@@ -95,6 +82,15 @@ void test("PostgreSQL authorization adapter persists exact fields and survives r
   await assert.rejects(
     afterRestart.create({ ...authorization, payoutId: "100" }),
     /integrity/,
+  );
+  database.corruptAuthorizationField(
+    authorization.authorizationId,
+    "recipient_address",
+    "attacker.near",
+  );
+  await assert.rejects(
+    afterRestart.get(authorization.authorizationId),
+    /integrity hash mismatch/,
   );
 });
 
@@ -206,10 +202,19 @@ void test("PostgreSQL adapter expires records by database time and keeps termina
 });
 
 void test("reference schema declares atomic lifecycle and immutable-record database guards", async () => {
-  const schema = await readFile(new URL("../sql/schema.sql", import.meta.url), "utf8");
-  assert.match(schema, /UNIQUE \(campaign_id, payout_id, execution_attempt_id\)/);
+  const schema = await readFile(
+    new URL("../sql/schema.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    schema,
+    /UNIQUE \(campaign_id, payout_id, execution_attempt_id\)/,
+  );
   assert.match(schema, /CHECK \(authorization_expires_at > authorized_at\)/);
-  assert.match(schema, /BEFORE INSERT OR UPDATE OR DELETE ON execution_authorizations/);
+  assert.match(
+    schema,
+    /BEFORE INSERT OR UPDATE OR DELETE ON execution_authorizations/,
+  );
   assert.match(schema, /authorization payload is immutable/);
   assert.match(schema, /invalid authorization lifecycle transition/);
   assert.match(schema, /BEFORE UPDATE OR DELETE ON payout_refund_policies/);
