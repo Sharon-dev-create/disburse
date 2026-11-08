@@ -280,3 +280,72 @@ CREATE TABLE near_reconciliation_history (
     details JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Milestone 13.2 security repositories. Reference DDL only; this file is not a migration.
+-- Application code uses conditional UPDATE ... WHERE lifecycle = ... RETURNING statements so
+-- PostgreSQL row-level update locking admits only one competing lifecycle transition.
+CREATE TABLE execution_authorizations (
+    authorization_id TEXT PRIMARY KEY,
+    campaign_id TEXT NOT NULL CHECK (campaign_id ~ '^(0|[1-9][0-9]{0,19})$'),
+    payout_id TEXT NOT NULL CHECK (payout_id ~ '^(0|[1-9][0-9]{0,19})$'),
+    execution_attempt_id TEXT NOT NULL,
+    policy_version TEXT NOT NULL,
+    policy_fingerprint CHAR(64) NOT NULL CHECK (policy_fingerprint ~ '^[a-f0-9]{64}$'),
+    authorization_hash CHAR(64) NOT NULL CHECK (authorization_hash ~ '^[a-f0-9]{64}$'),
+    provider_id TEXT NOT NULL,
+    quote_reference TEXT NOT NULL,
+    quote_issued_at TEXT NOT NULL,
+    quote_expires_at TEXT NOT NULL,
+    quote_required_input_atomic_amount TEXT NOT NULL CHECK (quote_required_input_atomic_amount ~ '^(0|[1-9][0-9]{0,38})$'),
+    reservation_identity TEXT NOT NULL,
+    reservation_observed_at_block TEXT NOT NULL CHECK (reservation_observed_at_block ~ '^(0|[1-9][0-9]{0,19})$'),
+    near_network_id TEXT NOT NULL,
+    contract_id TEXT NOT NULL,
+    source_network_id TEXT NOT NULL,
+    source_token_id TEXT NOT NULL,
+    destination_network_id TEXT NOT NULL,
+    destination_token_id TEXT NOT NULL,
+    recipient_address TEXT NOT NULL,
+    refund_address TEXT NOT NULL,
+    refund_policy_fingerprint CHAR(64) NOT NULL CHECK (refund_policy_fingerprint ~ '^[a-f0-9]{64}$'),
+    maximum_input_atomic_amount TEXT NOT NULL CHECK (maximum_input_atomic_amount ~ '^(0|[1-9][0-9]{0,38})$'),
+    expected_output_atomic_amount TEXT NOT NULL CHECK (expected_output_atomic_amount ~ '^(0|[1-9][0-9]{0,38})$'),
+    authorized_at TIMESTAMPTZ NOT NULL,
+    authorization_expires_at TIMESTAMPTZ NOT NULL,
+    lifecycle TEXT NOT NULL CHECK (lifecycle IN ('Created', 'Approved', 'Consumed', 'Expired', 'Revoked')),
+    approved_at TIMESTAMPTZ,
+    consumed_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
+    expired_at TIMESTAMPTZ,
+    CHECK (authorization_expires_at > authorized_at),
+    CHECK (authorization_id = 'auth:' || campaign_id || ':' || payout_id || ':' || execution_attempt_id),
+    UNIQUE (campaign_id, payout_id, execution_attempt_id)
+);
+
+CREATE INDEX execution_authorizations_lifecycle_idx
+    ON execution_authorizations (lifecycle, authorization_expires_at);
+
+CREATE TABLE payout_refund_policies (
+    campaign_id TEXT NOT NULL CHECK (campaign_id ~ '^(0|[1-9][0-9]{0,19})$'),
+    payout_id TEXT NOT NULL CHECK (payout_id ~ '^(0|[1-9][0-9]{0,19})$'),
+    source_network_id TEXT NOT NULL,
+    source_token_id TEXT NOT NULL,
+    refund_address TEXT NOT NULL,
+    policy_version TEXT NOT NULL,
+    approved_at TIMESTAMPTZ NOT NULL,
+    approved_at_iso TEXT NOT NULL,
+    policy_fingerprint CHAR(64) NOT NULL CHECK (policy_fingerprint ~ '^[a-f0-9]{64}$'),
+    PRIMARY KEY (campaign_id, payout_id),
+    UNIQUE (campaign_id, payout_id, policy_fingerprint)
+);
+
+CREATE FUNCTION disburse_deny_refund_policy_mutation() RETURNS trigger
+    LANGUAGE plpgsql AS $$
+BEGIN
+    RAISE EXCEPTION 'approved payout refund policies are immutable';
+END;
+$$;
+
+CREATE TRIGGER payout_refund_policies_immutable
+    BEFORE UPDATE OR DELETE ON payout_refund_policies
+    FOR EACH ROW EXECUTE FUNCTION disburse_deny_refund_policy_mutation();

@@ -527,16 +527,26 @@ void test("authorization consumption is single-use, atomic in-process, revocable
   const policy = signingPolicy();
   const reservation = reservationSnapshot();
   const quote = opportunity();
-  const auth = authorizeExecution(
+  const auth = createExecutionAuthorization(
     request,
     policy,
     reservation,
     quote,
     now,
-  ).authorization!;
-  assert.deepEqual(await repo1.createApproved(auth), auth);
+  );
+  const created = await repo1.create(auth);
+  assert.equal(created.lifecycle, "Created");
+  assert.equal(created.approvedAt, null);
+  assert.equal(
+    (await repo1.getByCampaignPayoutAttempt("42", "99", "attempt-1"))
+      ?.authorizationId,
+    auth.authorizationId,
+  );
+  const approved = await repo1.approve(auth.authorizationId, now);
+  assert.equal(approved.lifecycle, "Approved");
+  assert.equal(approved.approvedAt, new Date(now).toISOString());
   await assert.rejects(
-    repo1.createApproved({ ...auth, recipientAddress: "attacker" }),
+    repo1.create({ ...auth, recipientAddress: "attacker" }),
     /integrity/,
   );
   const repoAfterRestart = new InMemoryAuthorizationRepository(state);
@@ -582,7 +592,7 @@ void test("authorization consumption is single-use, atomic in-process, revocable
     /Consumed/,
   );
 
-  const revokeAuth = authorizeExecution(
+  const revokeAuth = createExecutionAuthorization(
     { ...request, executionAttemptId: "attempt-2" },
     policy,
     reservation,
@@ -595,8 +605,12 @@ void test("authorization consumption is single-use, atomic in-process, revocable
     },
     now,
   ).authorization!;
-  await repo1.createApproved(revokeAuth);
-  await repo1.revoke(revokeAuth.authorizationId);
+  await repo1.create(revokeAuth);
+  await repo1.approve(revokeAuth.authorizationId, now);
+  assert.equal(
+    (await repo1.revoke(revokeAuth.authorizationId, now)).revokedAt,
+    new Date(now).toISOString(),
+  );
   await assert.rejects(
     repo1.consume(
       revokeAuth.authorizationId,
@@ -623,14 +637,15 @@ void test("authorization consumption is single-use, atomic in-process, revocable
       executionAttemptId: "attempt-expire",
     },
   };
-  const expiring = authorizeExecution(
+  const expiring = createExecutionAuthorization(
     expiringRequest,
     policy,
     reservation,
     expiringQuote,
     now,
   ).authorization!;
-  await repo1.createApproved(expiring);
+  await repo1.create(expiring);
+  await repo1.approve(expiring.authorizationId, now);
   await assert.rejects(
     repo1.expire(expiring.authorizationId, now),
     /not expired/,
