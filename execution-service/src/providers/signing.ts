@@ -19,6 +19,8 @@ export interface SigningPolicy extends SpendingLimit {
   readonly requireFreshQuote: boolean;
   /** Required and positive if freshness is enabled; must be null if disabled. */
   readonly maxQuoteAgeMs: number | null;
+  /** Independent lifetime for authorization records. */
+  readonly authorizationTtlMs: number;
 }
 
 export interface PayoutReservationSnapshot {
@@ -69,6 +71,7 @@ export interface ExecutionAuthorization extends SigningRequest {
   readonly quoteExpiresAt: string;
   readonly quoteRequiredInputAtomicAmount: string;
   readonly authorizedAt: string;
+  readonly authorizationExpiresAt: string;
   readonly authorizationHash: string;
   readonly lifecycle: AuthorizationLifecycle;
 }
@@ -110,6 +113,7 @@ export interface AuthorizationRepository {
     nowMs: number,
   ): Promise<ExecutionAuthorization>;
   revoke(authorizationId: string): Promise<void>;
+  expire(authorizationId: string, nowMs: number): Promise<void>;
 }
 
 export interface AuthorizationMemoryState {
@@ -198,6 +202,19 @@ export class InMemoryAuthorizationRepository implements AuthorizationRepository 
       Object.freeze({ ...current, lifecycle: "Revoked" }),
     );
   }
+
+  async expire(authorizationId: string, nowMs: number): Promise<void> {
+    const current = this.state.records.get(authorizationId);
+    if (!current) throw new Error("Authorization does not exist");
+    if (current.lifecycle !== "Approved")
+      throw new Error(`Authorization is ${current.lifecycle} and cannot expire`);
+    if (nowMs < Date.parse(current.authorizationExpiresAt))
+      throw new Error("Authorization has not expired");
+    this.state.records.set(
+      authorizationId,
+      Object.freeze({ ...current, lifecycle: "Expired" }),
+    );
+  }
 }
 
 export class DeterministicMockSigner implements Signer {
@@ -236,14 +253,18 @@ export function authorizeExecution(
 ): SigningDecision {
   try {
     validateAuthorizationInputs(request, policy, reservation, quote, nowMs);
-    const authorization = createExecutionAuthorization(
+    const created = createExecutionAuthorization(
       request,
       policy,
       reservation,
       quote,
       nowMs,
     );
-    return { approved: true, reason: null, authorization };
+    return {
+      approved: true,
+      reason: null,
+      authorization: approveExecutionAuthorization(created),
+    };
   } catch (error) {
     return {
       approved: false,
@@ -273,14 +294,14 @@ export function createExecutionAuthorization(
     quoteExpiresAt: quote.expiresAt ?? "",
     quoteRequiredInputAtomicAmount: quote.quotedInputAtomicAmount,
     authorizedAt: new Date(nowMs).toISOString(),
+    authorizationExpiresAt: authorizationExpiry(policy, quote, nowMs),
     authorizationHash: "",
     lifecycle: "Created",
   };
-  const created = Object.freeze({
+  return Object.freeze({
     ...unsigned,
     authorizationHash: hashExecutionAuthorization(unsigned),
   });
-  return approveExecutionAuthorization(created);
 }
 
 export function approveExecutionAuthorization(
@@ -306,6 +327,7 @@ export function fingerprintSigningPolicy(policy: SigningPolicy): string {
     policy.approvedRefundPolicyFingerprint,
     policy.requireFreshQuote,
     policy.maxQuoteAgeMs,
+    policy.authorizationTtlMs,
   ]);
   return createHash("sha256").update(canonical, "utf8").digest("hex");
 }
@@ -346,6 +368,8 @@ export function verifyExecutionAuthorization(
   validateAuthorizationInputs(request, policy, reservation, quote, nowMs);
   if (authorization.lifecycle !== "Approved")
     throw new Error("Authorization is not in Approved state");
+  if (nowMs >= Date.parse(authorization.authorizationExpiresAt))
+    throw new Error("Authorization has expired");
   const expected = createExecutionAuthorization(
     request,
     policy,
@@ -375,7 +399,29 @@ export function reservationIdentity(
     reservation.payoutId,
     reservation.inputTokenId,
     canonicalAtomic(reservation.inputAtomicAmount),
+    reservation.status,
+    canonicalAtomic(reservation.campaignReservedAtomicAmount),
+    reservation.expectedOutputTokenId,
+    canonicalAtomic(reservation.expectedOutputAtomicAmount),
+    reservation.destinationNetworkId,
+    reservation.recipientAddress,
+    reservation.observedAtBlock,
   ]);
+}
+
+function authorizationExpiry(
+  policy: SigningPolicy,
+  quote: ExecutionOpportunity,
+  nowMs: number,
+): string {
+  const policyExpiry = nowMs + policy.authorizationTtlMs;
+  if (!Number.isSafeInteger(policyExpiry))
+    throw new Error("Authorization expiry exceeds the supported timestamp range");
+  if (quote.expiresAt === null) return new Date(policyExpiry).toISOString();
+  const quoteExpiry = Date.parse(quote.expiresAt);
+  if (!Number.isFinite(quoteExpiry) || quoteExpiry <= nowMs)
+    throw new Error("Quote expiry is invalid or already elapsed");
+  return new Date(Math.min(policyExpiry, quoteExpiry)).toISOString();
 }
 
 function validateAuthorizationInputs(
@@ -461,12 +507,19 @@ function validateAuthorizationInputs(
     throw new Error("Quote-required input exceeds approved input cap");
   if (BigInt(quoteRequiredInput) > BigInt(reservationInput))
     throw new Error("Quote-required input exceeds payout reservation");
+  if (BigInt(inputCap) === 0n || BigInt(quoteRequiredInput) === 0n)
+    throw new Error("Payout input and quote-required input must be positive");
   if (
     quoteOutput !== requestOutput ||
     quoteOutput !== canonicalAtomic(reservation.expectedOutputAtomicAmount) ||
     quote.destinationTokenId !== reservation.expectedOutputTokenId
   )
     throw new Error("Exact output differs from payout authorization");
+  if (
+    quote.minimumOutputAtomicAmount === null ||
+    BigInt(canonicalAtomic(quote.minimumOutputAtomicAmount)) < BigInt(quoteOutput)
+  )
+    throw new Error("Quote minimum output is below the exact payout amount");
   assertReservationMatches(request, reservation);
   if (policy.requireFreshQuote) validateQuoteFreshness(policy, quote, nowMs);
   else if (policy.maxQuoteAgeMs !== null)
@@ -506,6 +559,11 @@ function validatePolicy(policy: SigningPolicy): void {
     throw new Error(
       "All policy asset and network allowlists must be non-empty",
     );
+  if (
+    !Number.isSafeInteger(policy.authorizationTtlMs) ||
+    policy.authorizationTtlMs <= 0
+  )
+    throw new Error("Authorization TTL must be a positive safe integer");
   if (
     policy.requireFreshQuote &&
     (!Number.isInteger(policy.maxQuoteAgeMs) ||

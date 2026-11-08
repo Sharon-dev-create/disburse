@@ -14,6 +14,8 @@ import { validateRecipient } from "../src/providers/recipient.ts";
 import { SUPPORTED_NETWORKS } from "../src/providers/networks.ts";
 import {
   authorizeExecution,
+  approveExecutionAuthorization,
+  createExecutionAuthorization,
   fingerprintSigningPolicy,
   hashExecutionAuthorization,
   InMemoryAuthorizationRepository,
@@ -207,6 +209,7 @@ void test("signing policy fingerprint covers all policy fields and sorts allowli
     { approvedRefundPolicyFingerprint: "b".repeat(64) },
     { requireFreshQuote: false, maxQuoteAgeMs: null },
     { maxQuoteAgeMs: 20_000 },
+    { authorizationTtlMs: 10_000 },
     { policyVersion: "v2" },
   ];
   for (const mutation of mutations)
@@ -236,6 +239,13 @@ void test("authorization binds exact payout reservation, quote, attempt, route, 
       "99",
       "token:near-usdc",
       "4000",
+      "Reserved",
+      "4000",
+      "token:eth-usdc",
+      "300",
+      "eip155:1",
+      evmLower,
+      "1234",
     ]),
   );
   verifyExecutionAuthorization(auth, request, policy, reservation, quote, now);
@@ -248,7 +258,7 @@ void test("authorization binds exact payout reservation, quote, attempt, route, 
       quote,
       now,
     ).approved,
-    true,
+    false,
   );
   assert.equal(
     authorizeExecution(
@@ -422,6 +432,9 @@ void test("authorization hash tampering, policy mutation and cross-payout reuse 
     quote,
     now,
   ).authorization!;
+  const created = createExecutionAuthorization(request, policy, reservation, quote, now);
+  assert.equal(created.lifecycle, "Created");
+  assert.equal(approveExecutionAuthorization(created).lifecycle, "Approved");
   const changed = {
     ...auth,
     recipientAddress: "0x0000000000000000000000000000000000000001",
@@ -595,6 +608,46 @@ void test("authorization consumption is single-use, atomic in-process, revocable
     ),
     /Revoked/,
   );
+
+  const expiringRequest = { ...request, executionAttemptId: "attempt-expire" };
+  const expiringQuote = {
+    ...quote,
+    providerMetadata: {
+      ...quote.providerMetadata,
+      executionAttemptId: "attempt-expire",
+    },
+  };
+  const expiring = authorizeExecution(
+    expiringRequest,
+    policy,
+    reservation,
+    expiringQuote,
+    now,
+  ).authorization!;
+  await repo1.createApproved(expiring);
+  await assert.rejects(
+    repo1.expire(expiring.authorizationId, now),
+    /not expired/,
+  );
+  await repo1.expire(
+    expiring.authorizationId,
+    now + policy.authorizationTtlMs,
+  );
+  assert.equal(
+    (await repo1.get(expiring.authorizationId))?.lifecycle,
+    "Expired",
+  );
+  await assert.rejects(
+    repo1.consume(
+      expiring.authorizationId,
+      expiringRequest,
+      policy,
+      reservation,
+      expiringQuote,
+      now + policy.authorizationTtlMs,
+    ),
+    /Expired/,
+  );
 });
 
 void test("large atomic amounts remain exact and invalid authorization does not mutate contract accounting", () => {
@@ -639,6 +692,7 @@ function signingPolicy(): SigningPolicy {
     policyVersion: "sign-v1",
     requireFreshQuote: true,
     maxQuoteAgeMs: 30_000,
+    authorizationTtlMs: 45_000,
     maxInputAtomicAmount: "5000",
     allowedSourceNetworks: ["near:mainnet"],
     allowedSourceTokens: ["token:near-usdc"],
