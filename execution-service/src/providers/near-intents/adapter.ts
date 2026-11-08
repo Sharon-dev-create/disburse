@@ -6,6 +6,8 @@ import type {
 } from "../quote.ts";
 import { NearIntentsError, type NearIntentsClient } from "./client.ts";
 import { getSupportedNetwork } from "../networks.ts";
+import { bindRefundPolicy } from "../refund.ts";
+import { validateRecipient } from "../recipient.ts";
 
 export interface NearIntentsAssetMapping {
   readonly assetId: string;
@@ -83,11 +85,12 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
     validateAmount(intent.expectedOutput.atomicAmount, "expected output");
     validateTokenAmount(intent.input);
     validateTokenAmount(intent.expectedOutput);
-    if (!intent.recipientAddress.trim() || !intent.refundAddress.trim()) {
-      throw invalid(
-        "missing-address",
-        "Recipient and origin refund address are required",
-      );
+    const refundPolicy = bindRefundPolicy(intent.refundPolicy, intent.refundPolicy);
+    if (refundPolicy.campaignId !== intent.campaignId || refundPolicy.payoutId !== intent.payoutId || refundPolicy.sourceNetworkId !== intent.sourceNetworkId || refundPolicy.sourceTokenId !== intent.input.tokenId) {
+      throw invalid("refund-policy-binding", "Approved refund policy does not belong to this campaign, payout, source network, and token");
+    }
+    if (!validateRecipient(intent.destinationNetworkId, intent.recipientAddress).valid) {
+      throw invalid("invalid-recipient", "Payout recipient is invalid for the configured destination network");
     }
     if (!/^[A-Za-z0-9._:-]{1,128}$/.test(intent.executionAttemptId)) {
       throw invalid(
@@ -154,7 +157,7 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
       depositType: "ORIGIN_CHAIN" as const,
       destinationAsset: destination.assetId,
       amount: intent.expectedOutput.atomicAmount,
-      refundTo: intent.refundAddress,
+      refundTo: refundPolicy.refundAddress,
       refundType: "ORIGIN_CHAIN" as const,
       recipient: intent.recipientAddress,
       recipientType: "DESTINATION_CHAIN" as const,
@@ -215,7 +218,7 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
       "DESTINATION_CHAIN",
       "echoed recipient type",
     );
-    assertEqual(echo.refundTo, intent.refundAddress, "echoed refund address");
+    assertEqual(echo.refundTo, refundPolicy.refundAddress, "echoed refund address");
     assertEqual(echo.refundType, "ORIGIN_CHAIN", "echoed refund type");
     assertEqual(echo.deadline, intent.deadline, "echoed deadline");
 

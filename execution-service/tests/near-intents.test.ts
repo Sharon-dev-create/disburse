@@ -10,6 +10,7 @@ import {
   NearIntentsQuoteAdapter,
   type NearIntentsAdapterConfig,
 } from "../src/providers/near-intents/adapter.ts";
+import { fingerprintRefundPolicy } from "../src/providers/refund.ts";
 import {
   canTransitionQuote,
   isFreshQuote,
@@ -140,7 +141,7 @@ void test("valid exact-output quote maps to provider-neutral opportunity using a
   assert.equal(opportunity.maximumInputAtomicAmount, null);
   assert.equal(opportunity.expectedOutputAtomicAmount, "300");
   assert.equal(opportunity.minimumOutputAtomicAmount, "300");
-  assert.equal(opportunity.recipientAddress, "alice.destination");
+  assert.equal(opportunity.recipientAddress, "0x52908400098527886e0f7030069857d2e4169ee7");
   assert.equal(opportunity.quoteReference, "quote-reference-1");
   assert.equal(
     opportunity.providerMetadata.quoteSignature,
@@ -218,7 +219,7 @@ void test("rejects missing IDs, invalid amounts, bad metadata, unsupported route
 
   const baseIntent = intent();
   const unknownNetwork = { ...baseIntent, destinationNetworkId: "chain:other" };
-  await assert.rejects(adapter().quote(unknownNetwork), /not configured/);
+  await assert.rejects(adapter().quote(unknownNetwork), /unsupported or conflicting/);
 
   const badDecimals = {
     ...baseIntent,
@@ -302,18 +303,32 @@ function adapter(
 }
 
 function intent(): QuoteIntent {
+  const refundPolicy = {
+    campaignId: "42",
+    payoutId: "99",
+    sourceNetworkId: "near:mainnet",
+    sourceTokenId: "token:near-usdc",
+    refundAddress: "treasury.near",
+    policyVersion: "refund-v1",
+    approvedAt: "2026-11-07T12:00:00.000Z",
+  };
   return {
+    campaignId: "42",
+    payoutId: "99",
     executionAttemptId: "attempt-1",
     sourceNetworkId: "near:mainnet",
     input: { tokenId: "token:near-usdc", atomicAmount: "1000", decimals: 6 },
     destinationNetworkId: "eip155:1",
-    recipientAddress: "alice.destination",
+    recipientAddress: "0x52908400098527886e0f7030069857d2e4169ee7",
     expectedOutput: {
       tokenId: "token:eth-usdc",
       atomicAmount: "300",
       decimals: 6,
     },
-    refundAddress: "treasury.near",
+    refundPolicy: {
+      ...refundPolicy,
+      fingerprint: fingerprintRefundPolicy(refundPolicy),
+    },
     deadline: "2026-11-07T12:10:00.000Z",
   };
 }
@@ -329,7 +344,7 @@ function request(): NearIntentsQuoteRequest {
     amount: "300",
     refundTo: "treasury.near",
     refundType: "ORIGIN_CHAIN",
-    recipient: "alice.destination",
+    recipient: "0x52908400098527886e0f7030069857d2e4169ee7",
     recipientType: "DESTINATION_CHAIN",
     deadline: "2026-11-07T12:10:00.000Z",
   };

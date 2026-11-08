@@ -313,14 +313,10 @@ export function fingerprintSigningPolicy(policy: SigningPolicy): string {
 export function hashExecutionAuthorization(
   authorization: ExecutionAuthorization,
 ): string {
-  const {
-    authorizationHash: _hash,
-    lifecycle: _lifecycle,
-    ...payload
-  } = authorization;
-  return createHash("sha256")
-    .update(JSON.stringify(payload), "utf8")
-    .digest("hex");
+  const payload = JSON.stringify(authorization, (key, value: unknown) =>
+    key === "authorizationHash" || key === "lifecycle" ? undefined : value,
+  );
+  return createHash("sha256").update(payload, "utf8").digest("hex");
 }
 
 export function verifyAuthorizationHash(
@@ -344,11 +340,12 @@ export function verifyExecutionAuthorization(
   nowMs: number,
 ): void {
   verifyAuthorizationHash(authorization);
+  if (authorization.policyFingerprint !== fingerprintSigningPolicy(policy)) {
+    throw new Error("Signing policy fingerprint changed");
+  }
   validateAuthorizationInputs(request, policy, reservation, quote, nowMs);
   if (authorization.lifecycle !== "Approved")
     throw new Error("Authorization is not in Approved state");
-  if (authorization.policyFingerprint !== fingerprintSigningPolicy(policy))
-    throw new Error("Signing policy fingerprint changed");
   const expected = createExecutionAuthorization(
     request,
     policy,

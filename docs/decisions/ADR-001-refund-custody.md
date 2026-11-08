@@ -1,17 +1,15 @@
-# ADR-001: Refund custody model
+# ADR-001: Payout-bound refund custody
 
-Status: Accepted
-
-## Context
-
-Disburse must keep refund destinations bound to an authorized payout before any provider interaction. Without a payout-bound policy, a provider or worker could redirect refunds to an unintended address.
+Status: Accepted for service policy; production persistence is blocked.
 
 ## Decision
 
-A refund policy is stored as a payout-specific object containing campaign, payout, source-network, source-token, and refund-address details. The policy is required to match the approved payout before an execution attempt can proceed.
+Require an approved refund policy specific to one campaign and payout, bound to source network/token, destination, version and canonical UTC approval timestamp. The 1Click quote adapter receives the approved immutable object and rejects payout/source mismatch or a provider echo that changes the destination. The test repository fingerprints all fields and refuses same-payout replacement.
 
-## Consequences
+The recommended eventual default is a payout-specific refund address chosen and approved by the payout authorizer before execution. No address is inferred from a worker or provider.
 
-- Provider responses cannot override the approved refund destination.
-- A wrong payout cannot reuse another payout's refund policy.
-- Refund handling remains a policy concern and does not imply real funds movement.
+## Evidence and limits
+
+The [1Click quote schema](https://1click.chaindefuser.com/docs/v0/openapi.yaml) requires `refundTo` and `refundType`. The current [NEAR Intents Terms](https://near.com/terms) say eligible refunds may be attempted, subject to fees, networks and technical/compliance limits; success is not guaranteed.
+
+The contract does not persist a refund-policy fingerprint. The TypeScript in-memory repository is test-only. A durable repository and a reviewed on-chain commitment or authenticated policy-service decision are prerequisites for any deposit flow.

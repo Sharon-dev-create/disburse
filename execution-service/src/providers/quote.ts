@@ -1,15 +1,18 @@
 import type { TokenAmount } from "../domain/payout.ts";
+import type { ApprovedRefundPolicy } from "./refund.ts";
 
 /** Quote requests are independent of execution job state and have no spend capability. */
 export interface QuoteIntent {
+  readonly campaignId: string;
+  readonly payoutId: string;
   readonly executionAttemptId: string;
   readonly sourceNetworkId: string;
   readonly input: TokenAmount;
   readonly destinationNetworkId: string;
   readonly recipientAddress: string;
   readonly expectedOutput: TokenAmount;
-  /** Required by 1Click even for a dry quote; supplied by a future explicit refund policy. */
-  readonly refundAddress: string;
+  /** Immutable payout-specific policy; caller must load it from the approval repository. */
+  readonly refundPolicy: ApprovedRefundPolicy;
   /** Required by the published request schema; caller supplies policy, adapter does not invent one. */
   readonly deadline: string;
 }

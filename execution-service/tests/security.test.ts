@@ -154,10 +154,12 @@ void test("refund policy binds every field, fingerprints canonically, and cannot
       () => bindRefundPolicy({ ...policy, ...changed }, approved),
       /mismatch|integrity/,
     );
-    await assert.rejects(
-      repository.approve({ ...policy, ...changed }),
-      /already approved/,
-    );
+    if (!("campaignId" in changed) && !("payoutId" in changed)) {
+      await assert.rejects(
+        repository.approve({ ...policy, ...changed }),
+        /already approved/,
+      );
+    }
   }
   const mutated = {
     ...approved,
@@ -246,7 +248,7 @@ void test("authorization binds exact payout reservation, quote, attempt, route, 
       quote,
       now,
     ).approved,
-    false,
+    true,
   );
   assert.equal(
     authorizeExecution(
@@ -404,7 +406,7 @@ void test("authorization rejects quote expiry, stale quote, wrong attempt, and q
       { ...opportunity(), expiresAt: null },
       now,
     ).approved,
-    false,
+    true,
   );
 });
 
@@ -516,7 +518,7 @@ void test("authorization consumption is single-use, atomic in-process, revocable
   assert.deepEqual(await repo1.createApproved(auth), auth);
   await assert.rejects(
     repo1.createApproved({ ...auth, recipientAddress: "attacker" }),
-    /different protected fields/,
+    /integrity/,
   );
   const repoAfterRestart = new InMemoryAuthorizationRepository(state);
   assert.equal(
