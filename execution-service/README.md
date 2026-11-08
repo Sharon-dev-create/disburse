@@ -70,6 +70,9 @@ pnpm test
 pnpm check
 ```
 
+For supported local tool versions, isolated PostgreSQL setup, and the current runtime boundary, see
+[`../docs/execution-service-development.md`](../docs/execution-service-development.md).
+
 ## Not production-ready
 
 There is no PostgreSQL driver/configuration, production worker loop, destination-chain verifier,
