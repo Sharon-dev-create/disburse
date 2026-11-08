@@ -432,7 +432,13 @@ void test("authorization hash tampering, policy mutation and cross-payout reuse 
     quote,
     now,
   ).authorization!;
-  const created = createExecutionAuthorization(request, policy, reservation, quote, now);
+  const created = createExecutionAuthorization(
+    request,
+    policy,
+    reservation,
+    quote,
+    now,
+  );
   assert.equal(created.lifecycle, "Created");
   assert.equal(approveExecutionAuthorization(created).lifecycle, "Approved");
   const changed = {
@@ -629,10 +635,7 @@ void test("authorization consumption is single-use, atomic in-process, revocable
     repo1.expire(expiring.authorizationId, now),
     /not expired/,
   );
-  await repo1.expire(
-    expiring.authorizationId,
-    now + policy.authorizationTtlMs,
-  );
+  await repo1.expire(expiring.authorizationId, now + policy.authorizationTtlMs);
   assert.equal(
     (await repo1.get(expiring.authorizationId))?.lifecycle,
     "Expired",

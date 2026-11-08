@@ -141,7 +141,10 @@ void test("valid exact-output quote maps to provider-neutral opportunity using a
   assert.equal(opportunity.maximumInputAtomicAmount, null);
   assert.equal(opportunity.expectedOutputAtomicAmount, "300");
   assert.equal(opportunity.minimumOutputAtomicAmount, "300");
-  assert.equal(opportunity.recipientAddress, "0x52908400098527886e0f7030069857d2e4169ee7");
+  assert.equal(
+    opportunity.recipientAddress,
+    "0x52908400098527886e0f7030069857d2e4169ee7",
+  );
   assert.equal(opportunity.quoteReference, "quote-reference-1");
   assert.equal(
     opportunity.providerMetadata.quoteSignature,
@@ -217,9 +220,26 @@ void test("rejects missing IDs, invalid amounts, bad metadata, unsupported route
     "999999999999999999999999999999999999999";
   await assert.rejects(adapter(badAmount).quote(intent()), /u128 range/);
 
+  for (const timestamp of ["yesterday", "2026-02-30T12:00:00.000Z"]) {
+    const badTimestamp = validResponse();
+    badTimestamp.timestamp = timestamp;
+    await assert.rejects(
+      adapter(badTimestamp).quote(intent()),
+      /timestamp is invalid/,
+    );
+  }
+
   const baseIntent = intent();
   const unknownNetwork = { ...baseIntent, destinationNetworkId: "chain:other" };
-  await assert.rejects(adapter().quote(unknownNetwork), /unsupported or conflicting/);
+  await assert.rejects(adapter().quote(unknownNetwork), /recipient is invalid/);
+  const unsupportedRoute = {
+    ...baseIntent,
+    destinationNetworkId: "eip155:8453",
+  };
+  await assert.rejects(
+    adapter().quote(unsupportedRoute),
+    /unsupported/,
+  );
 
   const badDecimals = {
     ...baseIntent,

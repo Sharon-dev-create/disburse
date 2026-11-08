@@ -207,7 +207,9 @@ export class InMemoryAuthorizationRepository implements AuthorizationRepository 
     const current = this.state.records.get(authorizationId);
     if (!current) throw new Error("Authorization does not exist");
     if (current.lifecycle !== "Approved")
-      throw new Error(`Authorization is ${current.lifecycle} and cannot expire`);
+      throw new Error(
+        `Authorization is ${current.lifecycle} and cannot expire`,
+      );
     if (nowMs < Date.parse(current.authorizationExpiresAt))
       throw new Error("Authorization has not expired");
     this.state.records.set(
@@ -416,9 +418,11 @@ function authorizationExpiry(
 ): string {
   const policyExpiry = nowMs + policy.authorizationTtlMs;
   if (!Number.isSafeInteger(policyExpiry))
-    throw new Error("Authorization expiry exceeds the supported timestamp range");
+    throw new Error(
+      "Authorization expiry exceeds the supported timestamp range",
+    );
   if (quote.expiresAt === null) return new Date(policyExpiry).toISOString();
-  const quoteExpiry = Date.parse(quote.expiresAt);
+  const quoteExpiry = parseRfc3339(quote.expiresAt);
   if (!Number.isFinite(quoteExpiry) || quoteExpiry <= nowMs)
     throw new Error("Quote expiry is invalid or already elapsed");
   return new Date(Math.min(policyExpiry, quoteExpiry)).toISOString();
@@ -517,7 +521,8 @@ function validateAuthorizationInputs(
     throw new Error("Exact output differs from payout authorization");
   if (
     quote.minimumOutputAtomicAmount === null ||
-    BigInt(canonicalAtomic(quote.minimumOutputAtomicAmount)) < BigInt(quoteOutput)
+    BigInt(canonicalAtomic(quote.minimumOutputAtomicAmount)) <
+      BigInt(quoteOutput)
   )
     throw new Error("Quote minimum output is below the exact payout amount");
   assertReservationMatches(request, reservation);
@@ -591,8 +596,8 @@ function validateQuoteFreshness(
 ): void {
   if (!quote.expiresAt || !quote.providerMetadata.responseTimestamp)
     throw new Error("Quote has no provider-issued timestamp or expiry");
-  const issuedAt = Date.parse(quote.providerMetadata.responseTimestamp);
-  const expiresAt = Date.parse(quote.expiresAt);
+  const issuedAt = parseRfc3339(quote.providerMetadata.responseTimestamp);
+  const expiresAt = parseRfc3339(quote.expiresAt);
   if (
     !Number.isFinite(issuedAt) ||
     !Number.isFinite(expiresAt) ||
@@ -604,10 +609,26 @@ function validateQuoteFreshness(
   if (policy.maxQuoteAgeMs === null || nowMs - issuedAt > policy.maxQuoteAgeMs)
     throw new Error("Quote is older than the configured freshness limit");
   if (
-    !Number.isFinite(Date.parse(quote.freshUntil)) ||
-    Date.parse(quote.freshUntil) <= nowMs
+    !Number.isFinite(parseRfc3339(quote.freshUntil)) ||
+    parseRfc3339(quote.freshUntil) <= nowMs
   )
     throw new Error("Local quote freshness window has expired");
+}
+
+function parseRfc3339(value: string): number {
+  if (
+    !/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,9})?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/.test(
+      value,
+    )
+  )
+    return Number.NaN;
+  const timestamp = Date.parse(value);
+  const calendar = new Date(`${value.slice(0, 10)}T00:00:00.000Z`);
+  return Number.isFinite(timestamp) &&
+    Number.isFinite(calendar.getTime()) &&
+    calendar.toISOString().slice(0, 10) === value.slice(0, 10)
+    ? timestamp
+    : Number.NaN;
 }
 
 function assertReservationMatches(
@@ -639,6 +660,7 @@ function assertReservationMatches(
   )
     throw new Error("Reservation NEAR network is unsupported");
   if (
+    reservation.networkId !== request.sourceNetworkId ||
     reservation.inputTokenId !== request.sourceTokenId ||
     reservation.expectedOutputTokenId !== request.destinationTokenId ||
     canonicalAtomic(reservation.expectedOutputAtomicAmount) !==

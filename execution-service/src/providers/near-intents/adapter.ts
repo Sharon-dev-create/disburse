@@ -388,7 +388,13 @@ function isNonEmptyString(value: unknown): value is string {
 }
 
 function isIsoDate(value: unknown): value is string {
-  return typeof value === "string" && Number.isFinite(Date.parse(value));
+  return (
+    typeof value === "string" &&
+    /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,9})?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/.test(
+      value,
+    ) &&
+    Number.isFinite(Date.parse(value))
+  );
 }
 
 function invalid(code: string, message: string): NearIntentsError {

@@ -9,6 +9,13 @@ transactions, connect to PostgreSQL, or move funds.
 - `src/domain`: exact-string payout/job identifiers and normalized contract payout views.
 - `src/state-machine`: allowed operational transitions and safety preconditions.
 - `src/providers`: provider adapter boundary and restart reconciliation policy.
+- `src/providers/networks.ts`, `recipient.ts`, and `refund.ts`: canonical network identities,
+  chain-aware recipient checks, and payout-bound refund policy fingerprints. The refund repository
+  currently has only a deterministic in-memory implementation.
+- `src/providers/signing.ts`: policy evaluation and a Created/Approved/Consumed/Expired/Revoked
+  authorization lifecycle with local hash integrity checks. Its signer and repository are mocks;
+  neither hash integrity nor in-process consumption is cryptographic authorization or durable replay
+  protection.
 - `src/providers/quote.ts` and `src/providers/near-intents`: provider-neutral quote-only types and a deterministic-testable NEAR Intents 1Click `dry: true` adapter. It has no deposit, execution, tracking, signing, or settlement methods.
 - `src/verification`: independent evidence-verification interface.
 - `src/near`: read-only, Operator/Admin, and Verifier contract client boundaries.
@@ -63,6 +70,10 @@ pnpm check
 
 There is no PostgreSQL repository, production worker loop, destination-chain verifier, signer
 integration, secret store, or testnet execution flow yet.
+EVM mixed-case recipients use a local Keccak-256 EIP-55 implementation because this package does not
+currently include an audited Ethereum checksum library; replace it with a reviewed maintained
+dependency before production use. NEAR Intents quotes remain preview-only and exact-output committed
+execution compatibility is not established.
 The file-backed discovery adapter is intended for local/single-writer operation only. See
 [`../docs/execution-service-architecture.md`](../docs/execution-service-architecture.md) and
 [`../docs/execution-service-threat-model.md`](../docs/execution-service-threat-model.md) for
