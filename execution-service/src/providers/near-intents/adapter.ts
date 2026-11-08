@@ -89,6 +89,9 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
         "Recipient and origin refund address are required",
       );
     }
+    if (!/^[A-Za-z0-9._:-]{1,128}$/.test(intent.executionAttemptId)) {
+      throw invalid("execution-attempt", "A payout-bound execution attempt ID is required");
+    }
     const deadlineMs = Date.parse(intent.deadline);
     if (!Number.isFinite(deadlineMs) || deadlineMs <= this.now()) {
       throw invalid(
@@ -282,6 +285,7 @@ export class NearIntentsQuoteAdapter implements QuoteProviderAdapter {
         responseTimestamp: response.timestamp,
         quoteSignature: response.signature,
         previewOnly: "true",
+        executionAttemptId: intent.executionAttemptId,
       },
     };
   }

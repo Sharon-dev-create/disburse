@@ -2,6 +2,7 @@ import type { TokenAmount } from "../domain/payout.ts";
 
 /** Quote requests are independent of execution job state and have no spend capability. */
 export interface QuoteIntent {
+  readonly executionAttemptId: string;
   readonly sourceNetworkId: string;
   readonly input: TokenAmount;
   readonly destinationNetworkId: string;
