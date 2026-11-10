@@ -3,6 +3,8 @@ import MobileDashboardPreview from "./MobileDashboardPreview";
 export default function PhoneMockup() {
   return (
     <div
+      role="group"
+      aria-label="Illustrative Disburse mobile dashboard preview"
       className="anim-enter anim-float relative z-10 rounded-[2.55rem] border border-[#d6d4cc] bg-[#282b28] p-[7px] shadow-[0_30px_70px_rgba(36,39,34,0.17)]"
       style={{ animationDelay: "180ms" }}
     >

@@ -55,6 +55,20 @@ export default function Navbar() {
           />
         </a>
       </nav>
+      <nav
+        aria-label="Mobile primary"
+        className="flex items-center justify-center gap-8 border-t border-hairline py-2.5 sm:hidden"
+      >
+        {NAV_LINKS.map((link) => (
+          <a
+            key={link.href}
+            href={link.href}
+            className="text-xs text-ink/70 transition-colors hover:text-ink"
+          >
+            {link.label}
+          </a>
+        ))}
+      </nav>
     </header>
   );
 }
