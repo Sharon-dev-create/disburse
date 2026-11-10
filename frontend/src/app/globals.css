@@ -1,26 +1,89 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* Brand palette */
+  --color-canvas: #f8f7f3;
+  --color-sand: #ede9df;
+  --color-mist: #898b84;
+  --color-forest: #246b50;
+  --color-forest-deep: #1c5a42;
+  --color-ink: #242722;
+  --color-hairline: #e7e5de;
+  --color-alert: #a64b2a;
+
+  /* Typography */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: #f8f7f3;
+  color: #242722;
+  font-family: var(--font-geist-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background-color: #246b50;
+  color: #f8f7f3;
+}
+
+/*
+ * Motion
+ *
+ * A deliberately small set of purposeful animations: the hero entrance,
+ * the soft smartphone float, and (driven by the Reveal component) a gentle
+ * section reveal on scroll. Everything is disabled under
+ * prefers-reduced-motion further below.
+ */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+.anim-enter {
+  animation: fade-up 0.75s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.anim-float {
+  animation: float-soft 7.5s ease-in-out 1.2s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
