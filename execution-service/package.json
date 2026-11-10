@@ -12,14 +12,21 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests --ext .ts",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "test:postgres": "node --experimental-strip-types --test tests/integration/postgres-security.test.ts",
+    "db:migrate:dev": "node --experimental-strip-types src/persistence/migrate.ts development",
+    "db:migrate:test": "node --experimental-strip-types src/persistence/migrate.ts test",
     "check": "pnpm format:check && pnpm typecheck && pnpm lint && pnpm test"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.0",
     "@types/node": "^22.15.0",
+    "@types/pg": "8.23.1",
     "eslint": "^9.30.0",
     "prettier": "^3.5.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.34.1"
+  },
+  "dependencies": {
+    "pg": "8.23.1"
   }
 }
