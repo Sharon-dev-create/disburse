@@ -34,7 +34,7 @@ export default function Navbar() {
           ))}
           <a
             href={CTA_HREF}
-            className="group inline-flex items-center gap-1.5 rounded-lg bg-forest px-4 py-2 text-sm font-medium text-canvas transition-colors hover:bg-forest-deep"
+            className="group inline-flex items-center gap-1.5 rounded-full bg-forest px-4 py-2.5 text-sm font-medium text-canvas transition-colors hover:bg-forest-deep"
           >
             Launch App
             <ArrowUpRight
@@ -46,7 +46,7 @@ export default function Navbar() {
 
         <a
           href={CTA_HREF}
-          className="group inline-flex items-center gap-1 rounded-lg bg-forest px-3.5 py-2 text-[13px] font-medium text-canvas transition-colors hover:bg-forest-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest sm:hidden"
+          className="group inline-flex items-center gap-1 rounded-full bg-forest px-3.5 py-2 text-[13px] font-medium text-canvas transition-colors hover:bg-forest-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest sm:hidden"
         >
           Launch App
           <ArrowUpRight
