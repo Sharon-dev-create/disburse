@@ -34,6 +34,38 @@ body {
   color: #f8f7f3;
 }
 
+.hero-grain {
+  background-image: radial-gradient(rgba(248, 247, 243, 0.42) 0.55px, transparent 0.7px);
+  background-size: 7px 7px;
+  mask-image: linear-gradient(110deg, #000 0%, transparent 65%);
+}
+
+.hero-device-orbit::before,
+.hero-device-orbit::after {
+  position: absolute;
+  content: "";
+  border-radius: 9999px;
+}
+
+.hero-device-orbit::before {
+  inset: 9% 9% 8%;
+  background: #d7e3bd;
+}
+
+.hero-device-orbit::after {
+  inset: 2% 2% 1%;
+  border: 1px solid rgba(248, 247, 243, 0.3);
+}
+
+.hero-bridge-shape {
+  background: #f8f7f3;
+  border-radius: 50% 50% 0 0 / 65% 65% 0 0;
+}
+
+.closing-rule {
+  background: linear-gradient(#ede9df, transparent);
+}
+
 /*
  * Motion
  *
@@ -85,5 +117,15 @@ body {
     animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 639px) {
+  .hero-device-orbit::before {
+    inset: 7% 5%;
+  }
+
+  .hero-device-orbit::after {
+    inset: 1% 0;
   }
 }

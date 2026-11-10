@@ -17,7 +17,7 @@ export default function Navbar() {
         <a
           href="#top"
           aria-label="Disburse — home"
-          className="transition-opacity hover:opacity-80"
+          className="transition-opacity hover:opacity-80 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest"
         >
           <Wordmark />
         </a>
@@ -27,14 +27,14 @@ export default function Navbar() {
             <a
               key={link.href}
               href={link.href}
-              className="text-sm text-ink/70 transition-colors hover:text-ink"
+              className="text-sm text-ink/70 transition-colors hover:text-ink focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest"
             >
               {link.label}
             </a>
           ))}
           <a
             href={CTA_HREF}
-            className="group inline-flex items-center gap-1.5 rounded-full bg-forest px-4 py-2.5 text-sm font-medium text-canvas transition-colors hover:bg-forest-deep"
+              className="group inline-flex items-center gap-1.5 rounded-full bg-forest px-4 py-2.5 text-sm font-medium text-canvas transition-colors hover:bg-forest-deep focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-forest"
           >
             Launch App
             <ArrowUpRight
@@ -63,7 +63,7 @@ export default function Navbar() {
           <a
             key={link.href}
             href={link.href}
-            className="text-xs text-ink/70 transition-colors hover:text-ink"
+            className="text-xs text-ink/70 transition-colors hover:text-ink focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest"
           >
             {link.label}
           </a>

@@ -1,9 +1,11 @@
 import ClosingCTA from "@/components/ClosingCTA";
+import FinancialControlSection from "@/components/FinancialControlSection";
 import FeaturesSection from "@/components/FeaturesSection";
 import Footer from "@/components/Footer";
 import HeroSection from "@/components/HeroSection";
 import HowItWorks from "@/components/HowItWorks";
 import Navbar from "@/components/Navbar";
+import PayoutTransparencySection from "@/components/PayoutTransparencySection";
 
 export default function Home() {
   return (
@@ -19,6 +21,8 @@ export default function Home() {
         <div id="top" />
         <HeroSection />
         <HowItWorks />
+        <FinancialControlSection />
+        <PayoutTransparencySection />
         <FeaturesSection />
         <ClosingCTA />
       </main>

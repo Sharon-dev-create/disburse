@@ -18,6 +18,7 @@ export default function HeroSection() {
 
           <h1
             id="hero-heading"
+            aria-label="Move money with confidence."
             className="anim-enter mt-7 max-w-[780px] text-[clamp(3.55rem,8vw,7.6rem)] font-semibold leading-[0.86] tracking-[-0.075em] text-canvas"
             style={{ animationDelay: "100ms" }}
           >
