@@ -60,7 +60,7 @@ export default function HeroSection() {
         <div className="relative flex justify-center lg:justify-end">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-y-8 right-[-5%] hidden w-[80%] rounded-[40px] bg-sand lg:block"
+            className="pointer-events-none absolute inset-y-8 right-[-5%] hidden w-[80%] rounded-[2.5rem] bg-sand lg:block"
           />
           <PhoneMockup />
         </div>

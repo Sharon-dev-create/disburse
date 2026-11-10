@@ -22,7 +22,7 @@ export default function Navbar() {
           <Wordmark />
         </a>
 
-        <div className="hidden items-center gap-9 md:flex">
+        <div className="hidden items-center gap-9 sm:flex">
           {NAV_LINKS.map((link) => (
             <a
               key={link.href}
@@ -46,7 +46,7 @@ export default function Navbar() {
 
         <a
           href={CTA_HREF}
-          className="group inline-flex items-center gap-1 rounded-lg bg-forest px-3.5 py-2 text-[13px] font-medium text-canvas transition-colors hover:bg-forest-deep md:hidden"
+          className="group inline-flex items-center gap-1 rounded-lg bg-forest px-3.5 py-2 text-[13px] font-medium text-canvas transition-colors hover:bg-forest-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest sm:hidden"
         >
           Launch App
           <ArrowUpRight
