@@ -109,8 +109,8 @@ export class PostgresJobRepository implements DurableJobRepository {
       const inserted = await client.query(
         `INSERT INTO execution_jobs (
           network_id, contract_id, payout_id, campaign_id,
-          job_creation_idempotency_key, payload_hash, payout_snapshot,
-          snapshot_digest, input_atomic_amount, expected_output_atomic_amount,
+          job_creation_idempotency_key, snapshot_digest, payload_hash,
+          payout_snapshot, input_atomic_amount, expected_output_atomic_amount,
           observed_contract_status, state, execution_reference,
           discovery_tx_hash, discovery_block_hash, discovery_receipt_id,
           discovery_event_index, discovery_block_height

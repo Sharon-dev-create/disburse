@@ -2,7 +2,7 @@
 -- Apply only after a separately reviewed, environment-specific migration plan.
 
 -- Durable job foundation only: these three tables are applied by migration 0002.
--- The remaining tables below are reference-only and are not migrated.
+-- Security tables near the end are applied by migration 0001; other future tables are reference-only.
 CREATE TABLE execution_jobs (
     job_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     network_id TEXT NOT NULL CHECK (length(btrim(network_id)) > 0),
@@ -131,7 +131,7 @@ CREATE TRIGGER execution_jobs_snapshot_immutable
     FOR EACH ROW
     EXECUTE FUNCTION public.disburse_prevent_execution_job_snapshot_mutation();
 
--- Reference-only tables below are not applied by migration 0002.
+-- Reference-only provider and verification tables below are not currently migrated.
 CREATE TABLE provider_references (
     provider_reference_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     job_id BIGINT NOT NULL REFERENCES execution_jobs(job_id),
@@ -346,7 +346,7 @@ CREATE TABLE near_reconciliation_history (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Milestone 13.2 security repositories. Reference DDL only; this file is not a migration.
+-- Security repository tables applied by migration 0001; this file remains reference DDL.
 -- Application code uses conditional UPDATE ... WHERE lifecycle = ... RETURNING statements so
 -- PostgreSQL row-level update locking admits only one competing lifecycle transition.
 CREATE TABLE execution_authorizations (

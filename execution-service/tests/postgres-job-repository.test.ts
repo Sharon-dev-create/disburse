@@ -58,7 +58,7 @@ void test("job-creation key is deterministic and creation validates reserved ide
         ...creation,
         payout: { ...payout, contractStatus: "Executing" },
       }),
-    /Reserved payout observation/,
+    /Only an on-chain Reserved payout/,
   );
   assert.throws(
     () =>

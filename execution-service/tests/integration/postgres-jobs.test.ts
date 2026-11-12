@@ -168,7 +168,7 @@ void test("concurrent workers claim one queued job and stale lease writes are fe
     await assert.rejects(
       () =>
         setup.recordFailure(
-          queued.key,
+          claim.key,
           claim.lease!,
           { code: "stale-worker", description: "must not write" },
           Date.now(),
@@ -225,12 +225,14 @@ void test("attempts and safe failures are atomic and duplicate attempt idempoten
   assert.equal(failed.lease?.stateVersion, failed.version);
 
   const firstAttempt = makeAttempt(1);
-  const afterAttempt = await repository.appendAttempt(
+  await repository.appendAttempt(
     failed.key,
     failed.lease!,
     firstAttempt,
     Date.now(),
   );
+  const afterAttempt = await repository.getById(queued.job.jobId);
+  assert.ok(afterAttempt);
   assert.equal(afterAttempt.attemptCount, 1);
   assert.equal(afterAttempt.attempts.length, 1);
   const beforeConflict = afterAttempt;
