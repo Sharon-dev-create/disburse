@@ -35,7 +35,7 @@ export default function FinancialControlSection() {
                   <p className="text-[9px] font-medium uppercase tracking-[0.16em] text-mist">Illustrative campaign</p>
                   <h3 className="mt-2 text-lg font-medium tracking-tight text-ink">Community fund</h3>
                 </div>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline px-2.5 py-1 text-[9px] text-ink/60">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline px-2.5 py-1 text-[9px] text-ink/70">
                   <span className="size-1.5 rounded-full bg-forest" />
                   Demo figures
                 </span>
@@ -44,18 +44,18 @@ export default function FinancialControlSection() {
               <div className="grid grid-cols-2 sm:grid-cols-4">
                 {BALANCES.map(({ label, amount, note, icon: Icon }, index) => (
                   <div key={label} className={`py-5 ${index % 2 === 1 ? "pl-4 sm:pl-5" : "pr-4 sm:pr-5"} ${index >= 2 ? "border-t border-hairline" : ""} ${index % 2 === 1 ? "border-l border-hairline" : ""} sm:border-t-0 sm:py-7 sm:first:pl-0 sm:last:pr-0 ${index > 0 ? "sm:border-l sm:pl-5" : ""}`}>
-                    <div className="flex items-center gap-1.5 text-ink/55">
+                    <div className="flex items-center gap-1.5 text-ink/70">
                       <Icon size={13} strokeWidth={1.6} aria-hidden="true" />
                       <span className="text-[10px] font-medium">{label}</span>
                     </div>
                     <p className="mt-2 font-mono text-xl font-medium tracking-[-0.06em] text-ink sm:text-[1.7rem]">{amount}</p>
-                    <p className="mt-1 text-[9px] leading-4 text-ink/50">{note}</p>
+                    <p className="mt-1 text-[9px] leading-4 text-ink/70">{note}</p>
                   </div>
                 ))}
               </div>
 
               <div className="flex items-center justify-between gap-3 border-t border-hairline pt-4">
-                <p className="text-[10px] leading-4 text-ink/55">Sample figures shown for illustration only.</p>
+                <p className="text-[10px] leading-4 text-ink/70">Sample figures shown for illustration only.</p>
                 <span className="shrink-0 font-mono text-[9px] text-mist">CAM-042</span>
               </div>
             </div>

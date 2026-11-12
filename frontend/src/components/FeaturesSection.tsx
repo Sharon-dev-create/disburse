@@ -29,7 +29,7 @@ export default function FeaturesSection() {
                 <article key={number} className="group grid grid-cols-[36px_minmax(0,1fr)] gap-x-3 border-b border-hairline py-5 sm:grid-cols-[48px_minmax(0,0.8fr)_minmax(0,1.2fr)] sm:items-center sm:gap-x-5 sm:py-6">
                   <span className="row-span-2 pt-1 font-mono text-[10px] text-mist sm:row-span-1">{number}</span>
                   <h3 className="text-base font-medium tracking-tight text-ink transition-transform group-hover:translate-x-1 sm:text-lg">{title}</h3>
-                  <p className="col-start-2 mt-1 max-w-sm text-xs leading-5 text-ink/60 sm:col-start-auto sm:mt-0 sm:text-sm sm:leading-6">{description}</p>
+                  <p className="col-start-2 mt-1 max-w-sm text-xs leading-5 text-ink/70 sm:col-start-auto sm:mt-0 sm:text-sm sm:leading-6">{description}</p>
                   {index === 0 ? <span className="sr-only">Core platform capability</span> : null}
                 </article>
               ))}

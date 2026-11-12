@@ -25,7 +25,7 @@ export default function ClosingCTA() {
               <ArrowUpRight size={16} aria-hidden="true" className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </a>
           </div>
-          <div className="mt-12 flex items-center justify-between border-t border-ink/15 pt-4 text-[10px] uppercase tracking-[0.13em] text-ink/50">
+          <div className="mt-12 flex items-center justify-between border-t border-ink/15 pt-4 text-[10px] uppercase tracking-[0.13em] text-ink/70">
             <span>Campaign funding & contributor payouts</span>
             <span className="font-mono tracking-normal">Disburse&nbsp; / &nbsp;02</span>
           </div>

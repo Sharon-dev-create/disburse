@@ -25,22 +25,22 @@ export default function MobileDashboardPreview() {
       </div>
 
       <div className="px-5 pb-4">
-        <p className="text-xs font-medium text-ink/60">Good morning, Alex</p>
+        <p className="text-xs font-medium text-ink/70">Good morning, Alex</p>
         <div className="mt-4 flex items-center justify-between">
           <h2 className="text-[17px] font-semibold tracking-tight text-ink">Overview</h2>
-          <span className="rounded-md border border-hairline px-2 py-1 text-[9px] text-ink/60">This month</span>
+          <span className="rounded-md border border-hairline px-2 py-1 text-[9px] text-ink/70">This month</span>
         </div>
 
         <div className="mt-3 rounded-xl bg-forest p-4 text-canvas">
-          <p className="text-[10px] text-canvas/75">Total funded <span className="text-canvas/60">· illustrative</span></p>
+          <p className="text-[10px] text-canvas">Total funded <span>· illustrative</span></p>
           <p className="mt-1 font-mono text-[25px] font-medium tracking-tight">$12,480.00</p>
           <div className="mt-4 grid grid-cols-2 gap-3 border-t border-canvas/20 pt-3">
             <div>
-              <p className="text-[9px] text-canvas/70">Available</p>
+              <p className="text-[9px] text-canvas">Available</p>
               <p className="mt-1 font-mono text-[13px]">$8,320.00</p>
             </div>
             <div>
-              <p className="text-[9px] text-canvas/70">Reserved</p>
+              <p className="text-[9px] text-canvas">Reserved</p>
               <p className="mt-1 font-mono text-[13px]">$4,160.00</p>
             </div>
           </div>
@@ -59,13 +59,13 @@ export default function MobileDashboardPreview() {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[10px] font-medium text-ink">{payout.name}</span>
-                <span className="mt-0.5 block truncate text-[9px] text-ink/55">{payout.detail}</span>
+                <span className="mt-0.5 block truncate text-[9px] text-ink/70">{payout.detail}</span>
               </span>
               <span className="text-right">
                 <span className="block font-mono text-[10px] text-ink">{payout.amount}</span>
                 <span
                   className={`mt-0.5 block text-[8px] font-medium ${
-                    payout.status === "Settled" ? "text-forest" : "text-ink/55"
+                    payout.status === "Settled" ? "text-forest" : "text-ink/70"
                   }`}
                 >
                   {payout.status}
@@ -81,11 +81,11 @@ export default function MobileDashboardPreview() {
           <Home size={14} aria-hidden="true" />
           <span className="text-[8px]">Home</span>
         </span>
-        <span className="flex flex-col items-center gap-1 text-ink/45">
+        <span className="flex flex-col items-center gap-1 text-ink/70">
           <Layers3 size={14} aria-hidden="true" />
           <span className="text-[8px]">Campaigns</span>
         </span>
-        <span className="flex flex-col items-center gap-1 text-ink/45">
+        <span className="flex flex-col items-center gap-1 text-ink/70">
           <ReceiptText size={14} aria-hidden="true" />
           <span className="text-[8px]">Activity</span>
         </span>

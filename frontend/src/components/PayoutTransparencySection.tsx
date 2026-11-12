@@ -37,11 +37,11 @@ export default function PayoutTransparencySection() {
             </div>
 
             <div className="min-w-0">
-              <div className="flex items-end justify-between border-b border-canvas/20 pb-3 text-[9px] font-medium uppercase tracking-[0.15em] text-canvas/45">
+              <div className="flex items-end justify-between border-b border-canvas/20 pb-3 text-[9px] font-medium uppercase tracking-[0.15em] text-canvas/60">
                 <span>Illustrative activity</span>
                 <span className="font-mono tracking-normal">Recent&nbsp; / &nbsp;05</span>
               </div>
-              <div className="hidden grid-cols-[1.25fr_0.9fr_0.7fr_auto] gap-3 py-3 text-[9px] font-medium uppercase tracking-[0.13em] text-canvas/45 sm:grid">
+              <div className="hidden grid-cols-[1.25fr_0.9fr_0.7fr_auto] gap-3 py-3 text-[9px] font-medium uppercase tracking-[0.13em] text-canvas/60 sm:grid">
                 <span>Contributor</span>
                 <span>Campaign</span>
                 <span>Amount</span>
@@ -51,15 +51,15 @@ export default function PayoutTransparencySection() {
                 {PAYOUTS.map((payout, index) => (
                   <li key={payout.reference} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-t border-canvas/15 py-4 sm:grid-cols-[1.25fr_0.9fr_0.7fr_auto] sm:gap-3 sm:py-5">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-canvas">{payout.recipient}</p>
-                      <p className="mt-1 font-mono text-[9px] text-canvas/45">{payout.reference}</p>
+                      <p className="truncate text-sm font-medium text-canvas"><span className="sr-only">Contributor: </span>{payout.recipient}</p>
+                      <p className="mt-1 font-mono text-[9px] text-canvas/60"><span className="sr-only">Reference: </span>{payout.reference}</p>
                     </div>
-                    <p className="hidden truncate text-xs text-canvas/65 sm:block">{payout.purpose}</p>
-                    <p className="font-mono text-xs tabular-nums text-canvas/85">{payout.amount}</p>
+                    <p className="hidden truncate text-xs text-canvas/65 sm:block"><span className="sr-only">Campaign: </span>{payout.purpose}</p>
+                    <p className="font-mono text-xs tabular-nums text-canvas/85"><span className="sr-only">Amount: </span>{payout.amount}</p>
                     <span className={`justify-self-end rounded-full px-2.5 py-1 text-[9px] font-medium ${STATUS_CLASSES[payout.status]} ${payout.status === "Retry eligible" ? "bg-transparent" : ""}`}>
-                      {payout.status}
+                      <span className="sr-only">Status: </span>{payout.status}
                     </span>
-                    <p className="col-span-2 -mt-1 truncate text-[10px] text-canvas/45 sm:hidden">{payout.purpose}</p>
+                    <p className="col-span-2 -mt-1 truncate text-[10px] text-canvas/60 sm:hidden"><span className="sr-only">Campaign: </span>{payout.purpose}</p>
                     {index === 4 ? (
                       <span className="sr-only">Retry eligibility is shown as a review state and does not indicate automatic resubmission.</span>
                     ) : null}

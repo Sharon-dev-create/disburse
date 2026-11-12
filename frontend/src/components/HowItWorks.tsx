@@ -38,7 +38,7 @@ function CampaignSetupVisual() {
         <div className="p-4 sm:p-5">
           <p className="text-[9px] font-medium uppercase tracking-[0.14em] text-mist">Campaign purpose</p>
           <p className="mt-1.5 text-sm font-medium text-ink">Community translation fund</p>
-          <p className="mt-1 text-[10px] leading-4 text-ink/55">
+          <p className="mt-1 text-[10px] leading-4 text-ink/70">
             Support contributors translating community resources.
           </p>
 
@@ -47,13 +47,13 @@ function CampaignSetupVisual() {
               <p className="text-[9px] font-medium uppercase tracking-[0.12em] text-mist">Approved budget</p>
               <p className="mt-1 font-mono text-[24px] font-medium tracking-[-0.06em] text-ink sm:text-[30px]">$10,000</p>
             </div>
-            <span className="mb-1 inline-flex items-center gap-1.5 border border-hairline px-2 py-1 text-[9px] text-ink/60">
+            <span className="mb-1 inline-flex items-center gap-1.5 border border-hairline px-2 py-1 text-[9px] text-ink/70">
               <LockKeyhole size={10} aria-hidden="true" />
               Limit set
             </span>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-hairline pt-3">
-            <span className="text-[9px] text-ink/55">Illustrative campaign setup</span>
+            <span className="text-[9px] text-ink/70">Illustrative campaign setup</span>
             <span className="flex items-center gap-1 text-[9px] font-medium text-forest">
               Ready for review <ArrowRight size={11} aria-hidden="true" />
             </span>
@@ -80,30 +80,30 @@ function FundingLedgerVisual() {
             <p className="text-[9px] font-medium uppercase tracking-[0.14em] text-mist">Total funded</p>
             <p className="mt-1 font-mono text-[27px] font-medium tracking-[-0.06em] text-ink sm:text-[34px]">$8,400</p>
           </div>
-          <p className="mb-1 text-right text-[9px] leading-4 text-ink/55">of $10,000<br />approved budget</p>
+          <p className="mb-1 text-right text-[9px] leading-4 text-ink/70">of $10,000<br />approved budget</p>
         </div>
 
         <div aria-hidden="true" className="mt-4 flex h-2 overflow-hidden bg-sand">
           <span className="h-full w-[71.4%] bg-forest" />
           <span className="h-full flex-1 bg-[#c4c0b4]" />
         </div>
-        <div className="mt-2 flex justify-between text-[8px] text-ink/50">
+        <div className="mt-2 flex justify-between text-[8px] text-ink/70">
           <span>Available</span>
           <span>Reserved</span>
         </div>
 
         <div className="mt-5 grid grid-cols-2 border-y border-hairline">
           <div className="py-3 pr-3">
-            <p className="text-[9px] text-ink/55">Available to allocate</p>
+            <p className="text-[9px] text-ink/70">Available to allocate</p>
             <p className="mt-1 font-mono text-lg font-medium text-forest">$6,000</p>
           </div>
           <div className="border-l border-hairline py-3 pl-3">
-            <p className="text-[9px] text-ink/55">Reserved for payouts</p>
+            <p className="text-[9px] text-ink/70">Reserved for payouts</p>
             <p className="mt-1 font-mono text-lg font-medium text-ink">$2,400</p>
           </div>
         </div>
 
-        <div className="mt-3 flex items-center gap-2 text-[9px] leading-4 text-ink/55">
+        <div className="mt-3 flex items-center gap-2 text-[9px] leading-4 text-ink/70">
           <CircleCheck size={12} className="shrink-0 text-forest" aria-hidden="true" />
           $6,000 available + $2,400 reserved = $8,400 funded
         </div>
@@ -127,7 +127,7 @@ function PayoutTrackingVisual() {
       <div className="flex items-center justify-between border-b border-hairline px-4 py-3 sm:px-5">
         <div>
           <p className="text-[11px] font-medium text-ink">Contributor payouts</p>
-          <p className="mt-0.5 text-[9px] text-ink/50">Community translation fund</p>
+          <p className="mt-0.5 text-[9px] text-ink/70">Community translation fund</p>
         </div>
         <span className="font-mono text-[9px] text-mist">3 EXAMPLES</span>
       </div>
@@ -139,7 +139,7 @@ function PayoutTrackingVisual() {
             <li key={payout.name} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 py-3.5">
               <span className="min-w-0">
                 <span className="block truncate text-[11px] font-medium text-ink">{payout.name}</span>
-                <span className="mt-0.5 block truncate text-[9px] text-ink/50">{payout.detail}</span>
+                <span className="mt-0.5 block truncate text-[9px] text-ink/70">{payout.detail}</span>
               </span>
               <span className="text-right">
                 <span className="block font-mono text-[10px] tabular-nums text-ink">{payout.amount}</span>
@@ -154,7 +154,7 @@ function PayoutTrackingVisual() {
       </ul>
       <div className="flex items-start gap-2 border-t border-hairline bg-canvas px-4 py-3 sm:px-5">
         <ArrowDownRight size={12} className="mt-0.5 shrink-0 text-[#90452e]" aria-hidden="true" />
-        <p className="text-[9px] leading-4 text-ink/60">
+        <p className="text-[9px] leading-4 text-ink/70">
           An issue is surfaced for review. A failed payout is not automatically retried.
         </p>
       </div>
@@ -217,7 +217,7 @@ export default function HowItWorks() {
               From a budget decision to a payout you can follow.
             </h2>
           </div>
-          <p className="mt-5 max-w-2xl text-sm leading-6 text-ink/65 sm:text-base sm:leading-7 lg:ml-[40%]">
+          <p className="mt-5 max-w-2xl text-sm leading-6 text-ink/70 sm:text-base sm:leading-7 lg:ml-[40%]">
             Three connected steps help your team understand how a campaign moves from an approved plan to a clearly tracked payment.
           </p>
         </Reveal>
@@ -244,7 +244,7 @@ export default function HowItWorks() {
                     </p>
                     <div className="mt-5 max-w-lg border-l-2 border-forest/25 pl-4">
                       <p className="text-[9px] font-medium uppercase tracking-[0.13em] text-mist">Why it matters</p>
-                      <p className="mt-1.5 text-xs leading-5 text-ink/65 sm:text-sm sm:leading-6">
+                      <p className="mt-1.5 text-xs leading-5 text-ink/70 sm:text-sm sm:leading-6">
                         {step.explanation}
                       </p>
                     </div>
@@ -257,7 +257,7 @@ export default function HowItWorks() {
                         <Visual />
                       </div>
                     </div>
-                    <figcaption className="mt-3 flex gap-2 text-[10px] leading-4 text-ink/55 sm:text-xs sm:leading-5">
+                    <figcaption className="mt-3 flex gap-2 text-[10px] leading-4 text-ink/70 sm:text-xs sm:leading-5">
                       <span aria-hidden="true" className="mt-0.5 shrink-0 font-mono text-forest">FIG {step.number}</span>
                       <span>{step.caption}</span>
                     </figcaption>
