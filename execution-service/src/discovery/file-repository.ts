@@ -978,9 +978,18 @@ function deserialize(text: string): FileState {
   return {
     cursors,
     events,
-    blocks: value.version === 2 ? mapFrom(value.blocks) : new Map(),
-    incidents: value.version === 2 ? mapFrom(value.incidents) : new Map(),
-    recoveries: value.version === 2 ? mapFrom(value.recoveries) : new Map(),
+    blocks:
+      value.version === 2 || value.version === 3
+        ? mapFrom(value.blocks)
+        : new Map(),
+    incidents:
+      value.version === 2 || value.version === 3
+        ? mapFrom(value.incidents)
+        : new Map(),
+    recoveries:
+      value.version === 2 || value.version === 3
+        ? mapFrom(value.recoveries)
+        : new Map(),
     observations: mapFrom(value.observations),
     discrepancies: arrayOf(value.discrepancies),
     jobs: jobsMapFrom(value.jobs),
@@ -997,12 +1006,62 @@ function stringMapFrom(value: unknown): Map<string, string> {
   return result as Map<string, string>;
 }
 
-function numberMapFrom(value: unknown): Map<string, number> {
-  const result = mapFrom<string, unknown>(value);
-  if ([...result.values()].some((item) => typeof item !== "number")) {
-    throw new Error("Corrupt discovery repository fencing data");
+function fencingMapFrom(value: unknown): Map<string, string> {
+  const result = new Map<string, string>();
+  for (const [key, item] of mapFrom<string, unknown>(value)) {
+    if (typeof item === "number") {
+      if (!Number.isSafeInteger(item) || item < 0)
+        throw new Error("Corrupt discovery repository fencing data");
+      result.set(key, String(item));
+      continue;
+    }
+    if (typeof item !== "string" || !/^\d+$/.test(item))
+      throw new Error("Corrupt discovery repository fencing data");
+    result.set(key, BigInt(item).toString());
   }
-  return result as Map<string, number>;
+  return result;
+}
+
+function jobsMapFrom(value: unknown): Map<string, ExecutionJobRecord> {
+  const jobs = new Map<string, ExecutionJobRecord>();
+  for (const [key, item] of mapFrom<string, unknown>(value)) {
+    if (!isRecord(item) || typeof item.version !== "number")
+      throw new Error("Corrupt discovery repository job data");
+    if (item.lease === null) {
+      jobs.set(key, item as unknown as ExecutionJobRecord);
+      continue;
+    }
+    if (
+      !isRecord(item.lease) ||
+      typeof item.lease.workerId !== "string" ||
+      typeof item.lease.expiresAtMs !== "number"
+    )
+      throw new Error("Corrupt discovery repository lease data");
+    const rawToken = item.lease.fencingToken;
+    const fencingToken =
+      typeof rawToken === "number" &&
+      Number.isSafeInteger(rawToken) &&
+      rawToken > 0
+        ? String(rawToken)
+        : typeof rawToken === "string" && /^\d+$/.test(rawToken)
+          ? BigInt(rawToken).toString()
+          : null;
+    if (fencingToken === null)
+      throw new Error("Corrupt discovery repository fencing token");
+    const stateVersion =
+      typeof item.lease.stateVersion === "number"
+        ? item.lease.stateVersion
+        : item.version;
+    jobs.set(key, {
+      ...item,
+      lease: {
+        ...item.lease,
+        fencingToken,
+        stateVersion,
+      },
+    } as unknown as ExecutionJobRecord);
+  }
+  return jobs;
 }
 
 function sameLease(left: Lease, right: Lease): boolean {

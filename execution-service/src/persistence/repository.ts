@@ -43,6 +43,48 @@ export interface ExecutionJobRecord {
   readonly attempts: readonly ExecutionAttempt[];
 }
 
+export interface ExecutionJobCreation {
+  readonly idempotencyKey: string;
+  readonly event: PayoutReservedEvent;
+  readonly payout: PayoutSnapshot;
+}
+
+export interface ExecutionJobFailure {
+  readonly code: string;
+  readonly description: string;
+}
+
+export interface PersistedExecutionJob extends ExecutionJobRecord {
+  readonly jobId: string;
+  readonly idempotencyKey: string;
+  readonly snapshotDigest: string;
+  readonly attemptCount: number;
+  readonly nextEligibleAtMs: number;
+  readonly failure: ExecutionJobFailure | null;
+}
+
+export interface DurableJobRepository extends JobRepository {
+  createIdempotent(
+    creation: ExecutionJobCreation,
+  ): Promise<{ readonly job: PersistedExecutionJob; readonly created: boolean }>;
+  getById(jobId: string): Promise<PersistedExecutionJob | null>;
+  getByPayout(key: ExecutionJobKey): Promise<PersistedExecutionJob | null>;
+  releaseLease(
+    key: ExecutionJobKey,
+    lease: Lease,
+    nowMs: number,
+  ): Promise<PersistedExecutionJob>;
+  recordFailure(
+    key: ExecutionJobKey,
+    lease: Lease,
+    failure: ExecutionJobFailure,
+    nowMs: number,
+  ): Promise<PersistedExecutionJob>;
+  recoverExpiredLeases(
+    nowMs: number,
+  ): Promise<{ readonly recovered: number; readonly manualReview: number }>;
+}
+
 export interface JobRepository {
   /** Unique by network, contract and payout; duplicate discoveries return the existing job. */
   enqueueDiscovered(
