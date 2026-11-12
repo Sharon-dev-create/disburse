@@ -209,7 +209,7 @@ export class PostgresJobRepository implements DurableJobRepository {
            AND j.next_eligible_at <= statement_timestamp()
            AND (l.job_id IS NULL OR l.expires_at <= statement_timestamp())
          ORDER BY j.next_eligible_at, j.created_at, j.job_id
-         LIMIT 1`,
+         LIMIT 1
          FOR UPDATE OF j SKIP LOCKED`,
         [],
       );
