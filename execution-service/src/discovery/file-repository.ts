@@ -46,11 +46,11 @@ interface FileState {
   discrepancies: (DiscoveryDiscrepancy & { payoutKey: string | null })[];
   jobs: Map<string, ExecutionJobRecord>;
   failures: Map<string, DiscoveryFailure>;
-  nextFencingTokens: Map<string, number>;
+  nextFencingTokens: Map<string, string>;
 }
 
 interface SerializedState {
-  readonly version: 2;
+  readonly version: 3;
   readonly cursors: readonly (readonly [string, string])[];
   readonly events: readonly (readonly [string, IndexedEventRecord])[];
   readonly blocks: readonly (readonly [string, ArchivedDiscoveryBlock])[];
@@ -62,7 +62,7 @@ interface SerializedState {
   })[];
   readonly jobs: readonly (readonly [string, ExecutionJobRecord])[];
   readonly failures: readonly (readonly [string, DiscoveryFailure])[];
-  readonly nextFencingTokens: readonly (readonly [string, number])[];
+  readonly nextFencingTokens: readonly (readonly [string, string])[];
 }
 
 /**
@@ -448,11 +448,13 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
       if (!candidate) return null;
       const storageKey = executionJobKeyString(candidate.key);
       if (candidate.state === "Queued") assertTransition("Queued", "Leased");
-      const fencingToken =
-        (this.state.nextFencingTokens.get(storageKey) ?? 0) + 1;
+      const fencingToken = (
+        BigInt(this.state.nextFencingTokens.get(storageKey) ?? "0") + 1n
+      ).toString();
       const lease: Lease = {
         workerId,
         fencingToken,
+        stateVersion: candidate.version + 1,
         expiresAtMs: nowMs + ttlMs,
       };
       const claimed: ExecutionJobRecord = {
@@ -483,11 +485,16 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
       if (
         !current?.lease ||
         !sameLease(current.lease, lease) ||
+        lease.stateVersion !== current.version ||
         current.lease.expiresAtMs <= nowMs
       )
         return null;
       if (ttlMs <= 0) throw new Error("Lease duration must be positive");
-      const renewed = { ...lease, expiresAtMs: nowMs + ttlMs };
+      const renewed = {
+        ...lease,
+        stateVersion: current.version + 1,
+        expiresAtMs: nowMs + ttlMs,
+      };
       const next = cloneState(this.state);
       next.jobs.set(storageKey, {
         ...current,
@@ -519,6 +526,7 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
         lease &&
         (!current.lease ||
           !sameLease(current.lease, lease) ||
+          lease.stateVersion !== expectedVersion ||
           lease.expiresAtMs <= nowMs)
       ) {
         throw new Error("Worker lease is stale or expired");
@@ -540,7 +548,9 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
           nextState === "Completed" ||
           nextState === "Abandoned"
             ? null
-            : current.lease,
+            : current.lease
+              ? { ...current.lease, stateVersion: current.version + 1 }
+              : null,
       };
       const next = cloneState(this.state);
       next.jobs.set(storageKey, updated);
@@ -562,6 +572,7 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
       if (
         !current?.lease ||
         !sameLease(current.lease, lease) ||
+        lease.stateVersion !== current.version ||
         lease.expiresAtMs <= nowMs
       ) {
         throw new Error("Worker lease is stale or expired");
@@ -579,6 +590,7 @@ export class DurableFileDiscoveryRepository implements DiscoveryRepository {
         attempts: [...current.attempts, attempt],
         version: current.version + 1,
         updatedAtMs: nowMs,
+        lease: { ...current.lease, stateVersion: current.version + 1 },
       };
       const next = cloneState(this.state);
       next.jobs.set(storageKey, updated);
@@ -925,7 +937,7 @@ function cloneState(state: FileState): FileState {
 
 function serialize(state: FileState): SerializedState {
   return {
-    version: 2,
+    version: 3,
     cursors: [...state.cursors],
     events: [...state.events],
     blocks: [...state.blocks],
@@ -941,20 +953,16 @@ function serialize(state: FileState): SerializedState {
 
 function deserialize(text: string): FileState {
   const value: unknown = JSON.parse(text);
-  if (!isRecord(value) || (value.version !== 1 && value.version !== 2))
+  if (
+    !isRecord(value) ||
+    (value.version !== 1 && value.version !== 2 && value.version !== 3)
+  )
     throw new Error("Unsupported discovery file version");
   const cursors = stringMapFrom(value.cursors);
   if ([...cursors.values()].some((cursor) => !cursor.trim())) {
     throw new Error("Corrupt discovery repository cursor");
   }
-  const nextFencingTokens = numberMapFrom(value.nextFencingTokens);
-  if (
-    [...nextFencingTokens.values()].some(
-      (token) => !Number.isSafeInteger(token) || token < 0,
-    )
-  ) {
-    throw new Error("Corrupt discovery fencing token");
-  }
+  const nextFencingTokens = fencingMapFrom(value.nextFencingTokens);
   const events = mapFrom<string, IndexedEventRecord>(value.events);
   for (const [key, event] of events) {
     if (!event.providerId || !event.canonicalPayloadHash) {
@@ -975,7 +983,7 @@ function deserialize(text: string): FileState {
     recoveries: value.version === 2 ? mapFrom(value.recoveries) : new Map(),
     observations: mapFrom(value.observations),
     discrepancies: arrayOf(value.discrepancies),
-    jobs: mapFrom(value.jobs),
+    jobs: jobsMapFrom(value.jobs),
     failures: mapFrom(value.failures),
     nextFencingTokens,
   };

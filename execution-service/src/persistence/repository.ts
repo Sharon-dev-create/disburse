@@ -7,7 +7,10 @@ import type { JobState, TransitionEvidence } from "../state-machine/state.ts";
 
 export interface Lease {
   readonly workerId: string;
-  readonly fencingToken: number;
+  /** Decimal string so durable fencing counters never pass through JS numbers. */
+  readonly fencingToken: string;
+  /** Version of the job row covered by this lease. */
+  readonly stateVersion: number;
   readonly expiresAtMs: number;
 }
 

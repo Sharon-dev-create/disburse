@@ -19,7 +19,7 @@ import type {
 
 export interface MemoryPersistenceState {
   readonly jobs: Map<string, ExecutionJobRecord>;
-  readonly nextFencingToken: Map<string, number>;
+  readonly nextFencingToken: Map<string, string>;
 }
 
 export function newMemoryPersistenceState(): MemoryPersistenceState {
@@ -98,10 +98,16 @@ export class InMemoryJobRepository implements JobRepository {
     if (candidate.state === "Queued") {
       assertTransition("Queued", "Leased");
     }
-    const fencingToken =
-      (this.storage.nextFencingToken.get(storageKey) ?? 0) + 1;
+    const fencingToken = (
+      BigInt(this.storage.nextFencingToken.get(storageKey) ?? "0") + 1n
+    ).toString();
     this.storage.nextFencingToken.set(storageKey, fencingToken);
-    const lease: Lease = { workerId, fencingToken, expiresAtMs: nowMs + ttlMs };
+    const lease: Lease = {
+      workerId,
+      fencingToken,
+      stateVersion: candidate.version + 1,
+      expiresAtMs: nowMs + ttlMs,
+    };
     const claimed: ExecutionJobRecord = {
       ...candidate,
       state: "Leased",
@@ -123,12 +129,17 @@ export class InMemoryJobRepository implements JobRepository {
     if (
       !current?.lease ||
       !sameLease(current.lease, lease) ||
+      lease.stateVersion !== current.version ||
       current.lease.expiresAtMs <= nowMs
     ) {
       return null;
     }
     if (ttlMs <= 0) throw new Error("Lease duration must be positive");
-    const renewed = { ...lease, expiresAtMs: nowMs + ttlMs };
+    const renewed = {
+      ...lease,
+      stateVersion: current.version + 1,
+      expiresAtMs: nowMs + ttlMs,
+    };
     this.storage.jobs.set(executionJobKeyString(key), {
       ...current,
       version: current.version + 1,
@@ -155,6 +166,7 @@ export class InMemoryJobRepository implements JobRepository {
       lease &&
       (!current.lease ||
         !sameLease(current.lease, lease) ||
+        lease.stateVersion !== expectedVersion ||
         lease.expiresAtMs <= nowMs)
     ) {
       throw new Error("Worker lease is stale or expired");
@@ -174,7 +186,9 @@ export class InMemoryJobRepository implements JobRepository {
       lease:
         next === "Queued" || next === "Completed" || next === "Abandoned"
           ? null
-          : current.lease,
+          : current.lease
+            ? { ...current.lease, stateVersion: current.version + 1 }
+            : null,
     };
     this.storage.jobs.set(storageKey, updated);
     return updated;
@@ -191,6 +205,7 @@ export class InMemoryJobRepository implements JobRepository {
     if (
       !current?.lease ||
       !sameLease(current.lease, lease) ||
+      lease.stateVersion !== current.version ||
       lease.expiresAtMs <= nowMs
     ) {
       throw new Error("Worker lease is stale or expired");
@@ -208,6 +223,7 @@ export class InMemoryJobRepository implements JobRepository {
       attempts: [...current.attempts, attempt],
       version: current.version + 1,
       updatedAtMs: nowMs,
+      lease: { ...current.lease, stateVersion: current.version + 1 },
     };
     this.storage.jobs.set(storageKey, updated);
     return updated;
