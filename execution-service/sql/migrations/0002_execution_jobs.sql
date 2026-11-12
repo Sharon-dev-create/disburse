@@ -9,10 +9,14 @@ BEGIN
      OR to_regclass('public.execution_jobs_idempotency_uq') IS NOT NULL
      OR to_regclass('public.execution_jobs_discovery_event_uq') IS NOT NULL
      OR to_regclass('public.execution_jobs_claimable_idx') IS NOT NULL
+     OR to_regclass('public.execution_jobs_payout_identity_uq') IS NOT NULL
+     OR to_regclass('public.execution_jobs_execution_reference_uq') IS NOT NULL
      OR to_regclass('public.execution_attempts_attempt_key_uq') IS NOT NULL
      OR to_regclass('public.execution_attempts_idempotency_uq') IS NOT NULL
      OR to_regclass('public.execution_attempts_sequence_uq') IS NOT NULL
+     OR to_regclass('public.execution_attempts_job_attempt_uq') IS NOT NULL
      OR to_regclass('public.job_leases_expiration_idx') IS NOT NULL
+     OR to_regclass('public.execution_jobs_snapshot_immutable') IS NOT NULL
      OR to_regprocedure('public.disburse_prevent_execution_job_snapshot_mutation()') IS NOT NULL
   THEN
     RAISE EXCEPTION 'Found unversioned execution-job objects; refusing to adopt or modify them';
@@ -119,14 +123,14 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   IF ROW(
-      NEW.network_id, NEW.contract_id, NEW.payout_id, NEW.campaign_id,
+      NEW.job_id, NEW.network_id, NEW.contract_id, NEW.payout_id, NEW.campaign_id,
       NEW.job_creation_idempotency_key, NEW.payload_hash, NEW.payout_snapshot,
       NEW.input_atomic_amount, NEW.expected_output_atomic_amount,
       NEW.observed_contract_status, NEW.execution_reference,
       NEW.discovery_tx_hash, NEW.discovery_block_hash, NEW.discovery_receipt_id,
       NEW.discovery_event_index, NEW.discovery_block_height
     ) IS DISTINCT FROM ROW(
-      OLD.network_id, OLD.contract_id, OLD.payout_id, OLD.campaign_id,
+        OLD.job_id, OLD.network_id, OLD.contract_id, OLD.payout_id, OLD.campaign_id,
       OLD.job_creation_idempotency_key, OLD.payload_hash, OLD.payout_snapshot,
       OLD.input_atomic_amount, OLD.expected_output_atomic_amount,
       OLD.observed_contract_status, OLD.execution_reference,

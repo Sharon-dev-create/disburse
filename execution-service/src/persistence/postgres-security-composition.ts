@@ -3,6 +3,7 @@ import {
   PostgresAuthorizationRepository,
   PostgresRefundPolicyRepository,
 } from "./postgres-security-repositories.ts";
+import { PostgresJobRepository } from "./postgres-job-repository.ts";
 import { assertPostgresMigrationsCurrent } from "./postgres-migrations.ts";
 import { createPostgresPool, createPostgresQuery } from "./postgres-pool.ts";
 import {
@@ -15,6 +16,7 @@ export interface PostgresSecurityComposition {
   readonly target: PostgresTarget;
   readonly authorizations: PostgresAuthorizationRepository;
   readonly refundPolicies: PostgresRefundPolicyRepository;
+  readonly jobs: PostgresJobRepository;
   close(): Promise<void>;
 }
 
@@ -60,6 +62,15 @@ async function createComposition(
     target: config.target,
     authorizations: new PostgresAuthorizationRepository(query),
     refundPolicies: new PostgresRefundPolicyRepository(query),
+    jobs: new PostgresJobRepository({
+      connect: async () => {
+        const client = await pool.connect();
+        return {
+          query: createPostgresQuery(client),
+          release: () => client.release(),
+        };
+      },
+    }),
     close: async () => {
       if (closed) return;
       closed = true;

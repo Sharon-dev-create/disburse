@@ -68,7 +68,7 @@ CREATE TABLE execution_attempts (
     attempt_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     job_id BIGINT NOT NULL REFERENCES execution_jobs(job_id),
     sequence_number INTEGER NOT NULL CHECK (sequence_number > 0),
-    attempt_key TEXT NOT NULL,
+    attempt_key TEXT NOT NULL CHECK (length(attempt_key) BETWEEN 1 AND 256),
     phase TEXT NOT NULL CHECK (phase IN (
         'validate', 'quote', 'prepare', 'submit', 'confirm', 'verify', 'settle'
     )),
@@ -83,8 +83,52 @@ CREATE TABLE execution_attempts (
     CONSTRAINT execution_attempts_job_attempt_uq UNIQUE (job_id, attempt_id)
 );
 
+CREATE TABLE job_leases (
+    job_id BIGINT PRIMARY KEY REFERENCES execution_jobs(job_id),
+    worker_id TEXT NOT NULL CHECK (length(btrim(worker_id)) BETWEEN 1 AND 256),
+    fencing_token NUMERIC(39, 0) NOT NULL CHECK (fencing_token > 0),
+    acquired_at TIMESTAMPTZ NOT NULL,
+    renewed_at TIMESTAMPTZ NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    CHECK (expires_at > acquired_at),
+    CHECK (renewed_at >= acquired_at)
+);
+
 CREATE INDEX job_leases_expiration_idx ON job_leases (expires_at);
 
+CREATE FUNCTION public.disburse_prevent_execution_job_snapshot_mutation()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF ROW(
+      NEW.job_id, NEW.network_id, NEW.contract_id, NEW.payout_id, NEW.campaign_id,
+      NEW.job_creation_idempotency_key, NEW.payload_hash, NEW.payout_snapshot,
+      NEW.input_atomic_amount, NEW.expected_output_atomic_amount,
+      NEW.observed_contract_status, NEW.execution_reference,
+      NEW.discovery_tx_hash, NEW.discovery_block_hash, NEW.discovery_receipt_id,
+      NEW.discovery_event_index, NEW.discovery_block_height
+    ) IS DISTINCT FROM ROW(
+      OLD.job_id, OLD.network_id, OLD.contract_id, OLD.payout_id, OLD.campaign_id,
+      OLD.job_creation_idempotency_key, OLD.payload_hash, OLD.payout_snapshot,
+      OLD.input_atomic_amount, OLD.expected_output_atomic_amount,
+      OLD.observed_contract_status, OLD.execution_reference,
+      OLD.discovery_tx_hash, OLD.discovery_block_hash, OLD.discovery_receipt_id,
+      OLD.discovery_event_index, OLD.discovery_block_height
+    )
+  THEN
+    RAISE EXCEPTION 'Execution-job identity and payout snapshot are immutable';
+  END IF;
+  RETURN NEW;
+END
+$$;
+
+CREATE TRIGGER execution_jobs_snapshot_immutable
+    BEFORE UPDATE ON execution_jobs
+    FOR EACH ROW
+    EXECUTE FUNCTION public.disburse_prevent_execution_job_snapshot_mutation();
+
+-- Reference-only tables below are not applied by migration 0002.
 CREATE TABLE provider_references (
     provider_reference_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     job_id BIGINT NOT NULL REFERENCES execution_jobs(job_id),
@@ -108,18 +152,6 @@ CREATE UNIQUE INDEX provider_external_identity_uq
         event_identifier_key
     )
     WHERE destination_chain_id IS NOT NULL AND transaction_reference IS NOT NULL;
-
-CREATE TABLE job_leases (
-    job_id BIGINT PRIMARY KEY REFERENCES execution_jobs(job_id),
-    worker_id TEXT NOT NULL,
-    fencing_token BIGINT NOT NULL CHECK (fencing_token > 0),
-    acquired_at TIMESTAMPTZ NOT NULL,
-    expires_at TIMESTAMPTZ NOT NULL,
-    renewed_at TIMESTAMPTZ NOT NULL,
-    CHECK (expires_at > acquired_at)
-);
-
-CREATE INDEX job_leases_expiration_idx ON job_leases (expires_at);
 
 CREATE TABLE verification_records (
     verification_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

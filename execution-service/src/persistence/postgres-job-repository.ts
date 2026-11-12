@@ -94,7 +94,7 @@ export class PostgresJobRepository implements DurableJobRepository {
     creation: ExecutionJobCreation,
   ): Promise<{ readonly job: PersistedExecutionJob; readonly created: boolean }> {
     const { event, payout, idempotencyKey } = creation;
-    validateCreation(creation);
+    validateExecutionJobCreation(creation);
     const key: ExecutionJobKey = {
       networkId: event.identity.networkId,
       contractId: event.identity.contractId,
@@ -584,7 +584,9 @@ export function expiredLeaseRecoveryAction(
   return canTransition(state, "ManualReview") ? "manual-review" : "release-only";
 }
 
-function validateCreation(creation: ExecutionJobCreation): void {
+export function validateExecutionJobCreation(
+  creation: ExecutionJobCreation,
+): void {
   const { event, payout, idempotencyKey } = creation;
   validatePayoutSnapshot(payout);
   validateJobKey({
@@ -612,6 +614,8 @@ function validateCreation(creation: ExecutionJobCreation): void {
     throw new Error("Discovery event index must be a non-negative safe integer");
   validateU128(payout.inputAmount.atomicAmount, "Input amount");
   validateU128(payout.expectedOutput.atomicAmount, "Expected output amount");
+  if (!payout.inputAmount.tokenId.trim() || !payout.expectedOutput.tokenId.trim())
+    throw new Error("Payout token identifiers are required");
   if (!idempotencyKey.trim() || idempotencyKey.length > 256 || /[\u0000-\u001f\u007f]/.test(idempotencyKey))
     throw new Error("Job-creation idempotency key is invalid");
 }
@@ -864,8 +868,7 @@ async function advanceLeaseVersion(
   lease: Lease,
 ): Promise<void> {
   const advanced = await client.query(
-    `UPDATE job_leases
-     SET renewed_at = renewed_at
+    `SELECT 1 FROM job_leases
      WHERE job_id = $1::bigint AND worker_id = $2
        AND fencing_token = $3::numeric
        AND expires_at > statement_timestamp()`,

@@ -6,6 +6,7 @@ export * from "./near/clients.ts";
 export * from "./persistence/in-memory.ts";
 export * from "./persistence/repository.ts";
 export * from "./persistence/postgres-security-repositories.ts";
+export * from "./persistence/postgres-job-repository.ts";
 export * from "./persistence/postgres-config.ts";
 export * from "./persistence/postgres-pool.ts";
 export * from "./persistence/postgres-migrations.ts";
