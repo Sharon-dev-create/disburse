@@ -20,10 +20,10 @@ export default function DashboardPage() {
         </div>
 
         <section aria-label="Key metrics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard label="Total funded" value="$25,200" detail="Across 3 active campaigns" icon={WalletCards} tone="forest" />
-          <MetricCard label="Available to allocate" value="$9,180" detail="36% of funded balance" icon={BadgeDollarSign} />
-          <MetricCard label="Reserved for payouts" value="$6,420" detail="18 payouts awaiting completion" icon={Clock3} />
-          <MetricCard label="Settled this month" value="$9,600" detail="42 completed payouts" icon={CircleCheck} />
+          <MetricCard label="Funded balance" value="$25,200" detail="All campaign contributions received" icon={WalletCards} tone="forest" />
+          <MetricCard label="Available balance" value="$9,180" detail="Funded, not reserved or settled" icon={BadgeDollarSign} />
+          <MetricCard label="Reserved balance" value="$6,420" detail="Committed to payouts not yet settled" icon={Clock3} />
+          <MetricCard label="Settled payouts" value="$9,600" detail="Payouts completed from funded balance" icon={CircleCheck} />
         </section>
 
         <div className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1.28fr)_minmax(20rem,0.72fr)]">
