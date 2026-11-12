@@ -9,7 +9,7 @@ export default function HeroSection() {
       className="hero-section relative isolate overflow-hidden bg-forest text-canvas"
     >
       <div aria-hidden="true" className="hero-grain pointer-events-none absolute inset-0 opacity-30" />
-      <div className="relative mx-auto grid min-h-[720px] max-w-7xl items-center gap-8 px-5 pb-12 pt-16 sm:px-8 sm:pb-16 lg:min-h-[760px] lg:grid-cols-[1.08fr_0.92fr] lg:gap-0 lg:pb-20 lg:pt-12">
+      <div className="relative mx-auto grid min-h-[720px] max-w-7xl grid-cols-1 items-center gap-8 px-5 pb-12 pt-16 sm:px-8 sm:pb-16 lg:min-h-[760px] lg:grid-cols-[1.08fr_0.92fr] lg:gap-0 lg:pb-20 lg:pt-12">
         <div className="relative z-10 min-w-0 pb-2 lg:pb-10">
           <p className="anim-enter flex items-center gap-3 text-[10px] font-medium uppercase tracking-[0.2em] text-canvas sm:text-xs">
             <span aria-hidden="true" className="h-px w-8 bg-canvas/55" />
