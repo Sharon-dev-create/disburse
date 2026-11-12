@@ -3,6 +3,8 @@ export type CampaignAccounting = { approvedBudget: number; funded: number; avail
 export type CampaignActivity = { date: string; title: string; description: string };
 export type Campaign = { id: string; name: string; description: string; sourceNetwork: string; acceptedToken: string; createdAt: string; status: CampaignStatus; accounting: CampaignAccounting; activity: readonly CampaignActivity[] };
 
+export const campaignStatuses: readonly CampaignStatus[] = ["Draft", "Approved", "Active", "Paused", "Completed", "Cancelled"];
+
 export const campaignStatusDescription: Record<CampaignStatus, string> = {
   Draft: "The campaign is being prepared. It has no approved spending authority.",
   Approved: "The campaign budget is approved and can receive funding before becoming active.",
@@ -21,6 +23,28 @@ export const demoCampaigns: readonly Campaign[] = [
   { id: "CAM-036", name: "Pilot workshop series", description: "A discontinued workshop planning effort.", sourceNetwork: "NEAR", acceptedToken: "USDC", createdAt: "2026-09-12", status: "Cancelled", accounting: { approvedBudget: 2500, funded: 0, available: 0, reserved: 0, settled: 0 }, activity: [{ date: "Sep 15, 2026", title: "Campaign cancelled", description: "This frontend demo does not represent an on-chain cancellation." }] },
 ];
 
+export function assertCampaignAccounting(campaign: Campaign): void {
+  const { approvedBudget, funded, available, reserved, settled } = campaign.accounting;
+  const amounts = [approvedBudget, funded, available, reserved, settled];
+
+  if (amounts.some((amount) => !Number.isFinite(amount) || amount < 0)) {
+    throw new Error(`Campaign ${campaign.id} has an invalid accounting amount.`);
+  }
+  if (funded > approvedBudget) {
+    throw new Error(`Campaign ${campaign.id} exceeds its approved budget.`);
+  }
+  if (funded !== available + reserved + settled) {
+    throw new Error(`Campaign ${campaign.id} does not reconcile to its funded amount.`);
+  }
+}
+
+for (const campaign of demoCampaigns) {
+  assertCampaignAccounting(campaign);
+}
+
 export function formatUsd(amount: number): string { return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }).format(amount); }
+export function formatCampaignDate(date: string, options: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric" }): string {
+  return new Intl.DateTimeFormat("en-US", { ...options, timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
+}
 export function campaignTotals(campaigns: readonly Campaign[] = demoCampaigns): CampaignAccounting { return campaigns.reduce<CampaignAccounting>((totals, campaign) => ({ approvedBudget: totals.approvedBudget + campaign.accounting.approvedBudget, funded: totals.funded + campaign.accounting.funded, available: totals.available + campaign.accounting.available, reserved: totals.reserved + campaign.accounting.reserved, settled: totals.settled + campaign.accounting.settled }), { approvedBudget: 0, funded: 0, available: 0, reserved: 0, settled: 0 }); }
 export function getDemoCampaign(campaignId: string): Campaign | undefined { return demoCampaigns.find((campaign) => campaign.id === campaignId); }

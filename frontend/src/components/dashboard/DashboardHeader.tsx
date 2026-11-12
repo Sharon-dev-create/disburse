@@ -1,4 +1,4 @@
-export default function DashboardHeader() {
+export default function DashboardHeader({ showTitle = true }: { showTitle?: boolean }) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 border-b border-hairline bg-canvas px-5 py-5 sm:px-8 lg:px-10">
       <div>
@@ -6,7 +6,7 @@ export default function DashboardHeader() {
           <span>Workspace</span><span aria-hidden="true">/</span><span>Cedar Collective</span>
           <span className="rounded-full bg-[#dce9d5] px-2 py-0.5 text-[9px] tracking-[0.1em] text-forest">Demo</span>
         </div>
-        <h1 className="mt-2 text-2xl font-medium tracking-[-0.04em] text-ink sm:text-3xl">Financial overview</h1>
+        {showTitle ? <h1 className="mt-2 text-2xl font-medium tracking-[-0.04em] text-ink sm:text-3xl">Financial overview</h1> : null}
       </div>
       <p className="rounded-full border border-hairline bg-white px-3 py-2 text-xs text-ink/60">
         Illustrative workspace
