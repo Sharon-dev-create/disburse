@@ -7,6 +7,7 @@ import {
   CircleDollarSign,
   LayoutDashboard,
   Menu,
+  UsersRound,
   X,
 } from "lucide-react";
 import { Wordmark } from "@/components/Wordmark";
@@ -14,6 +15,7 @@ import { Wordmark } from "@/components/Wordmark";
 const navigation = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/campaigns", label: "Campaigns", icon: CircleDollarSign },
+  { href: "/dashboard/recipients", label: "Recipients", icon: UsersRound },
 ];
 
 function Navigation({ onNavigate }: { onNavigate?: () => void }) {
