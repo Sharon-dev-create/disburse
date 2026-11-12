@@ -58,6 +58,7 @@ export interface PersistedExecutionJob extends ExecutionJobRecord {
   readonly jobId: string;
   readonly idempotencyKey: string;
   readonly snapshotDigest: string;
+  readonly fencingCounter: string;
   readonly attemptCount: number;
   readonly nextEligibleAtMs: number;
   readonly failure: ExecutionJobFailure | null;

@@ -22,10 +22,18 @@ const migrations: readonly MigrationFile[] = [
       import.meta.url,
     ),
   },
+  {
+    version: "0002",
+    name: "execution_jobs",
+    url: new URL(
+      "../../sql/migrations/0002_execution_jobs.sql",
+      import.meta.url,
+    ),
+  },
 ];
 
 const migrationTable = "public.disburse_schema_migrations";
-const migrationLockKey = "disburse.execution-service.security-migrations";
+const migrationLockKey = "disburse.execution-service.schema-migrations";
 
 export interface MigrationResult {
   readonly applied: readonly string[];
@@ -77,7 +85,8 @@ export async function applyPostgresMigrations(
         continue;
       }
 
-      await refuseUnversionedSecurityObjects(client);
+      if (migration.version === "0001")
+        await refuseUnversionedSecurityObjects(client);
       await client.query(migration.sql);
       await client.query(
         `INSERT INTO ${migrationTable} (version, name, checksum)

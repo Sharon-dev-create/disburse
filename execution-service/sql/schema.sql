@@ -1,39 +1,68 @@
 -- Reference PostgreSQL schema only. This file is not run by package scripts.
 -- Apply only after a separately reviewed, environment-specific migration plan.
 
+-- Durable job foundation only: these three tables are applied by migration 0002.
+-- The remaining tables below are reference-only and are not migrated.
 CREATE TABLE execution_jobs (
     job_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    network_id TEXT NOT NULL,
-    contract_id TEXT NOT NULL,
-    payout_id NUMERIC(20, 0) NOT NULL CHECK (payout_id >= 0),
-    campaign_id NUMERIC(20, 0) NOT NULL CHECK (campaign_id >= 0),
+    network_id TEXT NOT NULL CHECK (length(btrim(network_id)) > 0),
+    contract_id TEXT NOT NULL CHECK (length(btrim(contract_id)) > 0),
+    payout_id NUMERIC(20, 0) NOT NULL
+        CHECK (payout_id BETWEEN 0 AND 18446744073709551615),
+    campaign_id NUMERIC(20, 0) NOT NULL
+        CHECK (campaign_id BETWEEN 0 AND 18446744073709551615),
+    job_creation_idempotency_key TEXT NOT NULL
+        CHECK (length(job_creation_idempotency_key) BETWEEN 1 AND 256),
+    payload_hash CHAR(64) NOT NULL CHECK (payload_hash ~ '^[a-f0-9]{64}$'),
+    payout_snapshot JSONB NOT NULL CHECK (jsonb_typeof(payout_snapshot) = 'object'),
+    input_atomic_amount NUMERIC(39, 0) NOT NULL
+        CHECK (input_atomic_amount BETWEEN 1 AND 340282366920938463463374607431768211455),
+    expected_output_atomic_amount NUMERIC(39, 0) NOT NULL
+        CHECK (expected_output_atomic_amount BETWEEN 1 AND 340282366920938463463374607431768211455),
+    observed_contract_status TEXT NOT NULL CHECK (observed_contract_status = 'Reserved'),
     state TEXT NOT NULL CHECK (state IN (
         'Discovered', 'Queued', 'Leased', 'Preparing', 'SubmissionStarted',
         'SubmissionUnknown', 'Submitted', 'ConfirmationPending', 'VerificationPending',
         'SettlementReady', 'SettlementSubmitted', 'Completed', 'RetryableFailure',
         'ManualReview', 'Abandoned'
     )),
-    contract_status TEXT NOT NULL,
-    provider_id TEXT,
     execution_reference TEXT NOT NULL,
-    provider_idempotency_key TEXT NOT NULL,
-    payout_snapshot JSONB NOT NULL,
-    state_version BIGINT NOT NULL DEFAULT 0 CHECK (state_version >= 0),
-    discovery_tx_hash TEXT NOT NULL,
+    state_version INTEGER NOT NULL DEFAULT 0 CHECK (state_version >= 0),
+    fencing_counter NUMERIC(39, 0) NOT NULL DEFAULT 0
+        CHECK (fencing_counter BETWEEN 0 AND 999999999999999999999999999999999999999),
+    attempt_count INTEGER NOT NULL DEFAULT 0 CHECK (attempt_count >= 0),
+    next_eligible_at TIMESTAMPTZ NOT NULL DEFAULT statement_timestamp(),
+    failure_code TEXT CHECK (
+        failure_code IS NULL OR failure_code ~ '^[a-z0-9][a-z0-9._-]{0,63}$'
+    ),
+    failure_description TEXT CHECK (
+        failure_description IS NULL OR
+        (length(failure_description) <= 1000 AND failure_description !~ '[[:cntrl:]]')
+    ),
+    discovery_tx_hash TEXT NOT NULL CHECK (length(btrim(discovery_tx_hash)) > 0),
+    discovery_block_hash TEXT NOT NULL CHECK (length(btrim(discovery_block_hash)) > 0),
+    discovery_receipt_id TEXT NOT NULL CHECK (length(btrim(discovery_receipt_id)) > 0),
     discovery_event_index INTEGER NOT NULL CHECK (discovery_event_index >= 0),
-    discovery_block_height NUMERIC(20, 0) NOT NULL CHECK (discovery_block_height >= 0),
-    last_reconciled_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (network_id, contract_id, payout_id),
-    UNIQUE (network_id, contract_id, execution_reference),
-    UNIQUE (network_id, contract_id, provider_idempotency_key),
-    UNIQUE (network_id, contract_id, discovery_tx_hash, discovery_event_index)
+    discovery_block_height NUMERIC(20, 0) NOT NULL
+        CHECK (discovery_block_height BETWEEN 0 AND 18446744073709551615),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT statement_timestamp(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT statement_timestamp(),
+    CONSTRAINT execution_jobs_payout_identity_uq
+        UNIQUE (network_id, contract_id, payout_id),
+    CONSTRAINT execution_jobs_idempotency_uq
+        UNIQUE (network_id, contract_id, job_creation_idempotency_key),
+    CONSTRAINT execution_jobs_discovery_event_uq
+        UNIQUE (
+            network_id, contract_id, discovery_tx_hash, discovery_block_hash,
+            discovery_receipt_id, discovery_event_index
+        ),
+    CONSTRAINT execution_jobs_execution_reference_uq
+        UNIQUE (network_id, contract_id, execution_reference)
 );
 
 CREATE INDEX execution_jobs_claimable_idx
-    ON execution_jobs (state, updated_at)
-    WHERE state IN ('Queued', 'Leased');
+    ON execution_jobs (next_eligible_at, created_at, job_id)
+    WHERE state = 'Queued';
 
 CREATE TABLE execution_attempts (
     attempt_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -43,17 +72,18 @@ CREATE TABLE execution_attempts (
     phase TEXT NOT NULL CHECK (phase IN (
         'validate', 'quote', 'prepare', 'submit', 'confirm', 'verify', 'settle'
     )),
-    provider_id TEXT,
-    idempotency_key TEXT NOT NULL,
-    request_hash TEXT,
+    idempotency_key TEXT NOT NULL CHECK (length(idempotency_key) BETWEEN 1 AND 256),
     outcome TEXT NOT NULL CHECK (outcome IN (
         'started', 'accepted', 'rejected', 'unknown', 'verified', 'failed'
     )),
     started_at TIMESTAMPTZ NOT NULL,
-    finished_at TIMESTAMPTZ,
-    UNIQUE (job_id, sequence_number),
-    UNIQUE (job_id, attempt_key)
+    CONSTRAINT execution_attempts_sequence_uq UNIQUE (job_id, sequence_number),
+    CONSTRAINT execution_attempts_attempt_key_uq UNIQUE (job_id, attempt_key),
+    CONSTRAINT execution_attempts_idempotency_uq UNIQUE (job_id, idempotency_key),
+    CONSTRAINT execution_attempts_job_attempt_uq UNIQUE (job_id, attempt_id)
 );
+
+CREATE INDEX job_leases_expiration_idx ON job_leases (expires_at);
 
 CREATE TABLE provider_references (
     provider_reference_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
