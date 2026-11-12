@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, test } from "node:test";
 import type { PoolClient } from "pg";
-import type { PayoutReservedEvent, PayoutSnapshot } from "../../src/domain/payout.ts";
+import type {
+  PayoutReservedEvent,
+  PayoutSnapshot,
+} from "../../src/domain/payout.ts";
 import {
   applyPostgresMigrations,
   assertPostgresMigrationsCurrent,
@@ -25,7 +28,9 @@ import type { PostgresQuery } from "../../src/persistence/postgres-security-repo
 const config = loadPostgresRuntimeConfig("test");
 const pool = createPostgresPool(config);
 const seed = `jobs-${randomUUID()}`;
-let nextId = BigInt(Date.now()) * 1_000n;
+let nextId =
+  BigInt(Date.now()) * 1_000_000n +
+  BigInt(`0x${randomUUID().replaceAll("-", "").slice(0, 12)}`);
 
 before(async () => {
   const identity = await pool.query<{ database: string; role: string }>(
@@ -63,8 +68,14 @@ void test("creation is durable, idempotent, payout-unique, and preserves exact a
   assert.equal(samePayoutNewKey.created, false);
   assert.equal(created.job.jobId, duplicate.job.jobId);
   assert.equal(created.job.jobId, samePayoutNewKey.job.jobId);
-  assert.equal(created.job.payout.inputAmount.atomicAmount, creation.payout.inputAmount.atomicAmount);
-  assert.equal(created.job.payout.expectedOutput.atomicAmount, creation.payout.expectedOutput.atomicAmount);
+  assert.equal(
+    created.job.payout.inputAmount.atomicAmount,
+    creation.payout.inputAmount.atomicAmount,
+  );
+  assert.equal(
+    created.job.payout.expectedOutput.atomicAmount,
+    creation.payout.expectedOutput.atomicAmount,
+  );
   assert.match(created.job.jobId, /^[1-9]\d*$/);
 
   const restarted = repositoryForPool(pool);
@@ -133,7 +144,7 @@ void test("concurrent job creation on independent connections has one database w
 void test("concurrent workers claim one queued job and stale lease writes are fenced", async () => {
   const creation = makeCreation("claim-race");
   const setup = repositoryForPool(pool);
-  const queued = await enqueueQueued(setup, creation);
+  await enqueueQueued(setup, creation);
   const clients = await Promise.all([pool.connect(), pool.connect()]);
   try {
     const pids = await Promise.all(
@@ -201,13 +212,24 @@ void test("lease renewal, expiry replacement, and fencing counters survive repos
   await new Promise((resolve) => setTimeout(resolve, 2_100));
   const second = await repository.claimNext("worker-two", Date.now(), 2_000);
   assert.ok(second?.lease);
-  assert.equal(BigInt(second.lease.fencingToken), BigInt(renewed.fencingToken) + 1n);
+  assert.equal(
+    BigInt(second.lease.fencingToken),
+    BigInt(renewed.fencingToken) + 1n,
+  );
   await assert.rejects(
     () =>
-      repository.appendAttempt(first.key, first.lease!, makeAttempt(1), Date.now()),
+      repository.appendAttempt(
+        first.key,
+        first.lease!,
+        makeAttempt(1),
+        Date.now(),
+      ),
     StaleExecutionJobError,
   );
-  assert.equal((await repositoryForPool(pool).getById(queued.job.jobId))?.lease?.workerId, "worker-two");
+  assert.equal(
+    (await repositoryForPool(pool).getById(queued.job.jobId))?.lease?.workerId,
+    "worker-two",
+  );
 });
 
 void test("attempts and safe failures are atomic and duplicate attempt idempotency rolls back", async () => {
@@ -255,7 +277,11 @@ void test("attempts and safe failures are atomic and duplicate attempt idempoten
 void test("expired ambiguous submission moves to manual review without releasing payout state", async () => {
   const repository = repositoryForPool(pool);
   const queued = await enqueueQueued(repository, makeCreation("recovery"));
-  const claimed = await repository.claimNext("recovery-worker", Date.now(), 1_000);
+  const claimed = await repository.claimNext(
+    "recovery-worker",
+    Date.now(),
+    1_000,
+  );
   assert.ok(claimed?.lease);
   const preparing = await repository.transition(
     claimed.key,
@@ -303,7 +329,8 @@ void test("snapshot identity cannot be changed and job creation never mutates pa
     ),
   );
   assert.equal(
-    (await repository.getById(created.job.jobId))?.payout.expectedOutput.atomicAmount,
+    (await repository.getById(created.job.jobId))?.payout.expectedOutput
+      .atomicAmount,
     creation.payout.expectedOutput.atomicAmount,
   );
 });

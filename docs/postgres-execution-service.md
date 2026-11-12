@@ -9,11 +9,11 @@ In-memory implementations remain test-only.
 
 Use separate local databases and roles:
 
-| Target | Required variable | Required database and role |
-| --- | --- | --- |
-| Development | `DISBURSE_DEV_DATABASE_URL` | `disburse_dev` / `disburse_dev` |
-| Integration test | `DISBURSE_TEST_DATABASE_URL` | `disburse_test` / `disburse_test` |
-| Production composition | `DISBURSE_DATABASE_URL` | Explicit production URL |
+| Target                 | Required variable            | Required database and role        |
+| ---------------------- | ---------------------------- | --------------------------------- |
+| Development            | `DISBURSE_DEV_DATABASE_URL`  | `disburse_dev` / `disburse_dev`   |
+| Integration test       | `DISBURSE_TEST_DATABASE_URL` | `disburse_test` / `disburse_test` |
+| Production composition | `DISBURSE_DATABASE_URL`      | Explicit production URL           |
 
 Development and test URLs are validated against the expected database, role,
 and loopback host. The integration suite reads only

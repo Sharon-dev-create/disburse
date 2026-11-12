@@ -100,20 +100,20 @@ The service models IDs and amounts as decimal strings to avoid JavaScript precis
 future RPC decoder must preserve the original JSON integer lexemes or reject values it cannot
 decode exactly.
 
-| Method | Actual signature / result | Access and contract effect |
-|---|---|---|
-| `create_payout` | `(campaign_id, idempotency_key, recipient_near_account_id, destination, input_amount, expected_output_amount) -> u64` | Operator/Admin; reserves input funds immediately and emits `payout_reserved`; blocked while paused. Idempotency is campaign-scoped. |
-| `get_payout` | `(payout_id) -> Option<PayoutView>` | Read by ID; includes status, destination, amounts, execution reference, and stored evidence. |
-| `get_campaign_payout` | `(campaign_id, payout_id) -> Option<PayoutView>` | Read by campaign and payout IDs. |
-| `get_campaign_payout_accounting` | `(campaign_id) -> Option<CampaignPayoutAccounting>` | Read budget, funded, reserved, spent, available. |
-| `start_payout_execution` | `(payout_id, execution_reference) -> ()` | Operator/Admin; `Reserved → Executing`, globally unique reference, blocked while paused. It does not submit a provider transaction. |
-| `mark_payout_pending_verification` | `(payout_id) -> ()` | Operator/Admin; `Executing → PendingVerification`, blocked while paused; not proof of execution success. |
-| `mark_payout_failed` | `(payout_id, ExecutionFailureEvidence) -> ()` | Operator/Admin; records asserted definitive failure; no independent chain lookup. |
-| `move_payout_to_manual_review` | `(payout_id, reason) -> ()` | Operator/Admin; `Executing` or `PendingVerification → ManualReview`; available while paused. |
-| `settle_payout` | `(payout_id, SettlementEvidence) -> ()` | Explicit Verifier only; `PendingVerification → Succeeded`; checked evidence and accounting, available while paused. |
-| `release_failed_payout_reservation` | `(payout_id, PayoutResolutionEvidence) -> ()` | Explicit Verifier only; requires typed failure evidence; releases reservation after non-settlement attestation. |
-| `confirm_manual_review_execution` | `(payout_id, PayoutResolutionEvidence) -> ()` | Explicit Verifier only; `ManualReview → PendingVerification`, preserving reservation. |
-| `release_manual_review_reservation` | `(payout_id, PayoutResolutionEvidence) -> ()` | Explicit Verifier only; releases reservation after definite non-settlement attestation. |
+| Method                              | Actual signature / result                                                                                             | Access and contract effect                                                                                                          |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `create_payout`                     | `(campaign_id, idempotency_key, recipient_near_account_id, destination, input_amount, expected_output_amount) -> u64` | Operator/Admin; reserves input funds immediately and emits `payout_reserved`; blocked while paused. Idempotency is campaign-scoped. |
+| `get_payout`                        | `(payout_id) -> Option<PayoutView>`                                                                                   | Read by ID; includes status, destination, amounts, execution reference, and stored evidence.                                        |
+| `get_campaign_payout`               | `(campaign_id, payout_id) -> Option<PayoutView>`                                                                      | Read by campaign and payout IDs.                                                                                                    |
+| `get_campaign_payout_accounting`    | `(campaign_id) -> Option<CampaignPayoutAccounting>`                                                                   | Read budget, funded, reserved, spent, available.                                                                                    |
+| `start_payout_execution`            | `(payout_id, execution_reference) -> ()`                                                                              | Operator/Admin; `Reserved → Executing`, globally unique reference, blocked while paused. It does not submit a provider transaction. |
+| `mark_payout_pending_verification`  | `(payout_id) -> ()`                                                                                                   | Operator/Admin; `Executing → PendingVerification`, blocked while paused; not proof of execution success.                            |
+| `mark_payout_failed`                | `(payout_id, ExecutionFailureEvidence) -> ()`                                                                         | Operator/Admin; records asserted definitive failure; no independent chain lookup.                                                   |
+| `move_payout_to_manual_review`      | `(payout_id, reason) -> ()`                                                                                           | Operator/Admin; `Executing` or `PendingVerification → ManualReview`; available while paused.                                        |
+| `settle_payout`                     | `(payout_id, SettlementEvidence) -> ()`                                                                               | Explicit Verifier only; `PendingVerification → Succeeded`; checked evidence and accounting, available while paused.                 |
+| `release_failed_payout_reservation` | `(payout_id, PayoutResolutionEvidence) -> ()`                                                                         | Explicit Verifier only; requires typed failure evidence; releases reservation after non-settlement attestation.                     |
+| `confirm_manual_review_execution`   | `(payout_id, PayoutResolutionEvidence) -> ()`                                                                         | Explicit Verifier only; `ManualReview → PendingVerification`, preserving reservation.                                               |
+| `release_manual_review_reservation` | `(payout_id, PayoutResolutionEvidence) -> ()`                                                                         | Explicit Verifier only; releases reservation after definite non-settlement attestation.                                             |
 
 Relevant NEP-297 events include `payout_reserved`, `payout_execution_started`,
 `payout_pending_verification`, `payout_execution_failed`, `payout_manual_review`,
@@ -129,23 +129,23 @@ funds unless a Verifier submits structured non-settlement evidence.
 
 Operational job states do not change NEAR contract states. They describe service progress only.
 
-| Operational state | Meaning / common contract observation |
-|---|---|
-| `Discovered` | A finalized reserved event was observed; reread payout before queueing. |
-| `Queued` | Durable work item; payout must still be `Reserved`. |
-| `Leased` | One worker owns a time-bounded lease and fencing token. |
-| `Preparing` | Validate request, obtain quote, prepare; no external submission yet. |
-| `SubmissionStarted` | Submission intent and attempt are durably recorded before the provider call; contract is normally `Executing`. |
-| `SubmissionUnknown` | Provider may have accepted the request but outcome is ambiguous. Never blindly resubmit. |
-| `Submitted` | Provider acceptance was reconciled and its references were persisted. Contract may still be `Executing`. |
-| `ConfirmationPending` | Waiting for destination-chain completion/finality. |
+| Operational state     | Meaning / common contract observation                                                                            |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `Discovered`          | A finalized reserved event was observed; reread payout before queueing.                                          |
+| `Queued`              | Durable work item; payout must still be `Reserved`.                                                              |
+| `Leased`              | One worker owns a time-bounded lease and fencing token.                                                          |
+| `Preparing`           | Validate request, obtain quote, prepare; no external submission yet.                                             |
+| `SubmissionStarted`   | Submission intent and attempt are durably recorded before the provider call; contract is normally `Executing`.   |
+| `SubmissionUnknown`   | Provider may have accepted the request but outcome is ambiguous. Never blindly resubmit.                         |
+| `Submitted`           | Provider acceptance was reconciled and its references were persisted. Contract may still be `Executing`.         |
+| `ConfirmationPending` | Waiting for destination-chain completion/finality.                                                               |
 | `VerificationPending` | Provider reports an outcome; independent evidence assessment is required. Contract may be `PendingVerification`. |
-| `SettlementReady` | Independent verifier passed; contract is reread as `PendingVerification`. |
-| `SettlementSubmitted` | Verifier transaction intent and response are being reconciled. |
-| `Completed` | Contract reread reports `Succeeded`. |
-| `RetryableFailure` | A known safe retry exists, normally before external submission or after definitive provider non-acceptance. |
-| `ManualReview` | Outcome is ambiguous, evidence insufficient, or safe automated reconciliation unavailable. |
-| `Abandoned` | Contract reread reports terminal `ReservationReleased`; this is not a refund. |
+| `SettlementReady`     | Independent verifier passed; contract is reread as `PendingVerification`.                                        |
+| `SettlementSubmitted` | Verifier transaction intent and response are being reconciled.                                                   |
+| `Completed`           | Contract reread reports `Succeeded`.                                                                             |
+| `RetryableFailure`    | A known safe retry exists, normally before external submission or after definitive provider non-acceptance.      |
+| `ManualReview`        | Outcome is ambiguous, evidence insufficient, or safe automated reconciliation unavailable.                       |
+| `Abandoned`           | Contract reread reports terminal `ReservationReleased`; this is not a refund.                                    |
 
 The TypeScript transition validator enforces key guards: only `Reserved` can be queued; accepted
 provider outcome is required for `Submitted`; unknown outcomes cannot become retryable failures;
@@ -154,23 +154,23 @@ independent verification is required for `SettlementReady`; `Completed` requires
 
 ### Transition operation summary
 
-| Transition | Trigger and persistent write | Provider call | NEAR call | Retry / human action |
-|---|---|---|---|---|
-| `Discovered → Queued` | Event plus fresh `Reserved` read; insert unique job and cursor in one DB transaction. | None | Read only | Duplicate event returns existing job. |
-| `Queued → Leased → Preparing` | Atomic lease claim, attempt/version update. | Validate, quote, prepare | Read current payout/pause | Lease can expire; fencing token rejects stale worker writes. |
-| `Preparing → SubmissionStarted` | Persist stable reference, idempotency key, request hash, attempt. | None yet | Operator `start_payout_execution`; reread `Executing`. | Start call unknown: reread contract before retrying call. |
-| `SubmissionStarted → Submitted` | Persist response/provider references. | Submit response accepted or reconciled lookup | Operator `mark_payout_pending_verification` when submission is acknowledged; reread. | Provider acceptance is not settlement. |
-| `SubmissionStarted → SubmissionUnknown` | Persist ambiguous outcome and stop automatic submission attempts. | Timeout/connection loss | None unless independently known submitted | Reconcile only by a verified provider lookup; otherwise ManualReview. |
-| `SubmissionUnknown → Submitted` | Persist lookup result and references. | Status/reference lookup | Operator records pending verification if appropriate | No second submit merely due to timeout. |
-| `SubmissionUnknown → RetryableFailure` | Persist definitive non-acceptance. | Lookup must establish not accepted | May need Operator failure record depending current contract state | Retry only after safe retry decision; otherwise ManualReview. |
-| `Submitted → ConfirmationPending → VerificationPending` | Persist provider state and evidence pointer/hash. | Status/evidence retrieval | Read payout; operator can mark `PendingVerification` only under allowed transition | Provider success alone does not progress to SettlementReady. |
-| `VerificationPending → SettlementReady` | Persist independent verification result and normalized claims. | No new submit | Read `PendingVerification` | Insufficient/inconsistent claims escalate to ManualReview. |
-| `SettlementReady → SettlementSubmitted` | Persist settlement attempt before signed call. | None | Explicit Verifier `settle_payout` | On lost response, read payout/evidence; do not infer failure. |
-| `SettlementSubmitted → Completed` | Persist chain observation and accounting reconciliation. | None | Read `Succeeded` and accounting | Requires authoritative chain state. |
-| `SettlementSubmitted → SettlementReady` | Persist proven failed NEAR transaction and unchanged `PendingVerification`. | None | Read contract; confirm prior tx failed | Retry only same verified evidence; unknown result goes to ManualReview. |
-| `* → ManualReview` | Persist reason, observations, and error history. | Maybe status lookup | Operator may `move_payout_to_manual_review`; never use timeout as failure evidence | Human/verifier reconciliation. |
-| `ManualReview → VerificationPending` | Persist verifier resolution and evidence. | No submit | Verifier `confirm_manual_review_execution`; reread `PendingVerification` | Normal independent verification and settlement follow. |
-| `ManualReview → Abandoned` | Persist final resolution/history. | No submit | Verifier releases reservation; reread `ReservationReleased` | Terminal operational outcome. |
+| Transition                                              | Trigger and persistent write                                                          | Provider call                                 | NEAR call                                                                            | Retry / human action                                                    |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `Discovered → Queued`                                   | Event plus fresh `Reserved` read; insert unique job and cursor in one DB transaction. | None                                          | Read only                                                                            | Duplicate event returns existing job.                                   |
+| `Queued → Leased → Preparing`                           | Atomic lease claim, attempt/version update.                                           | Validate, quote, prepare                      | Read current payout/pause                                                            | Lease can expire; fencing token rejects stale worker writes.            |
+| `Preparing → SubmissionStarted`                         | Persist stable reference, idempotency key, request hash, attempt.                     | None yet                                      | Operator `start_payout_execution`; reread `Executing`.                               | Start call unknown: reread contract before retrying call.               |
+| `SubmissionStarted → Submitted`                         | Persist response/provider references.                                                 | Submit response accepted or reconciled lookup | Operator `mark_payout_pending_verification` when submission is acknowledged; reread. | Provider acceptance is not settlement.                                  |
+| `SubmissionStarted → SubmissionUnknown`                 | Persist ambiguous outcome and stop automatic submission attempts.                     | Timeout/connection loss                       | None unless independently known submitted                                            | Reconcile only by a verified provider lookup; otherwise ManualReview.   |
+| `SubmissionUnknown → Submitted`                         | Persist lookup result and references.                                                 | Status/reference lookup                       | Operator records pending verification if appropriate                                 | No second submit merely due to timeout.                                 |
+| `SubmissionUnknown → RetryableFailure`                  | Persist definitive non-acceptance.                                                    | Lookup must establish not accepted            | May need Operator failure record depending current contract state                    | Retry only after safe retry decision; otherwise ManualReview.           |
+| `Submitted → ConfirmationPending → VerificationPending` | Persist provider state and evidence pointer/hash.                                     | Status/evidence retrieval                     | Read payout; operator can mark `PendingVerification` only under allowed transition   | Provider success alone does not progress to SettlementReady.            |
+| `VerificationPending → SettlementReady`                 | Persist independent verification result and normalized claims.                        | No new submit                                 | Read `PendingVerification`                                                           | Insufficient/inconsistent claims escalate to ManualReview.              |
+| `SettlementReady → SettlementSubmitted`                 | Persist settlement attempt before signed call.                                        | None                                          | Explicit Verifier `settle_payout`                                                    | On lost response, read payout/evidence; do not infer failure.           |
+| `SettlementSubmitted → Completed`                       | Persist chain observation and accounting reconciliation.                              | None                                          | Read `Succeeded` and accounting                                                      | Requires authoritative chain state.                                     |
+| `SettlementSubmitted → SettlementReady`                 | Persist proven failed NEAR transaction and unchanged `PendingVerification`.           | None                                          | Read contract; confirm prior tx failed                                               | Retry only same verified evidence; unknown result goes to ManualReview. |
+| `* → ManualReview`                                      | Persist reason, observations, and error history.                                      | Maybe status lookup                           | Operator may `move_payout_to_manual_review`; never use timeout as failure evidence   | Human/verifier reconciliation.                                          |
+| `ManualReview → VerificationPending`                    | Persist verifier resolution and evidence.                                             | No submit                                     | Verifier `confirm_manual_review_execution`; reread `PendingVerification`             | Normal independent verification and settlement follow.                  |
+| `ManualReview → Abandoned`                              | Persist final resolution/history.                                                     | No submit                                     | Verifier releases reservation; reread `ReservationReleased`                          | Terminal operational outcome.                                           |
 
 The validator does not authorize signed contract calls. Implementations still validate signer
 roles, on-chain status, pause policy, and transaction finality at the client boundary.

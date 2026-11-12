@@ -52,7 +52,7 @@ async function createComposition(
   } catch {
     await pool.end().catch(() => undefined);
     throw new Error(
-      `PostgreSQL ${config.target} security repository startup failed; connection details are redacted`,
+      `PostgreSQL ${config.target} persistence startup failed; connection details are redacted`,
     );
   }
 

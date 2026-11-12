@@ -40,6 +40,12 @@ export interface MigrationResult {
   readonly currentVersion: string | null;
 }
 
+export interface PostgresMigrationIdentity {
+  readonly version: string;
+  readonly name: string;
+  readonly checksum: string;
+}
+
 export async function applyPostgresMigrations(
   pool: Pool,
 ): Promise<MigrationResult> {
@@ -118,25 +124,34 @@ export async function assertPostgresMigrationsCurrent(
     [migrationTable],
   );
   if (!table.rows[0]?.table_name)
-    throw new Error("PostgreSQL security migrations have not been applied");
-  const result = await pool.query<{ version: string; checksum: string }>(
-    `SELECT version, checksum FROM ${migrationTable} ORDER BY version`,
+    throw new Error("PostgreSQL migrations have not been applied");
+  const result = await pool.query<PostgresMigrationIdentity>(
+    `SELECT version, name, checksum FROM ${migrationTable} ORDER BY version`,
   );
-  for (const migration of loaded) {
-    const row = result.rows.find((item) => item.version === migration.version);
+  assertMigrationHistoryMatches(loaded, result.rows);
+}
+
+export function assertMigrationHistoryMatches(
+  expected: readonly PostgresMigrationIdentity[],
+  recorded: readonly PostgresMigrationIdentity[],
+): void {
+  for (const row of recorded) {
+    if (!expected.some((migration) => migration.version === row.version))
+      throw new Error(`PostgreSQL contains unknown migration version ${row.version}`);
+  }
+  for (const migration of expected) {
+    const row = recorded.find((item) => item.version === migration.version);
     if (!row)
       throw new Error(
-        `PostgreSQL security migration ${migration.version} has not been applied`,
+        `PostgreSQL migration ${migration.version} has not been applied`,
       );
-    if (row.checksum !== migration.checksum)
+    if (row.name !== migration.name || row.checksum !== migration.checksum)
       throw new Error(
-        `PostgreSQL security migration ${migration.version} checksum mismatch`,
+        `PostgreSQL migration ${migration.version} name or checksum mismatch`,
       );
   }
-  if (result.rows.length !== loaded.length)
-    throw new Error(
-      "PostgreSQL contains an unknown security migration version",
-    );
+  if (recorded.length !== expected.length)
+    throw new Error("PostgreSQL contains an unknown migration version");
 }
 
 async function ensureMigrationTable(client: PoolClient): Promise<void> {

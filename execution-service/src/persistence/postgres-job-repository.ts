@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import {
-  executionJobKeyString,
   validatePayoutSnapshot,
   type ExecutionJobKey,
   type PayoutReservedEvent,
@@ -57,7 +56,9 @@ const jobSelect = `
 
 export class JobCreationConflictError extends Error {
   constructor() {
-    super("Execution-job idempotency or payout identity conflicts with persisted data");
+    super(
+      "Execution-job idempotency or payout identity conflicts with persisted data",
+    );
     this.name = "JobCreationConflictError";
   }
 }
@@ -90,9 +91,10 @@ export class PostgresJobRepository implements DurableJobRepository {
     return { job: result.job, created: result.created };
   }
 
-  async createIdempotent(
-    creation: ExecutionJobCreation,
-  ): Promise<{ readonly job: PersistedExecutionJob; readonly created: boolean }> {
+  async createIdempotent(creation: ExecutionJobCreation): Promise<{
+    readonly job: PersistedExecutionJob;
+    readonly created: boolean;
+  }> {
     const { event, payout, idempotencyKey } = creation;
     validateExecutionJobCreation(creation);
     const key: ExecutionJobKey = {
@@ -159,8 +161,7 @@ export class PostgresJobRepository implements DurableJobRepository {
            FOR UPDATE`,
           [key.networkId, key.contractId, idempotencyKey, key.payoutId],
         );
-        if (conflicts.rows.length !== 1)
-          throw new JobCreationConflictError();
+        if (conflicts.rows.length !== 1) throw new JobCreationConflictError();
         const existing = conflicts.rows[0]!;
         const existingIdempotencyKey = requireString(
           existing,
@@ -275,7 +276,7 @@ export class PostgresJobRepository implements DurableJobRepository {
     return this.transaction(async (client) => {
       const job = await lockJob(client, key);
       if (!job) return null;
-      if (!await hasValidLease(client, job, lease)) return null;
+      if (!(await hasValidLease(client, job, lease))) return null;
       const updated = await client.query(
         `UPDATE public.execution_jobs
          SET state_version = state_version + 1,
@@ -292,12 +293,15 @@ export class PostgresJobRepository implements DurableJobRepository {
          WHERE job_id = $1::bigint AND worker_id = $2
            AND fencing_token = $3::numeric
            AND expires_at > statement_timestamp()
-         RETURNING worker_id, fencing_token::text AS fencing_token,
+         RETURNING worker_id, fencing_token::text AS lease_fencing_token,
                    expires_at`,
         [job.jobId, lease.workerId, lease.fencingToken, ttlMs],
       );
       if (!renewed.rows[0]) throw new StaleExecutionJobError();
-      return mapLease(renewed.rows[0], requireSafeInteger(updated.rows[0], "state_version"));
+      return mapLease(
+        renewed.rows[0],
+        requireSafeInteger(updated.rows[0], "state_version"),
+      );
     });
   }
 
@@ -318,7 +322,7 @@ export class PostgresJobRepository implements DurableJobRepository {
       if (lease) {
         if (
           lease.stateVersion !== expectedVersion ||
-          !await hasValidLease(client, job, lease)
+          !(await hasValidLease(client, job, lease))
         )
           throw new StaleExecutionJobError("Worker lease is stale or expired");
       } else if (requiresWorkerLease(job.state)) {
@@ -348,7 +352,10 @@ export class PostgresJobRepository implements DurableJobRepository {
     return this.transaction(async (client) => {
       const job = await lockJob(client, key);
       if (!job) throw new Error("Execution job not found");
-      if (lease.stateVersion !== job.version || !await hasValidLease(client, job, lease))
+      if (
+        lease.stateVersion !== job.version ||
+        !(await hasValidLease(client, job, lease))
+      )
         throw new StaleExecutionJobError("Worker lease is stale or expired");
       if (attempt.sequence !== job.attemptCount + 1)
         throw new Error("Execution attempt sequence must be contiguous");
@@ -398,7 +405,10 @@ export class PostgresJobRepository implements DurableJobRepository {
     return this.transaction(async (client) => {
       const job = await lockJob(client, key);
       if (!job) throw new Error("Execution job not found");
-      if (lease.stateVersion !== job.version || !await hasValidLease(client, job, lease))
+      if (
+        lease.stateVersion !== job.version ||
+        !(await hasValidLease(client, job, lease))
+      )
         throw new StaleExecutionJobError("Worker lease is stale or expired");
       await client.query(
         `DELETE FROM public.job_leases
@@ -423,7 +433,10 @@ export class PostgresJobRepository implements DurableJobRepository {
     return this.transaction(async (client) => {
       const job = await lockJob(client, key);
       if (!job) throw new Error("Execution job not found");
-      if (lease.stateVersion !== job.version || !await hasValidLease(client, job, lease))
+      if (
+        lease.stateVersion !== job.version ||
+        !(await hasValidLease(client, job, lease))
+      )
         throw new StaleExecutionJobError("Worker lease is stale or expired");
       const updated = await client.query(
         `UPDATE public.execution_jobs
@@ -480,7 +493,9 @@ export class PostgresJobRepository implements DurableJobRepository {
           [jobId, requireString(row, "fencing_token")],
         );
         if (deleted.rowCount !== 1)
-          throw new StaleExecutionJobError("Expired lease changed during recovery");
+          throw new StaleExecutionJobError(
+            "Expired lease changed during recovery",
+          );
         recovered += 1;
       }
       return { recovered, manualReview };
@@ -489,7 +504,9 @@ export class PostgresJobRepository implements DurableJobRepository {
 
   async getById(jobId: string): Promise<PersistedExecutionJob | null> {
     if (!/^[1-9]\d*$/.test(jobId) || BigInt(jobId) > 9_223_372_036_854_775_807n)
-      throw new Error("Execution job ID must be a positive BIGINT decimal string");
+      throw new Error(
+        "Execution job ID must be a positive BIGINT decimal string",
+      );
     return this.readOnly(async (client) => {
       const found = await client.query(
         "SELECT job_id::text AS job_id FROM public.execution_jobs WHERE job_id = $1::bigint",
@@ -499,7 +516,9 @@ export class PostgresJobRepository implements DurableJobRepository {
     });
   }
 
-  async getByPayout(key: ExecutionJobKey): Promise<PersistedExecutionJob | null> {
+  async getByPayout(
+    key: ExecutionJobKey,
+  ): Promise<PersistedExecutionJob | null> {
     validateJobKey(key);
     return this.readOnly(async (client) => {
       const result = await client.query(
@@ -568,7 +587,9 @@ export function hashExecutionJobPayload(
 }
 
 export function hashPayoutSnapshot(payout: PayoutSnapshot): string {
-  return createHash("sha256").update(canonicalJson(payout), "utf8").digest("hex");
+  return createHash("sha256")
+    .update(canonicalJson(payout), "utf8")
+    .digest("hex");
 }
 
 export function hashJobCreationPayload(
@@ -585,7 +606,8 @@ export function canonicalJson(value: unknown): string {
   if (value === null || typeof value === "string" || typeof value === "boolean")
     return JSON.stringify(value);
   if (typeof value === "number") {
-    if (!Number.isFinite(value)) throw new Error("Snapshot contains a non-finite number");
+    if (!Number.isFinite(value))
+      throw new Error("Snapshot contains a non-finite number");
     return JSON.stringify(value);
   }
   if (Array.isArray(value))
@@ -604,16 +626,35 @@ export function expiredLeaseRecoveryAction(
   state: JobState,
 ): "queue" | "manual-review" | "release-only" {
   if (state === "Leased") return "queue";
-  if (state === "ManualReview" || state === "Completed" || state === "Abandoned")
+  if (
+    state === "ManualReview" ||
+    state === "Completed" ||
+    state === "Abandoned"
+  )
     return "release-only";
-  return canTransition(state, "ManualReview") ? "manual-review" : "release-only";
+  return canTransition(state, "ManualReview")
+    ? "manual-review"
+    : "release-only";
 }
 
 export function validateExecutionJobCreation(
   creation: ExecutionJobCreation,
 ): void {
   const { event, payout, idempotencyKey } = creation;
-  if (!isRecord(event) || !isRecord(event.identity) || !isPayoutSnapshot(payout))
+  if (
+    !isRecord(event) ||
+    !isRecord(event.identity) ||
+    !isPayoutSnapshot(payout) ||
+    typeof idempotencyKey !== "string" ||
+    typeof event.identity.networkId !== "string" ||
+    typeof event.identity.contractId !== "string" ||
+    typeof event.identity.transactionHash !== "string" ||
+    typeof event.identity.blockHash !== "string" ||
+    typeof event.identity.receiptId !== "string" ||
+    typeof event.identity.blockHeight !== "string" ||
+    typeof event.payoutId !== "string" ||
+    typeof event.campaignId !== "string"
+  )
     throw new Error("Execution-job creation payload is malformed");
   validatePayoutSnapshot(payout);
   validateJobKey({
@@ -630,15 +671,29 @@ export function validateExecutionJobCreation(
     event.campaignId !== payout.campaignId ||
     payout.contractStatus !== "Reserved"
   )
-    throw new Error("Only a matching Reserved payout observation can create a job");
-  validateText(event.identity.transactionHash, "Discovery transaction hash", 512);
+    throw new Error(
+      "Only a matching Reserved payout observation can create a job",
+    );
+  validateText(
+    event.identity.transactionHash,
+    "Discovery transaction hash",
+    512,
+  );
   validateText(event.identity.blockHash, "Discovery block hash", 512);
   validateText(event.identity.receiptId, "Discovery receipt ID", 512);
-  if (!Number.isSafeInteger(event.identity.eventIndex) || event.identity.eventIndex < 0)
-    throw new Error("Discovery event index must be a non-negative safe integer");
+  if (
+    !Number.isSafeInteger(event.identity.eventIndex) ||
+    event.identity.eventIndex < 0
+  )
+    throw new Error(
+      "Discovery event index must be a non-negative safe integer",
+    );
   validateU128(payout.inputAmount.atomicAmount, "Input amount");
   validateU128(payout.expectedOutput.atomicAmount, "Expected output amount");
-  if (!payout.inputAmount.tokenId.trim() || !payout.expectedOutput.tokenId.trim())
+  if (
+    !payout.inputAmount.tokenId.trim() ||
+    !payout.expectedOutput.tokenId.trim()
+  )
     throw new Error("Payout token identifiers are required");
   validateText(idempotencyKey, "Job-creation idempotency key", 256);
 }
@@ -649,30 +704,40 @@ function validateJobKey(key: ExecutionJobKey): void {
   validateU64(key.payoutId, "Payout ID");
 }
 
-function validateText(value: string, label: string, maximumLength: number): void {
+function validateText(
+  value: string,
+  label: string,
+  maximumLength: number,
+): void {
   if (
+    typeof value !== "string" ||
     !value.trim() ||
     value.length > maximumLength ||
-    /[\u0000-\u001f\u007f]/.test(value)
+    containsControlCharacters(value)
   )
     throw new Error(`${label} is invalid`);
 }
 
 function validateU64(value: string, label: string): void {
   if (!/^(0|[1-9]\d*)$/.test(value) || BigInt(value) > maximumU64)
-    throw new Error(`${label} must be a canonical unsigned 64-bit decimal string`);
+    throw new Error(
+      `${label} must be a canonical unsigned 64-bit decimal string`,
+    );
 }
 
 function validateU128(value: string, label: string): void {
   if (!/^[1-9]\d*$/.test(value) || BigInt(value) > maximumU128)
-    throw new Error(`${label} must be a positive unsigned 128-bit decimal string`);
+    throw new Error(
+      `${label} must be a positive unsigned 128-bit decimal string`,
+    );
 }
 
 function validateWorkerAndTtl(workerId: string, ttlMs: number): void {
-  if (!workerId.trim() || workerId.length > 256 || /[\u0000-\u001f\u007f]/.test(workerId))
-    throw new Error("Worker ID is invalid");
+  validateText(workerId, "Worker ID", 256);
   if (!Number.isSafeInteger(ttlMs) || ttlMs < 1 || ttlMs > maximumIntervalMs)
-    throw new Error("Lease duration must be a positive supported millisecond value");
+    throw new Error(
+      "Lease duration must be a positive supported millisecond value",
+    );
 }
 
 function validateAttempt(attempt: ExecutionAttempt): void {
@@ -683,21 +748,44 @@ function validateAttempt(attempt: ExecutionAttempt): void {
   )
     throw new Error("Execution attempt is malformed");
   validateText(attempt.attemptKey, "Execution attempt key", 256);
-  validateText(attempt.idempotencyKey, "Execution attempt idempotency key", 256);
+  validateText(
+    attempt.idempotencyKey,
+    "Execution attempt idempotency key",
+    256,
+  );
   if (
-    !["validate", "quote", "prepare", "submit", "confirm", "verify", "settle"].includes(attempt.phase) ||
-    !["started", "accepted", "rejected", "unknown", "verified", "failed"].includes(attempt.outcome)
+    ![
+      "validate",
+      "quote",
+      "prepare",
+      "submit",
+      "confirm",
+      "verify",
+      "settle",
+    ].includes(attempt.phase) ||
+    ![
+      "started",
+      "accepted",
+      "rejected",
+      "unknown",
+      "verified",
+      "failed",
+    ].includes(attempt.outcome)
   )
     throw new Error("Execution attempt phase or outcome is invalid");
 }
 
 function validateFailure(failure: ExecutionJobFailure): void {
-  if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(failure.code))
+  if (
+    typeof failure.code !== "string" ||
+    !/^[a-z0-9][a-z0-9._-]{0,63}$/.test(failure.code)
+  )
     throw new Error("Failure code is invalid");
   if (
+    typeof failure.description !== "string" ||
     !failure.description.trim() ||
     failure.description.length > 1000 ||
-    /[\u0000-\u001f\u007f]/.test(failure.description)
+    containsControlCharacters(failure.description)
   )
     throw new Error("Failure description must be safe plain text");
 }
@@ -722,20 +810,24 @@ async function readJob(
   client: PostgresJobClient,
   jobId: string,
 ): Promise<PersistedExecutionJob> {
-  const result = await client.query(`${jobSelect} WHERE j.job_id = $1::bigint`, [
-    jobId,
-  ]);
+  const result = await client.query(
+    `${jobSelect} WHERE j.job_id = $1::bigint`,
+    [jobId],
+  );
   if (!result.rows[0]) throw new Error("Persisted execution job disappeared");
   const row = result.rows[0];
   const payout = parsePayoutSnapshot(row.payout_snapshot);
   if (
     payout.payoutId !== requireString(row, "payout_id") ||
     payout.campaignId !== requireString(row, "campaign_id") ||
-    payout.inputAmount.atomicAmount !== requireString(row, "input_atomic_amount") ||
+    payout.inputAmount.atomicAmount !==
+      requireString(row, "input_atomic_amount") ||
     payout.expectedOutput.atomicAmount !==
       requireString(row, "expected_output_atomic_amount")
   )
-    throw new Error("Persisted execution-job snapshot does not match protected columns");
+    throw new Error(
+      "Persisted execution-job snapshot does not match protected columns",
+    );
   const attemptRows = await client.query(
     `SELECT attempt_key, sequence_number, phase, idempotency_key,
             started_at, outcome
@@ -781,7 +873,9 @@ async function readJob(
     throw new Error("Persisted execution-job snapshot digest is inconsistent");
   const observedStatus = requireString(row, "observed_contract_status");
   if (observedStatus !== "Reserved")
-    throw new Error("Persisted job has an unsupported observed contract status");
+    throw new Error(
+      "Persisted job has an unsupported observed contract status",
+    );
   return {
     jobId: requireString(row, "job_id"),
     idempotencyKey: requireString(row, "job_creation_idempotency_key"),
@@ -849,10 +943,27 @@ function mapAttempt(row: Readonly<Record<string, unknown>>): ExecutionAttempt {
   const phase = requireString(row, "phase");
   const outcome = requireString(row, "outcome");
   if (
-    !["validate", "quote", "prepare", "submit", "confirm", "verify", "settle"].includes(phase) ||
-    !["started", "accepted", "rejected", "unknown", "verified", "failed"].includes(outcome)
+    ![
+      "validate",
+      "quote",
+      "prepare",
+      "submit",
+      "confirm",
+      "verify",
+      "settle",
+    ].includes(phase) ||
+    ![
+      "started",
+      "accepted",
+      "rejected",
+      "unknown",
+      "verified",
+      "failed",
+    ].includes(outcome)
   )
-    throw new Error("Persisted execution attempt has an unsupported phase or outcome");
+    throw new Error(
+      "Persisted execution attempt has an unsupported phase or outcome",
+    );
   return {
     attemptKey: requireString(row, "attempt_key"),
     sequence: requireSafeInteger(row, "sequence_number"),
@@ -1007,7 +1118,8 @@ function requireString(
   field: string,
 ): string {
   const value = row[field];
-  if (typeof value !== "string") throw new Error(`Persisted ${field} is not text`);
+  if (typeof value !== "string")
+    throw new Error(`Persisted ${field} is not text`);
   return value;
 }
 
@@ -1024,10 +1136,19 @@ function requireSafeInteger(
 function dateMs(value: unknown, field: string): number {
   const date = value instanceof Date ? value : new Date(String(value));
   const time = date.getTime();
-  if (!Number.isSafeInteger(time)) throw new Error(`Persisted ${field} is invalid`);
+  if (!Number.isSafeInteger(time))
+    throw new Error(`Persisted ${field} is invalid`);
   return time;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function containsControlCharacters(value: string): boolean {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code < 32 || code === 127) return true;
+  }
+  return false;
 }

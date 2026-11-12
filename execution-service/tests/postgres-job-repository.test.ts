@@ -7,9 +7,7 @@ import {
   jobCreationIdempotencyKey,
   validateExecutionJobCreation,
 } from "../src/persistence/postgres-job-repository.ts";
-import type {
-  ExecutionJobCreation,
-} from "../src/persistence/repository.ts";
+import type { ExecutionJobCreation } from "../src/persistence/repository.ts";
 import type {
   ExecutionJobKey,
   PayoutReservedEvent,
@@ -45,7 +43,10 @@ void test("canonical payout snapshot hashing ignores object property order", () 
 });
 
 void test("job-creation key is deterministic and creation validates reserved identity and exact amounts", () => {
-  assert.equal(jobCreationIdempotencyKey(event), jobCreationIdempotencyKey(event));
+  assert.equal(
+    jobCreationIdempotencyKey(event),
+    jobCreationIdempotencyKey(event),
+  );
   const creation: ExecutionJobCreation = {
     event,
     payout,
@@ -79,9 +80,15 @@ void test("job-creation key is deterministic and creation validates reserved ide
 void test("expired lease recovery is conservative across execution states", () => {
   assert.equal(expiredLeaseRecoveryAction("Leased"), "queue");
   assert.equal(expiredLeaseRecoveryAction("Preparing"), "manual-review");
-  assert.equal(expiredLeaseRecoveryAction("SubmissionUnknown"), "manual-review");
+  assert.equal(
+    expiredLeaseRecoveryAction("SubmissionUnknown"),
+    "manual-review",
+  );
   assert.equal(expiredLeaseRecoveryAction("Submitted"), "manual-review");
-  assert.equal(expiredLeaseRecoveryAction("SettlementSubmitted"), "manual-review");
+  assert.equal(
+    expiredLeaseRecoveryAction("SettlementSubmitted"),
+    "manual-review",
+  );
   assert.equal(expiredLeaseRecoveryAction("ManualReview"), "release-only");
   assert.equal(expiredLeaseRecoveryAction("Completed"), "release-only");
   assert.equal(expiredLeaseRecoveryAction("Abandoned"), "release-only");

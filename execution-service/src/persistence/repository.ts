@@ -65,9 +65,10 @@ export interface PersistedExecutionJob extends ExecutionJobRecord {
 }
 
 export interface DurableJobRepository extends JobRepository {
-  createIdempotent(
-    creation: ExecutionJobCreation,
-  ): Promise<{ readonly job: PersistedExecutionJob; readonly created: boolean }>;
+  createIdempotent(creation: ExecutionJobCreation): Promise<{
+    readonly job: PersistedExecutionJob;
+    readonly created: boolean;
+  }>;
   getById(jobId: string): Promise<PersistedExecutionJob | null>;
   getByPayout(key: ExecutionJobKey): Promise<PersistedExecutionJob | null>;
   releaseLease(
