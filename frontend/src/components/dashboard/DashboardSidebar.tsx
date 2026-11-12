@@ -3,21 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  BanknoteArrowUp,
   CircleDollarSign,
   LayoutDashboard,
   Menu,
-  UsersRound,
   X,
 } from "lucide-react";
 import { Wordmark } from "@/components/Wordmark";
 
 const navigation = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { href: "#campaigns", label: "Campaigns", icon: CircleDollarSign },
-  { href: "#recipients", label: "Recipients", icon: UsersRound },
-  { href: "#payouts", label: "Payouts", icon: BanknoteArrowUp },
-  { href: "#settlements", label: "Settlements", icon: CircleDollarSign },
+  { href: "/dashboard/campaigns", label: "Campaigns", icon: CircleDollarSign },
 ];
 
 function Navigation({ onNavigate }: { onNavigate?: () => void }) {
