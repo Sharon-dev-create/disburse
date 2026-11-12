@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { IncomingMessage, Server } from "node:http";
+import type { IncomingMessage } from "node:http";
 import {
   startExecutionApiServer,
   type ExecutionApiOptions,
@@ -49,6 +49,7 @@ class FixtureRpc implements NearRpcTransport {
   actualNetworkId = "testnet";
   payoutValue: unknown = payout;
   accountingValue: unknown = accounting;
+  payoutError: NearRpcError | null = null;
   readonly calls: string[] = [];
 
   async getNetworkId(): Promise<string> {
@@ -62,6 +63,9 @@ class FixtureRpc implements NearRpcTransport {
   ): Promise<unknown> {
     this.calls.push(methodName);
     if (methodName === "is_paused") return false;
+    if (methodName === "get_payout" && this.payoutError) {
+      throw this.payoutError;
+    }
     if (methodName === "get_payout" || methodName === "get_campaign_payout")
       return this.payoutValue;
     if (methodName === "get_campaign_payout_accounting")
@@ -170,6 +174,7 @@ test("authenticated read routes return validated payout and accounting views", a
 test("unauthorized callers cannot read contract state; liveness is non-sensitive", async () => {
   const rpc = new FixtureRpc();
   await withApi(createOptions(rpc), async (baseUrl) => {
+    rpc.calls.splice(0);
     const unauthorized = await fetch(`${baseUrl}/v1/payouts/7`);
     assert.equal(unauthorized.status, 401);
     assert.equal(unauthorized.headers.get("www-authenticate"), "Bearer");
@@ -220,6 +225,11 @@ test("missing records are distinct from malformed and unavailable RPC responses"
     const malformed = await authorizedFetch(`${baseUrl}/v1/payouts/7`);
     assert.equal(malformed.status, 502);
     assert.equal((await malformed.json()).error.code, "near_rpc_failure");
+
+    rpc.payoutError = new NearRpcError("timeout", "fixture timeout");
+    const unavailable = await authorizedFetch(`${baseUrl}/v1/payouts/7`);
+    assert.equal(unavailable.status, 503);
+    assert.equal((await unavailable.json()).error.code, "near_rpc_failure");
   });
 });
 

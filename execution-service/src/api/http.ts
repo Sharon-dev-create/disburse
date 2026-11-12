@@ -4,8 +4,7 @@ import {
   type Server,
   type ServerResponse,
 } from "node:http";
-import { NearRpcError } from "../near/rpc.ts";
-import { NearContractReader } from "../near/rpc.ts";
+import { NearContractReader, NearRpcError } from "../near/rpc.ts";
 
 const U64_MAX = (1n << 64n) - 1n;
 const U128_MAX = (1n << 128n) - 1n;
@@ -45,19 +44,19 @@ export async function startExecutionApiServer(
   await options.reader.isPaused();
 
   const server = createExecutionApiServer(options);
-  try {
-    await new Promise<void>((resolve, reject) => {
-      const onError = (error: Error) => reject(error);
-      server.once("error", onError);
-      server.listen(listen.port, listen.host ?? "127.0.0.1", () => {
-        server.off("error", onError);
-        resolve();
-      });
-    });
-  } catch (error) {
-    server.close();
-    throw error;
-  }
+  await new Promise<void>((resolve, reject) => {
+    const onError = (error: Error) => {
+      server.off("listening", onListening);
+      reject(error);
+    };
+    const onListening = () => {
+      server.off("error", onError);
+      resolve();
+    };
+    server.once("error", onError);
+    server.once("listening", onListening);
+    server.listen(listen.port, listen.host ?? "127.0.0.1");
+  });
   return server;
 }
 
@@ -318,14 +317,19 @@ function parseDestinationAddress(networkId: string, value: unknown): string {
 }
 
 function parseU64PathId(value: string, label: string): string {
+  let decoded: string;
   try {
-    return parseU64(decodeURIComponent(value), label);
-  } catch (error) {
-    if (error instanceof ResponseValidationError) {
-      throw new RequestValidationError(error.message);
-    }
+    decoded = decodeURIComponent(value);
+  } catch {
     throw new RequestValidationError(`Invalid ${label}.`);
   }
+  if (
+    !/^(?:0|[1-9][0-9]{0,19})$/.test(decoded) ||
+    BigInt(decoded) > U64_MAX
+  ) {
+    throw new RequestValidationError(`Invalid ${label}.`);
+  }
+  return decoded;
 }
 
 function parseU64(value: unknown, label: string): string {
