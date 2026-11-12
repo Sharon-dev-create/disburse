@@ -14,12 +14,12 @@ does not prescribe an identity provider or implement a static bearer token.
 Keep authentication credentials server-side; do not put them in the frontend
 or browser requests.
 
-| Method | Path | Result |
-| --- | --- | --- |
-| `GET` | `/healthz` | Liveness only; it does not query NEAR. |
-| `GET` | `/v1/payouts/{payoutId}` | Current payout view from the configured contract. |
-| `GET` | `/v1/campaigns/{campaignId}/payouts/{payoutId}` | Payout view scoped to its campaign. |
-| `GET` | `/v1/campaigns/{campaignId}/accounting` | Current campaign payout accounting. |
+| Method | Path                                            | Result                                            |
+| ------ | ----------------------------------------------- | ------------------------------------------------- |
+| `GET`  | `/healthz`                                      | Liveness only; it does not query NEAR.            |
+| `GET`  | `/v1/payouts/{payoutId}`                        | Current payout view from the configured contract. |
+| `GET`  | `/v1/campaigns/{campaignId}/payouts/{payoutId}` | Payout view scoped to its campaign.               |
+| `GET`  | `/v1/campaigns/{campaignId}/accounting`         | Current campaign payout accounting.               |
 
 Identifiers in paths must be canonical unsigned decimal strings within NEAR
 `u64` range. The API rejects request bodies and query parameters. Missing

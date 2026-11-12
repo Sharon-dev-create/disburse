@@ -146,7 +146,10 @@ test("authenticated read routes return validated payout and accounting views", a
     assert.equal(payoutBody.data.payout.status, "Reserved");
     assert.equal(payoutBody.data.payout.source.atomicAmount, "1000000");
     assert.equal(payoutBody.data.payout.destination.networkId, "eip155:8453");
-    assert.equal(payoutBody.data.payout.destination.expectedAtomicAmount, "990000");
+    assert.equal(
+      payoutBody.data.payout.destination.expectedAtomicAmount,
+      "990000",
+    );
     assert.equal(payoutBody.data.payout.destinationTransactionHash, undefined);
     assert.equal(payoutBody.meta.readAt, "2026-11-12T12:00:00.000Z");
 
@@ -201,7 +204,9 @@ test("invalid identifiers and unsupported methods are rejected", async () => {
     assert.equal(post.status, 405);
     assert.equal(post.headers.get("allow"), "GET");
 
-    const query = await authorizedFetch(`${baseUrl}/v1/payouts/7?include=evidence`);
+    const query = await authorizedFetch(
+      `${baseUrl}/v1/payouts/7?include=evidence`,
+    );
     assert.equal(query.status, 400);
   });
 });
@@ -219,7 +224,10 @@ test("missing records are distinct from malformed and unavailable RPC responses"
       `${baseUrl}/v1/campaigns/42/accounting`,
     );
     assert.equal(missingCampaign.status, 404);
-    assert.equal((await missingCampaign.json()).error.code, "campaign_not_found");
+    assert.equal(
+      (await missingCampaign.json()).error.code,
+      "campaign_not_found",
+    );
 
     rpc.payoutValue = { malformed: true };
     const malformed = await authorizedFetch(`${baseUrl}/v1/payouts/7`);
@@ -238,7 +246,10 @@ test("invalid contract response schemas and accounting invariants fail closed", 
   await withApi(createOptions(rpc), async (baseUrl) => {
     rpc.payoutValue = {
       ...payout,
-      destination: { ...payout.destination, recipient_address: "not-an-address" },
+      destination: {
+        ...payout.destination,
+        recipient_address: "not-an-address",
+      },
     };
     const invalidAddress = await authorizedFetch(`${baseUrl}/v1/payouts/7`);
     assert.equal(invalidAddress.status, 502);

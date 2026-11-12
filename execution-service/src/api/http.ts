@@ -24,9 +24,7 @@ const PAYOUT_STATUSES = [
 
 export interface ExecutionApiOptions {
   readonly reader: NearContractReader;
-  readonly authorize: (
-    request: IncomingMessage,
-  ) => boolean | Promise<boolean>;
+  readonly authorize: (request: IncomingMessage) => boolean | Promise<boolean>;
   readonly now?: () => Date;
 }
 
@@ -92,23 +90,42 @@ async function handleRequest(
 
   if (request.method !== "GET") {
     response.setHeader("allow", "GET");
-    sendError(response, 405, "method_not_allowed", "Only GET requests are supported.");
+    sendError(
+      response,
+      405,
+      "method_not_allowed",
+      "Only GET requests are supported.",
+    );
     return;
   }
   if (hasRequestBody(request) || request.url?.includes("?")) {
-    sendError(response, 400, "invalid_request", "This endpoint does not accept a body or query parameters.");
+    request.resume();
+    sendError(
+      response,
+      400,
+      "invalid_request",
+      "This endpoint does not accept a body or query parameters.",
+    );
     return;
   }
 
   const payoutMatch = /^\/v1\/payouts\/([^/]+)$/.exec(pathname);
-  const campaignPayoutMatch = /^\/v1\/campaigns\/([^/]+)\/payouts\/([^/]+)$/.exec(pathname);
-  const accountingMatch = /^\/v1\/campaigns\/([^/]+)\/accounting$/.exec(pathname);
+  const campaignPayoutMatch =
+    /^\/v1\/campaigns\/([^/]+)\/payouts\/([^/]+)$/.exec(pathname);
+  const accountingMatch = /^\/v1\/campaigns\/([^/]+)\/accounting$/.exec(
+    pathname,
+  );
 
   if (payoutMatch) {
     const payoutId = parseU64PathId(payoutMatch[1] ?? "", "payout ID");
     const payout = await options.reader.getPayout(payoutId);
     if (!payout) {
-      sendError(response, 404, "payout_not_found", "The payout does not exist on the configured contract.");
+      sendError(
+        response,
+        404,
+        "payout_not_found",
+        "The payout does not exist on the configured contract.",
+      );
       return;
     }
     sendJson(response, 200, payoutEnvelope(options, payout));
@@ -116,11 +133,19 @@ async function handleRequest(
   }
 
   if (campaignPayoutMatch) {
-    const campaignId = parseU64PathId(campaignPayoutMatch[1] ?? "", "campaign ID");
+    const campaignId = parseU64PathId(
+      campaignPayoutMatch[1] ?? "",
+      "campaign ID",
+    );
     const payoutId = parseU64PathId(campaignPayoutMatch[2] ?? "", "payout ID");
     const payout = await options.reader.getCampaignPayout(campaignId, payoutId);
     if (!payout) {
-      sendError(response, 404, "payout_not_found", "The campaign payout does not exist on the configured contract.");
+      sendError(
+        response,
+        404,
+        "payout_not_found",
+        "The campaign payout does not exist on the configured contract.",
+      );
       return;
     }
     sendJson(response, 200, payoutEnvelope(options, payout));
@@ -129,16 +154,27 @@ async function handleRequest(
 
   if (accountingMatch) {
     const campaignId = parseU64PathId(accountingMatch[1] ?? "", "campaign ID");
-    const accounting = await options.reader.getCampaignPayoutAccounting(campaignId);
+    const accounting =
+      await options.reader.getCampaignPayoutAccounting(campaignId);
     if (!accounting) {
-      sendError(response, 404, "campaign_not_found", "The campaign does not exist on the configured contract.");
+      sendError(
+        response,
+        404,
+        "campaign_not_found",
+        "The campaign does not exist on the configured contract.",
+      );
       return;
     }
     sendJson(response, 200, accountingEnvelope(options, accounting));
     return;
   }
 
-  sendError(response, 404, "route_not_found", "The requested endpoint does not exist.");
+  sendError(
+    response,
+    404,
+    "route_not_found",
+    "The requested endpoint does not exist.",
+  );
 }
 
 function payoutEnvelope(options: ExecutionApiOptions, payout: unknown) {
@@ -195,11 +231,15 @@ function parsePayoutResponse(value: unknown, networkId: "mainnet" | "testnet") {
     typeof value.status !== "string" ||
     !(PAYOUT_STATUSES as readonly string[]).includes(value.status)
   ) {
-    throw new ResponseValidationError("Contract returned an unknown payout status.");
+    throw new ResponseValidationError(
+      "Contract returned an unknown payout status.",
+    );
   }
   const inputAmount = parseTokenAmount(value.inputAmount);
   const expectedOutputAmount = parseTokenAmount(value.expectedOutputAmount);
-  const destinationNetworkId = parseDestinationNetworkId(value.destination.chainId);
+  const destinationNetworkId = parseDestinationNetworkId(
+    value.destination.chainId,
+  );
   const recipientAddress = parseDestinationAddress(
     destinationNetworkId,
     value.destination.recipientAddress,
@@ -235,14 +275,18 @@ function parsePayoutResponse(value: unknown, networkId: "mainnet" | "testnet") {
 
 function parseTokenAmount(value: unknown) {
   if (!isRecord(value) || !isRecord(value.tokenId)) {
-    throw new ResponseValidationError("Contract returned an invalid token amount.");
+    throw new ResponseValidationError(
+      "Contract returned an invalid token amount.",
+    );
   }
   const tokenKeys = Object.keys(value.tokenId);
   if (
     tokenKeys.length !== 1 ||
     (tokenKeys[0] !== "Near" && tokenKeys[0] !== "External")
   ) {
-    throw new ResponseValidationError("Contract returned an invalid token identity.");
+    throw new ResponseValidationError(
+      "Contract returned an invalid token identity.",
+    );
   }
   const tokenKey = tokenKeys[0];
   const tokenId = safeIdentifier(
@@ -256,11 +300,15 @@ function parseTokenAmount(value: unknown) {
     value.decimals < 0 ||
     value.decimals > 255
   ) {
-    throw new ResponseValidationError("Contract returned invalid token decimals.");
+    throw new ResponseValidationError(
+      "Contract returned invalid token decimals.",
+    );
   }
   const atomicAmount = parseU128(value.atomicAmount, "token amount");
   if (BigInt(atomicAmount) <= 0n) {
-    throw new ResponseValidationError("Contract returned a non-positive payout amount.");
+    throw new ResponseValidationError(
+      "Contract returned a non-positive payout amount.",
+    );
   }
   return {
     token: tokenKey === "Near" ? { Near: tokenId } : { External: tokenId },
@@ -271,7 +319,9 @@ function parseTokenAmount(value: unknown) {
 
 function parseAccountingResponse(accounting: unknown) {
   if (!isRecord(accounting)) {
-    throw new ResponseValidationError("Contract returned invalid campaign accounting.");
+    throw new ResponseValidationError(
+      "Contract returned invalid campaign accounting.",
+    );
   }
   const campaignId = parseU64(accounting.campaignId, "campaign ID");
   const budget = parseU128(accounting.budget, "campaign budget");
@@ -285,7 +335,9 @@ function parseAccountingResponse(accounting: unknown) {
     BigInt(reserved) + BigInt(spent) > BigInt(funded) ||
     BigInt(available) !== BigInt(funded) - BigInt(reserved) - BigInt(spent)
   ) {
-    throw new ResponseValidationError("Contract returned inconsistent campaign accounting.");
+    throw new ResponseValidationError(
+      "Contract returned inconsistent campaign accounting.",
+    );
   }
   return { campaignId, budget, funded, reserved, spent, available };
 }
@@ -293,7 +345,9 @@ function parseAccountingResponse(accounting: unknown) {
 function parseDestinationNetworkId(value: unknown): string {
   const networkId = safeIdentifier(value, "destination network ID", 64);
   if (!/^(?:near:(?:mainnet|testnet)|eip155:[1-9][0-9]*)$/.test(networkId)) {
-    throw new ResponseValidationError("Contract returned an unsupported destination network identifier.");
+    throw new ResponseValidationError(
+      "Contract returned an unsupported destination network identifier.",
+    );
   }
   return networkId;
 }
@@ -301,7 +355,9 @@ function parseDestinationNetworkId(value: unknown): string {
 function parseDestinationAddress(networkId: string, value: unknown): string {
   const address = safeIdentifier(value, "destination address", 128);
   if (networkId.startsWith("eip155:") && !/^0x[0-9a-fA-F]{40}$/.test(address)) {
-    throw new ResponseValidationError("Contract returned an invalid EVM destination address.");
+    throw new ResponseValidationError(
+      "Contract returned an invalid EVM destination address.",
+    );
   }
   if (networkId.startsWith("near:")) {
     const validNamed =
@@ -310,7 +366,9 @@ function parseDestinationAddress(networkId: string, value: unknown): string {
       /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/.test(address);
     const validImplicit = /^[0-9a-f]{64}$/.test(address);
     if (!validNamed && !validImplicit) {
-      throw new ResponseValidationError("Contract returned an invalid NEAR destination address.");
+      throw new ResponseValidationError(
+        "Contract returned an invalid NEAR destination address.",
+      );
     }
   }
   return address;
@@ -323,10 +381,7 @@ function parseU64PathId(value: string, label: string): string {
   } catch {
     throw new RequestValidationError(`Invalid ${label}.`);
   }
-  if (
-    !/^(?:0|[1-9][0-9]{0,19})$/.test(decoded) ||
-    BigInt(decoded) > U64_MAX
-  ) {
+  if (!/^(?:0|[1-9][0-9]{0,19})$/.test(decoded) || BigInt(decoded) > U64_MAX) {
     throw new RequestValidationError(`Invalid ${label}.`);
   }
   return decoded;
@@ -354,7 +409,11 @@ function parseU128(value: unknown, label: string): string {
   return value;
 }
 
-function safeIdentifier(value: unknown, label: string, maximumLength: number): string {
+function safeIdentifier(
+  value: unknown,
+  label: string,
+  maximumLength: number,
+): string {
   if (
     typeof value !== "string" ||
     value.length === 0 ||
@@ -374,7 +433,9 @@ function nullableReference(value: unknown): string | null {
 
 function nearNetworkId(value: string): "mainnet" | "testnet" {
   if (value !== "mainnet" && value !== "testnet") {
-    throw new Error("The API supports only configured NEAR mainnet or testnet readers.");
+    throw new Error(
+      "The API supports only configured NEAR mainnet or testnet readers.",
+    );
   }
   return value;
 }
@@ -389,7 +450,9 @@ function contractAccountId(networkId: string, value: string): string {
     base.length > 64 ||
     !/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/.test(base)
   ) {
-    throw new Error("Contract account ID does not match the configured NEAR network.");
+    throw new Error(
+      "Contract account ID does not match the configured NEAR network.",
+    );
   }
   return account;
 }
@@ -492,7 +555,8 @@ function errorResponse(error: unknown): {
           ? 503
           : 502,
       code: "near_rpc_failure",
-      message: "The configured NEAR RPC could not provide a valid contract view.",
+      message:
+        "The configured NEAR RPC could not provide a valid contract view.",
     };
   }
   return {
