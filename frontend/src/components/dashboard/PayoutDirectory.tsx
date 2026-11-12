@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowUpRight, Search } from "lucide-react";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import PayoutStatusBadge from "@/components/dashboard/PayoutStatusBadge";
-import { demoCampaigns, formatUsd, getDemoCampaign } from "@/lib/campaign-demo-data";
+import { demoCampaigns, getDemoCampaign } from "@/lib/campaign-demo-data";
 import {
   CONTRACT_PAYOUT_STATUSES,
   demoPayouts,

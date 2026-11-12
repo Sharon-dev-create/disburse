@@ -7,6 +7,7 @@ import {
   CircleDollarSign,
   LayoutDashboard,
   Menu,
+  ReceiptText,
   UsersRound,
   X,
 } from "lucide-react";
@@ -15,6 +16,7 @@ import { Wordmark } from "@/components/Wordmark";
 const navigation = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/campaigns", label: "Campaigns", icon: CircleDollarSign },
+  { href: "/dashboard/payouts", label: "Payouts", icon: ReceiptText },
   { href: "/dashboard/recipients", label: "Recipients", icon: UsersRound },
 ];
 

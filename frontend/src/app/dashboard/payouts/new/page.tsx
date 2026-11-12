@@ -13,7 +13,6 @@ import CampaignStatusBadge from "@/components/dashboard/CampaignStatusBadge";
 import { PayoutReadinessBadge, RecipientStatusBadge } from "@/components/dashboard/RecipientStatusBadge";
 import {
   demoCampaigns,
-  formatCampaignDate,
   formatUsd,
   getDemoCampaign,
   type Campaign,
@@ -135,7 +134,6 @@ export default function NewPayoutPage() {
   const selectedRecipientMatchesCampaign = Boolean(
     campaign && selectedRecipient?.associatedCampaignIds.includes(campaign.id),
   );
-  const routeAvailable = false;
 
   return (
     <main className="min-w-0 flex-1">
