@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, test } from "node:test";
 import { loadPostgresRuntimeConfig } from "../../src/persistence/postgres-config.ts";
-import { assertPostgresMigrationsCurrent } from "../../src/persistence/postgres-migrations.ts";
+import {
+  applyPostgresMigrations,
+  assertPostgresMigrationsCurrent,
+} from "../../src/persistence/postgres-migrations.ts";
 import {
   createPostgresPool,
   createPostgresQuery,
@@ -26,12 +29,13 @@ const refundPolicies = new PostgresRefundPolicyRepository(query);
 const seed = `pg-it-${randomUUID()}`;
 
 before(async () => {
-  await assertPostgresMigrationsCurrent(pool);
   const identity = await pool.query<{ database: string; role: string }>(
     "SELECT current_database() AS database, current_user AS role",
   );
   assert.equal(identity.rows[0]?.database, "disburse_test");
   assert.equal(identity.rows[0]?.role, "disburse_test");
+  await applyPostgresMigrations(pool);
+  await assertPostgresMigrationsCurrent(pool);
 });
 
 after(async () => pool.end());

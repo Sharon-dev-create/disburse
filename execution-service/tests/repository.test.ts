@@ -43,7 +43,9 @@ void test("expired leases can be reclaimed with a fencing token and stale writes
   const firstLease = firstClaim.lease;
   const secondClaim = await repository.claimNext("worker-b", 151, 50);
   assert.ok(secondClaim?.lease);
-  assert.ok(secondClaim.lease.fencingToken > firstLease.fencingToken);
+  assert.ok(
+    BigInt(secondClaim.lease.fencingToken) > BigInt(firstLease.fencingToken),
+  );
 
   await assert.rejects(
     repository.appendAttempt(firstClaim.key, firstLease, attempt, 152),
@@ -69,12 +71,12 @@ void test("duplicate execution attempts are rejected by key and sequence", async
   );
   const started = await repository.appendAttempt(
     preparing.key,
-    claim.lease,
+    preparing.lease!,
     attempt,
     102,
   );
   await assert.rejects(
-    repository.appendAttempt(started.key, claim.lease, attempt, 103),
+    repository.appendAttempt(started.key, started.lease!, attempt, 103),
     /Duplicate execution attempt key/,
   );
 });
