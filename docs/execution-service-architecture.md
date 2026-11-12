@@ -5,15 +5,15 @@
 Milestone 8 added provider-neutral execution boundaries, an operational state machine,
 deterministic mock adapters, and a reference PostgreSQL schema. Milestone 9 adds a read-only NEAR
 JSON-RPC client, strict event decoder, replayable event-source interface, durable single-writer
-local index, discovery processor, and contract-view reconciler. Milestone 13.2 adds PostgreSQL
-adapters for security authorizations and payout refund policies, but there is still no production
-event indexer or job repository adapter, no configured database/migration, no destination-chain
-verification, and no transaction submission. The Rust contract remains the authority for
+local index, discovery processor, and contract-view reconciler. PostgreSQL migrations now provide
+durable security repositories and a job/attempt/lease repository. This is a persistence-only
+foundation: there is no production worker, destination-chain verification, or transaction
+submission. The Rust contract remains the authority for
 reservations, campaign accounting, payout state, settlement, and release.
 
-The schema in `execution-service/sql/schema.sql` is a reference artifact, including the security
-repository tables and lifecycle guards. Package scripts never apply it, and no database was
-contacted.
+`execution-service/sql/migrations` contains additive, checksummed migrations. Only the security
+repository and execution-job tables are migrated; the additional provider, verification,
+settlement, error, and reconciliation tables in `sql/schema.sql` remain reference-only.
 
 ## Components
 
@@ -49,8 +49,9 @@ current contract view, and inserts an operational job under
 `(network_id, contract_id, payout_id)` only while that view says `Reserved`. Lifecycle events refresh
 observations without directly transitioning an execution job. The local repository atomically
 persists event, observation, optional job, and cursor, and can resume after restart. It is a
-single-writer local file store, not the future multi-worker database implementation. Job claiming
-and execution state updates still require the transactional production adapter described elsewhere.
+single-writer local file store. The internal PostgreSQL repository supports durable job creation,
+claiming, attempts, failure metadata, leases, and recovery, but is not wired to a worker or
+event-indexer transaction.
 
 The current ABI has payout, idempotency, accounting, pause, and role views, but no paginated payout
 listing or payout count. `get_campaign_count()` is for campaigns, not payouts. The source and
@@ -212,29 +213,38 @@ explicitly.
 
 ## PostgreSQL responsibilities
 
-The reference schema separates:
+The applied migrations create:
 
-- `execution_jobs`: unique payout mapping, current operational state/version, event cursor identity,
-  stable execution and idempotency references, and last contract snapshot.
-- `execution_attempts`: ordered immutable phase attempts, including ambiguous outcomes.
+- `execution_jobs`: composite payout identity, dedicated job-creation idempotency key, immutable
+  canonical payout snapshot and digest, exact atomic amounts, operational state/version, monotonic
+  fencing counter, safe failure metadata, discovery identity, and eligibility timestamp.
+- `execution_attempts`: ordered attempts with per-job attempt-key and idempotency constraints.
+- `job_leases`: one current worker lease per job with database timestamps and fencing token.
+- `execution_authorizations` and `payout_refund_policies`: authorization lifecycle and immutable
+  payout-bound refund policy records from migration `0001`.
+
+The remaining objects in `sql/schema.sql` are reference-only:
+
 - `provider_references`: provider-scoped external references and optional transaction/event IDs.
-- `job_leases`: worker lease, expiry, and fencing token.
 - `verification_records`: independent verdict, normalized claims, evidence reference/hash, and
   method; no raw receipt payload.
-- `settlement_submission_attempts`: explicit Verifier signer, evidence reference/hash, tx hash,
-  and transaction outcome.
-- `processing_errors` and `reconciliation_history`: durable error/reconciliation audit trail.
-- `execution_authorizations`: immutable authorization payload, policy/quote/reservation identities,
-  exact atomic amounts, lifecycle, and database timestamps. Conditional updates and a trigger enforce
-  allowed transitions; the adapter is in `src/persistence/postgres-security-repositories.ts`.
-- `payout_refund_policies`: payout-bound immutable policy fields and fingerprint; insert conflicts
-  cannot replace an existing approval.
+- `settlement_submission_attempts`: future Verifier signer, evidence reference/hash, tx hash, and
+  transaction outcome.
+- `processing_errors` and `reconciliation_history`: future error/reconciliation audit trail.
 
-Use database transactions for job creation plus cursor advancement, attempt insertion plus state
-version update, and lease claim. Workers claim jobs with `SELECT ... FOR UPDATE SKIP LOCKED` or an
-equivalent atomic update. Unique constraints protect job identity, source event identity, attempt
-sequence/key, provider execution identity, and settlement evidence reference. Amounts and IDs are
-stored as exact decimal values/strings, not floating point. Do not store signer private keys,
+Job idempotency is distinct from contract payout creation and provider idempotency. Same key and
+same protected payload returns the existing job; a changed payload conflicts. A payout identity
+with an identical snapshot cannot create a second job, even under a different job-creation key.
+There is no foreign key to an invented local payout ledger; a discovery observation is not
+authoritative current contract state.
+
+The implemented repository uses transactions for job creation, attempt updates, transitions,
+lease operations, and expired-lease recovery. Claims use `SELECT ... FOR UPDATE SKIP LOCKED`.
+Every lease-protected write checks the owner, current fencing token, expected state version, and
+database-time expiry. Expired pre-submission `Leased` work can be reclaimed. Other ambiguous or
+post-submission states move to `ManualReview` when permitted by the central state machine;
+terminal states remain terminal. Recovery never releases a contract reservation. Amounts and IDs
+are stored as exact decimal values/strings, not floating point. Do not store signer private keys,
 provider secrets, raw receipts, or unbounded proof blobs in these tables.
 
 PostgreSQL is not a financial ledger. If DB and chain disagree, the contract wins. Record the
@@ -268,10 +278,11 @@ disagreement and reconcile; never edit job status to imply a chain transition th
 ## Implemented foundation and next milestones
 
 The separate `execution-service` package implements the typed job/payout models, transition
-validation, repository and lease interfaces, a test-only in-memory repository, provider-neutral
-adapter and verification interfaces, read/operator/verifier contract client boundaries, stable
-reference generation, and deterministic mocks/tests. It does not implement a worker loop or any
-external network client.
+validation, repository and lease interfaces, in-memory and PostgreSQL repositories,
+provider-neutral adapter and verification interfaces, read/operator/verifier contract client
+boundaries, stable reference generation, and deterministic mocks/tests. The PostgreSQL job
+repository is exposed only through internal composition. It does not implement a worker loop,
+provider execution, signing, settlement, or destination verification.
 
 Future milestones before any testnet execution:
 
@@ -280,9 +291,8 @@ Future milestones before any testnet execution:
    contract listing view only after review.
 2. **NEAR contract client:** implement RPC reads, transaction status reconciliation, typed ABI
    codec, and separate Operator and Verifier signing capabilities.
-3. **PostgreSQL repositories:** review and apply the reference schema through controlled migrations,
-   connect the security repositories, then implement job/indexer persistence, row-lock leases,
-   cursor/job atomicity, fencing, and real-database concurrency/recovery tests.
+3. **Job/event-indexer integration:** define the authorization and contract-revalidation boundary,
+   then atomically integrate discovered cursor updates with the PostgreSQL job repository.
 4. **NEAR Intents adapter:** research its documented request lifecycle, idempotency, lookup,
    cancellation, and evidence model before implementing any calls.
 5. **Destination-chain verification:** independent RPC/indexer sources, finality/reorg policy,

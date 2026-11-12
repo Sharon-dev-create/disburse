@@ -1,8 +1,9 @@
 # Disburse execution-service foundation
 
 This is a separate strict TypeScript package containing provider-neutral execution interfaces and
-a read-only NEAR payout discovery foundation. It does not submit transactions, sign NEAR
-transactions, configure a PostgreSQL connection, or move funds.
+a read-only NEAR payout discovery foundation. PostgreSQL supports internal durable job primitives
+and security repositories. The package does not submit transactions, sign NEAR transactions, or
+move funds.
 
 ## What is here
 
@@ -25,18 +26,22 @@ transactions, configure a PostgreSQL connection, or move funds.
   NEAR Data with bounded HTTP retries and opaque block/log cursors.
 - `src/discovery`: NEP-297 decoder, replayable source interface, durable local file repository,
   discovery processor, and chain-view reconciler.
-- `src/persistence`: job/lease repository interface plus test-only in-memory implementation.
+- `src/persistence`: shared job/lease interface, test-only in-memory implementation, internal
+  PostgreSQL job repository, and PostgreSQL security repositories.
 - `src/persistence/postgres-security-repositories.ts`: PostgreSQL authorization and refund-policy
-  repository adapters behind an injected query function. They reuse the existing PostgreSQL
-  operational store and add no driver dependency. The reference DDL is in `sql/schema.sql` and
-  must be applied through a reviewed migration before constructing these adapters in a service.
+  repository adapters behind an injected query function.
+- `src/persistence/postgres-job-repository.ts`: transactionally persists jobs, creation idempotency,
+  attempts, failures, leases, fencing, and state-aware expired-lease recovery. It is not connected
+  to a worker or public mutation route.
 - `src/coordinator`: coordinator/discovery ports and deterministic bounded references.
 - `tests`: deterministic execution and discovery tests, including provider HTTP fixtures, restart,
   duplicate delivery, cursor atomicity, and RPC failures.
-- `sql/schema.sql`: reference PostgreSQL execution and discovery schema. Package commands do not
-  execute it.
+- `sql/migrations/0001_security_repositories.sql` and
+  `sql/migrations/0002_execution_jobs.sql`: additive, checksummed PostgreSQL migrations.
+- `sql/schema.sql`: reference schema; provider, verification, settlement, processing-error, and
+  reconciliation tables remain unapplied.
 
-The local discovery index is operational state, not a financial ledger. The contract remains
+The local discovery index and PostgreSQL jobs are operational state, not a financial ledger. The contract remains
 authoritative. Provider claims require independent verification, and ambiguous submissions go to
 reconciliation or ManualReview rather than automatic resubmission.
 
@@ -44,8 +49,9 @@ reconciliation or ManualReview rather than automatic resubmission.
 existing `JobRepository` interface, so discovered jobs flow into the operational state machine. Its
 atomic snapshot contains block/event archives, incidents, recovery runs, observations, jobs, leases,
 discrepancies, failures, and cursors.
-Use a transactional database adapter for multiple workers/indexers. The live provider implementation
-is read-only and currently has no configured Disburse testnet deployment to ingest. See
+Use the PostgreSQL repository for durable job primitives across processes; no worker consumes those
+jobs yet. The live provider implementation is read-only and currently has no configured Disburse
+testnet deployment to ingest. See
 [`../docs/near-event-provider-integration.md`](../docs/near-event-provider-integration.md) for
 setup and [`../docs/near-payout-discovery.md`](../docs/near-payout-discovery.md) for discovery
 limits.
@@ -82,9 +88,10 @@ For supported local tool versions, isolated PostgreSQL setup, and the current ru
 
 ## Not production-ready
 
-There is no PostgreSQL driver/configuration, production worker loop, destination-chain verifier,
-signer integration, secret store, or testnet execution flow yet. The durable adapters exist but are not wired into
-application composition; their tests use a deterministic SQL mock, not a live PostgreSQL server.
+There is no production worker loop, destination-chain verifier, signer integration, secret store,
+or testnet execution flow. PostgreSQL composition exposes the job repository internally only;
+there is no public job-mutation route. Real PostgreSQL integration tests require the isolated
+`disburse_test` database and do not use a SQL mock.
 EVM mixed-case recipients use a local Keccak-256 EIP-55 implementation because this package does not
 currently include an audited Ethereum checksum library; replace it with a reviewed maintained
 dependency before production use. NEAR Intents quotes remain preview-only and exact-output committed
