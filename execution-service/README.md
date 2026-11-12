@@ -20,6 +20,7 @@ transactions, configure a PostgreSQL connection, or move funds.
 - `src/verification`: independent evidence-verification interface.
 - `src/near`: read-only, Operator/Admin, and Verifier contract client boundaries.
 - `src/near/rpc.ts`: read-only JSON-RPC contract reader for existing ABI views.
+- `src/api/http.ts`: authenticated read-only HTTP endpoints for payout and campaign accounting views.
 - `src/near/providers/fastnear-neardata.ts`: finalized-block historical event source for FastNear
   NEAR Data with bounded HTTP retries and opaque block/log cursors.
 - `src/discovery`: NEP-297 decoder, replayable source interface, durable local file repository,
@@ -56,6 +57,12 @@ views and never creates/deletes jobs. FastNear has no documented historical rete
 backup and operator investigation remain necessary. See
 [`../docs/near-discovery-integrity.md`](../docs/near-discovery-integrity.md) for the operator
 procedure and precise limits.
+
+The read API is a library boundary, not a fully composed production service. It requires a
+host-supplied request authorizer, validates the configured RPC network and contract ABI before
+binding, and exposes no quote, authorization, execution, refund, verification, or settlement
+operations. See [`../docs/execution-service-api.md`](../docs/execution-service-api.md) for routes
+and limits.
 
 ## Commands
 

@@ -1,6 +1,7 @@
 export * from "./coordinator/ports.ts";
 export * from "./coordinator/references.ts";
 export * from "./domain/payout.ts";
+export * from "./api/http.ts";
 export * from "./near/clients.ts";
 export * from "./persistence/in-memory.ts";
 export * from "./persistence/repository.ts";

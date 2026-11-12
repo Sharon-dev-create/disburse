@@ -142,7 +142,7 @@ async function handleRequest(
   sendError(response, 404, "route_not_found", "The requested endpoint does not exist.");
 }
 
-function payoutEnvelope(options: ExecutionApiOptions, payout: NearPayoutView) {
+function payoutEnvelope(options: ExecutionApiOptions, payout: unknown) {
   const networkId = nearNetworkId(options.reader.config.networkId);
   const contractId = contractAccountId(
     options.reader.config.networkId,
@@ -291,7 +291,7 @@ function parseAccountingResponse(accounting: unknown) {
   return { campaignId, budget, funded, reserved, spent, available };
 }
 
-function parseDestinationNetworkId(value: string): string {
+function parseDestinationNetworkId(value: unknown): string {
   const networkId = safeIdentifier(value, "destination network ID", 64);
   if (!/^(?:near:(?:mainnet|testnet)|eip155:[1-9][0-9]*)$/.test(networkId)) {
     throw new ResponseValidationError("Contract returned an unsupported destination network identifier.");
@@ -299,7 +299,7 @@ function parseDestinationNetworkId(value: string): string {
   return networkId;
 }
 
-function parseDestinationAddress(networkId: string, value: string): string {
+function parseDestinationAddress(networkId: string, value: unknown): string {
   const address = safeIdentifier(value, "destination address", 128);
   if (networkId.startsWith("eip155:") && !/^0x[0-9a-fA-F]{40}$/.test(address)) {
     throw new ResponseValidationError("Contract returned an invalid EVM destination address.");
