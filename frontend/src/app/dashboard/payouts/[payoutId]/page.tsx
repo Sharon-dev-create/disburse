@@ -8,6 +8,7 @@ import {
   demoPayouts,
   formatPayoutDate,
   formatTokenAmount,
+  getPayoutDisplayStatus,
   getDemoPayout,
 } from "@/lib/payout-demo-data";
 import { getRecipientById } from "@/lib/recipient-demo-data";
@@ -75,7 +76,7 @@ export default async function PayoutDetailsPage({
               </dd>
             </div>
             <div><dt className="text-xs text-ink/65">Destination</dt><dd className="mt-1 text-sm font-medium text-ink">{payout.destinationNetwork} · {payout.destinationToken}</dd></div>
-            <div><dt className="text-xs text-ink/65">Destination address</dt><dd className="mt-1 break-all font-mono text-xs leading-5 text-ink">{recipient.walletAddress || "Not provided"}</dd></div>
+            <div><dt className="text-xs text-ink/65">Payout destination snapshot</dt><dd className="mt-1 break-all font-mono text-xs leading-5 text-ink">{payout.recipientDestination ?? "Not recorded"}</dd></div>
             <div><dt className="text-xs text-ink/65">Expected output</dt><dd className="mt-1 text-sm font-medium text-ink">{payoutAmount(payout.expectedOutputAmount)} · no quote attached</dd></div>
             <div><dt className="text-xs text-ink/65">Actual verified output</dt><dd className="mt-1 text-sm font-medium text-ink">Not verified</dd></div>
           </dl>
@@ -84,7 +85,7 @@ export default async function PayoutDetailsPage({
         <section aria-labelledby="payout-lifecycle-heading" className="mt-8 grid gap-8 lg:grid-cols-2">
           <div className="rounded-2xl border border-hairline bg-white p-5 sm:p-6">
             <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-mist">Contract state</p>
-            <h2 id="payout-lifecycle-heading" className="mt-2 text-xl font-medium tracking-[-0.04em] text-ink">{payout.status}</h2>
+            <h2 id="payout-lifecycle-heading" className="mt-2 text-xl font-medium tracking-[-0.04em] text-ink">{getPayoutDisplayStatus(payout.status)}</h2>
             <p className="mt-3 text-sm leading-6 text-ink/65">
               This status is an illustrative contract-state example only. No live contract read was performed.
             </p>

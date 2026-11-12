@@ -6,6 +6,7 @@ import {
 import {
   getRecipientById,
   type Recipient,
+  type RecipientNetwork,
 } from "./recipient-demo-data";
 
 export type ContractPayoutStatus =
@@ -51,9 +52,10 @@ export type Payout = {
   contractPayoutId: string | null;
   campaignId: string;
   recipientId: string;
+  recipientDestination: string | null;
   sourceNetwork: string;
   sourceToken: string;
-  destinationNetwork: string;
+  destinationNetwork: RecipientNetwork;
   destinationToken: string;
   inputAmount: string;
   reservedAmount: string;
@@ -136,6 +138,7 @@ export const demoPayouts: readonly Payout[] = [
     contractPayoutId: null,
     campaignId: "CAM-042",
     recipientId: "REC-101",
+    recipientDestination: "avery-morgan.near",
     sourceNetwork: "NEAR",
     sourceToken: "USDC",
     destinationNetwork: "NEAR",
@@ -173,6 +176,7 @@ export const demoPayouts: readonly Payout[] = [
     contractPayoutId: null,
     campaignId: "CAM-042",
     recipientId: "REC-106",
+    recipientDestination: "0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db",
     sourceNetwork: "NEAR",
     sourceToken: "USDC",
     destinationNetwork: "Base",
@@ -210,6 +214,7 @@ export const demoPayouts: readonly Payout[] = [
     contractPayoutId: null,
     campaignId: "CAM-042",
     recipientId: "REC-101",
+    recipientDestination: "avery-morgan.near",
     sourceNetwork: "NEAR",
     sourceToken: "USDC",
     destinationNetwork: "NEAR",
@@ -247,6 +252,7 @@ export const demoPayouts: readonly Payout[] = [
     contractPayoutId: null,
     campaignId: "CAM-041",
     recipientId: "REC-102",
+    recipientDestination: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
     sourceNetwork: "NEAR",
     sourceToken: "USDC",
     destinationNetwork: "Ethereum",
@@ -284,6 +290,7 @@ export const demoPayouts: readonly Payout[] = [
     contractPayoutId: null,
     campaignId: "CAM-041",
     recipientId: "REC-106",
+    recipientDestination: "0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db",
     sourceNetwork: "NEAR",
     sourceToken: "USDC",
     destinationNetwork: "Base",
@@ -321,6 +328,7 @@ export const demoPayouts: readonly Payout[] = [
     contractPayoutId: null,
     campaignId: "CAM-039",
     recipientId: "REC-105",
+    recipientDestination: "taylor-reed.near",
     sourceNetwork: "NEAR",
     sourceToken: "USDC",
     destinationNetwork: "NEAR",
@@ -369,7 +377,8 @@ export function assertDemoPayoutAccounting(): void {
       payout.sourceNetwork !== campaign.sourceNetwork ||
       payout.sourceToken !== campaign.acceptedToken ||
       payout.destinationNetwork !== recipient.destinationNetwork ||
-      payout.destinationToken !== recipient.preferredToken
+      payout.destinationToken !== recipient.preferredToken ||
+      payout.recipientDestination !== recipient.walletAddress
     ) {
       throw new Error(`Demo payout ${payout.id} has mismatched campaign or recipient assets.`);
     }
