@@ -15,7 +15,7 @@ const attentionCount = demoRecipients.filter(needsRecipientAttention).length;
 const metrics = [
   { label: "Total recipients", value: demoRecipients.length },
   { label: "Active recipients", value: activeCount },
-  { label: "Pass format checks", value: readyCount },
+  { label: "Payout-ready (demo check)", value: readyCount },
   { label: "Require attention", value: attentionCount },
 ];
 
@@ -42,7 +42,7 @@ export default function RecipientsPage() {
         </div>
 
         <p className="mt-6 rounded-xl border border-[#dce9d5] bg-[#eff5eb] px-4 py-3 text-xs leading-5 text-forest">
-          These {demoRecipients.length} records are illustrative frontend data. “Pass format checks” does not verify address ownership or payout eligibility.
+          These {demoRecipients.length} records are illustrative frontend data. “Payout-ready” is only a format/configuration check; it does not verify address ownership or payout eligibility.
         </p>
 
         <section aria-label="Recipient summary" className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

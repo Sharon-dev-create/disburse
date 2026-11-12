@@ -163,6 +163,7 @@ export default function RecipientDirectory() {
                   <th scope="col" className="px-3 py-3">Campaigns</th>
                   <th scope="col" className="px-3 py-3">Recipient status</th>
                   <th scope="col" className="px-3 py-3">Payout readiness</th>
+                  <th scope="col" className="px-3 py-3">Added</th>
                   <th scope="col" className="px-5 py-3">Details</th>
                 </tr>
               </thead>
@@ -179,6 +180,7 @@ export default function RecipientDirectory() {
                     <td className="px-3 py-4 text-ink">{recipient.associatedCampaignIds.length}</td>
                     <td className="px-3 py-4"><RecipientStatusBadge status={recipient.status} /></td>
                     <td className="px-3 py-4"><PayoutReadinessBadge status={recipient.payoutReadiness} /></td>
+                    <td className="px-3 py-4 text-ink/70">{formatRecipientDate(recipient.createdAt)}</td>
                     <td className="px-5 py-4">
                       <Link
                         href={`/dashboard/recipients/${recipient.id}`}

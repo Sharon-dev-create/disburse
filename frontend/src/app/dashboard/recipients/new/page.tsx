@@ -7,7 +7,6 @@ import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import {
   DESTINATION_NETWORKS,
   PAYOUT_TOKENS_BY_NETWORK,
-  demoRecipients,
   findRecipientByAddress,
   findRecipientByEmail,
   isRecipientNetwork,
@@ -78,14 +77,18 @@ export default function NewRecipientPage() {
 
     if (!network) {
       next.destinationNetwork = "Select a supported destination network.";
-      if (draft.walletAddress.trim()) {
-        next.walletAddress = "Select a destination network before validating this address.";
-      }
+      next.preferredToken = "Select a destination network before choosing a supported token.";
     } else {
       if (!PAYOUT_TOKENS_BY_NETWORK[network].includes(draft.preferredToken)) {
         next.preferredToken = `Select a supported token for ${network}.`;
       }
+    }
 
+    if (!draft.walletAddress.trim()) {
+      next.walletAddress = "Enter a destination wallet/account address.";
+    } else if (!network) {
+      next.walletAddress = "Select a destination network before validating this address.";
+    } else {
       const addressError = validateWalletAddress(network, draft.walletAddress);
       if (addressError) {
         next.walletAddress = addressError;

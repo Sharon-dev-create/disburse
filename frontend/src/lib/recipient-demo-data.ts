@@ -116,7 +116,7 @@ export const demoRecipients: readonly Recipient[] = [
 const EVM_NETWORKS: readonly RecipientNetwork[] = ["Ethereum", "Polygon", "Base"];
 
 export function isRecipientNetwork(value: string): value is RecipientNetwork {
-  return DESTINATION_NETWORKS.includes(value as RecipientNetwork);
+  return DESTINATION_NETWORKS.some((network) => network === value);
 }
 
 export function validateWalletAddress(network: RecipientNetwork, address: string): string | undefined {
