@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   CircleDollarSign,
   LayoutDashboard,
@@ -16,24 +17,26 @@ const navigation = [
 ];
 
 function Navigation({ onNavigate }: { onNavigate?: () => void }) {
+  const pathname = usePathname();
   return (
     <nav aria-label="Dashboard navigation" className="space-y-1">
-      {navigation.map(({ href, label, icon: Icon }, index) => (
-        <a
+      {navigation.map(({ href, label, icon: Icon }) => {
+        const active = href === "/dashboard" ? pathname === href : pathname.startsWith(href);
+        return <Link
           key={label}
           href={href}
           onClick={onNavigate}
-          aria-current={index === 0 ? "page" : undefined}
+          aria-current={active ? "page" : undefined}
           className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest ${
-            index === 0
+            active
               ? "bg-forest text-canvas shadow-sm"
               : "text-ink/70 hover:bg-sand hover:text-ink"
           }`}
         >
           <Icon size={17} aria-hidden="true" />
           {label}
-        </a>
-      ))}
+        </Link>;
+      })}
     </nav>
   );
 }
