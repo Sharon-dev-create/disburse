@@ -4,7 +4,7 @@ import {
   type Server,
   type ServerResponse,
 } from "node:http";
-import { NearContractReader, NearRpcError } from "../near/rpc.ts";
+import { NearRpcError, type NearContractReader } from "../near/rpc.ts";
 
 const U64_MAX = (1n << 64n) - 1n;
 const U128_MAX = (1n << 128n) - 1n;
@@ -419,11 +419,19 @@ function safeIdentifier(
     value.length === 0 ||
     value.length > maximumLength ||
     value !== value.trim() ||
-    /[\u0000-\u0020\u007f]/.test(value)
+    hasControlCharacters(value)
   ) {
     throw new ResponseValidationError(`Contract returned an invalid ${label}.`);
   }
   return value;
+}
+
+function hasControlCharacters(value: string): boolean {
+  for (const character of value) {
+    const code = character.codePointAt(0) ?? 0;
+    if (code <= 0x20 || (code >= 0x7f && code <= 0x9f)) return true;
+  }
+  return false;
 }
 
 function nullableReference(value: unknown): string | null {

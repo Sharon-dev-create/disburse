@@ -57,10 +57,12 @@ class FixtureRpc implements NearRpcTransport {
   }
 
   async viewFunction(
-    _contractId: string,
+    contractId: string,
     methodName: string,
-    _args: Readonly<Record<string, unknown>>,
+    args: Readonly<Record<string, unknown>>,
   ): Promise<unknown> {
+    assert.equal(contractId, "disburse.testnet");
+    void args;
     this.calls.push(methodName);
     if (methodName === "is_paused") return false;
     if (methodName === "get_payout" && this.payoutError) {
@@ -114,7 +116,7 @@ async function authorizedFetch(
   return fetch(url, { ...init, headers });
 }
 
-test("startup checks the configured RPC network and deployed contract ABI", async () => {
+void test("startup checks the configured RPC network and deployed contract ABI", async () => {
   const rpc = new FixtureRpc();
   const options = createOptions(rpc);
   const server = await startExecutionApiServer(options, {
@@ -134,7 +136,7 @@ test("startup checks the configured RPC network and deployed contract ABI", asyn
   );
 });
 
-test("authenticated read routes return validated payout and accounting views", async () => {
+void test("authenticated read routes return validated payout and accounting views", async () => {
   const rpc = new FixtureRpc();
   await withApi(createOptions(rpc), async (baseUrl) => {
     const payoutResponse = await authorizedFetch(`${baseUrl}/v1/payouts/7`);
@@ -174,7 +176,7 @@ test("authenticated read routes return validated payout and accounting views", a
   });
 });
 
-test("unauthorized callers cannot read contract state; liveness is non-sensitive", async () => {
+void test("unauthorized callers cannot read contract state; liveness is non-sensitive", async () => {
   const rpc = new FixtureRpc();
   await withApi(createOptions(rpc), async (baseUrl) => {
     rpc.calls.splice(0);
@@ -190,7 +192,7 @@ test("unauthorized callers cannot read contract state; liveness is non-sensitive
   });
 });
 
-test("invalid identifiers and unsupported methods are rejected", async () => {
+void test("invalid identifiers and unsupported methods are rejected", async () => {
   await withApi(createOptions(new FixtureRpc()), async (baseUrl) => {
     for (const id of ["-1", "01", "18446744073709551616", "abc"]) {
       const response = await authorizedFetch(`${baseUrl}/v1/payouts/${id}`);
@@ -211,7 +213,7 @@ test("invalid identifiers and unsupported methods are rejected", async () => {
   });
 });
 
-test("missing records are distinct from malformed and unavailable RPC responses", async () => {
+void test("missing records are distinct from malformed and unavailable RPC responses", async () => {
   const rpc = new FixtureRpc();
   await withApi(createOptions(rpc), async (baseUrl) => {
     rpc.payoutValue = null;
@@ -241,7 +243,7 @@ test("missing records are distinct from malformed and unavailable RPC responses"
   });
 });
 
-test("invalid contract response schemas and accounting invariants fail closed", async () => {
+void test("invalid contract response schemas and accounting invariants fail closed", async () => {
   const rpc = new FixtureRpc();
   await withApi(createOptions(rpc), async (baseUrl) => {
     rpc.payoutValue = {
