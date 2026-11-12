@@ -1,4 +1,5 @@
 import { Home, Layers3, ReceiptText } from "lucide-react";
+import { Wordmark } from "./Wordmark";
 
 const PAYOUTS = [
   { initials: "AM", name: "Avery Morgan", detail: "Community research", amount: "$420.00", status: "Settled" },
@@ -11,11 +12,8 @@ export default function MobileDashboardPreview() {
     <div className="relative mx-auto w-full max-w-[282px] overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-[0_12px_35px_rgba(36,39,34,0.07)]">
       <div className="px-5 pb-3 pt-5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="flex size-8 items-center justify-center rounded-[10px] bg-forest text-xs font-semibold text-canvas">
-              D
-            </span>
-            <span className="text-sm font-semibold tracking-tight text-ink">Disburse</span>
+          <div className="flex items-center">
+            <Wordmark size="sm" />
           </div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-sand/70 px-2.5 py-1 text-[9px] font-medium text-ink/70">
             <span className="size-1.5 rounded-full bg-forest" />

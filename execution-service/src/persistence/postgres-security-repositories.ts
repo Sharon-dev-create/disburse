@@ -272,7 +272,8 @@ export class PostgresRefundPolicyRepository implements RefundPolicyRepository {
        ) VALUES ($1, $2, $3, $4, $5, $6, $7::timestamptz, $7, $8)
        ON CONFLICT (campaign_id, payout_id) DO NOTHING
        RETURNING campaign_id, payout_id, source_network_id, source_token_id,
-         refund_address, policy_version, approved_at_iso, policy_fingerprint`,
+       refund_address, policy_version, approved_at, approved_at_iso,
+       policy_fingerprint`,
       [
         policy.campaignId,
         policy.payoutId,

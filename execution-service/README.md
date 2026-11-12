@@ -89,3 +89,7 @@ integration requirements and security boundaries.
 
 See [`../docs/near-intents-integration.md`](../docs/near-intents-integration.md) for the API research,
 quote-only boundary, exact-output compatibility assessment, and unresolved integration blockers.
+e713f5839c0453bf284e43d547a2fa98c0c0056d413fa334
+8501e82ac1ae7f720d1e483f40e9b216b4b45f0e9e092882
+fd3f4f2377cb4560e80e7b438e8e2bc8aacda1e44d2f4f02
+e5d006a6a2978c6193ab14cf3431feac68d8fc8babb21b08
