@@ -298,7 +298,7 @@ void test("snapshot identity cannot be changed and job creation never mutates pa
   const created = await repository.createIdempotent(creation);
   await assert.rejects(() =>
     pool.query(
-      "UPDATE execution_jobs SET payout_snapshot = '{}'::jsonb WHERE job_id = $1::bigint",
+      "UPDATE public.execution_jobs SET payout_snapshot = '{}'::jsonb WHERE job_id = $1::bigint",
       [created.job.jobId],
     ),
   );

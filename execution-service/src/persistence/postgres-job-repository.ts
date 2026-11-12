@@ -52,8 +52,8 @@ const jobSelect = `
     j.discovery_event_index, j.discovery_block_height::text AS discovery_block_height,
     j.created_at, j.updated_at,
     l.worker_id, l.fencing_token::text AS lease_fencing_token, l.expires_at
-  FROM execution_jobs j
-  LEFT JOIN job_leases l ON l.job_id = j.job_id`;
+  FROM public.execution_jobs j
+  LEFT JOIN public.job_leases l ON l.job_id = j.job_id`;
 
 export class JobCreationConflictError extends Error {
   constructor() {
@@ -107,7 +107,7 @@ export class PostgresJobRepository implements DurableJobRepository {
     try {
       await client.query("BEGIN", []);
       const inserted = await client.query(
-        `INSERT INTO execution_jobs (
+        `INSERT INTO public.execution_jobs (
           network_id, contract_id, payout_id, campaign_id,
           job_creation_idempotency_key, snapshot_digest, payload_hash,
           payout_snapshot, input_atomic_amount, expected_output_atomic_amount,
@@ -152,7 +152,7 @@ export class PostgresJobRepository implements DurableJobRepository {
                   network_id,
                   contract_id, payout_id::text AS payout_id,
                   job_creation_idempotency_key
-           FROM execution_jobs
+           FROM public.execution_jobs
            WHERE (network_id = $1 AND contract_id = $2
                   AND job_creation_idempotency_key = $3)
               OR (network_id = $1 AND contract_id = $2 AND payout_id = $4::numeric)
@@ -203,8 +203,8 @@ export class PostgresJobRepository implements DurableJobRepository {
     return this.transaction(async (client) => {
       const result = await client.query(
         `SELECT j.job_id::text AS job_id, j.state, j.state_version
-         FROM execution_jobs j
-         LEFT JOIN job_leases l ON l.job_id = j.job_id
+         FROM public.execution_jobs j
+         LEFT JOIN public.job_leases l ON l.job_id = j.job_id
          WHERE j.state IN ('Queued', 'Leased')
            AND j.next_eligible_at <= statement_timestamp()
            AND (l.job_id IS NULL OR l.expires_at <= statement_timestamp())
@@ -223,13 +223,13 @@ export class PostgresJobRepository implements DurableJobRepository {
         assertTransition("Leased", "Queued");
         await updateJobState(client, jobId, state, stateVersion, "Queued");
         await client.query(
-          `DELETE FROM job_leases
+          `DELETE FROM public.job_leases
            WHERE job_id = $1::bigint AND expires_at <= statement_timestamp()`,
           [jobId],
         );
       } else {
         await client.query(
-          `DELETE FROM job_leases
+          `DELETE FROM public.job_leases
            WHERE job_id = $1::bigint AND expires_at <= statement_timestamp()`,
           [jobId],
         );
@@ -238,7 +238,7 @@ export class PostgresJobRepository implements DurableJobRepository {
       const afterRecoveryVersion = stateVersion + (state === "Leased" ? 1 : 0);
       assertTransition("Queued", "Leased");
       const claimed = await client.query(
-        `UPDATE execution_jobs
+        `UPDATE public.execution_jobs
          SET state = 'Leased', state_version = state_version + 1,
              fencing_counter = fencing_counter + 1,
              updated_at = statement_timestamp()
@@ -250,7 +250,7 @@ export class PostgresJobRepository implements DurableJobRepository {
       if (!claimed.rows[0]) throw new StaleExecutionJobError();
       const fencingToken = requireString(claimed.rows[0], "fencing_counter");
       await client.query(
-        `INSERT INTO job_leases (
+        `INSERT INTO public.job_leases (
            job_id, worker_id, fencing_token, acquired_at, renewed_at, expires_at
          )
          VALUES (
@@ -277,7 +277,7 @@ export class PostgresJobRepository implements DurableJobRepository {
       if (!job) return null;
       if (!await hasValidLease(client, job, lease)) return null;
       const updated = await client.query(
-        `UPDATE execution_jobs
+        `UPDATE public.execution_jobs
          SET state_version = state_version + 1,
              updated_at = statement_timestamp()
          WHERE job_id = $1::bigint AND state_version = $2
@@ -286,7 +286,7 @@ export class PostgresJobRepository implements DurableJobRepository {
       );
       if (!updated.rows[0]) return null;
       const renewed = await client.query(
-        `UPDATE job_leases
+        `UPDATE public.job_leases
          SET renewed_at = statement_timestamp(),
              expires_at = statement_timestamp() + ($4::bigint * interval '1 millisecond')
          WHERE job_id = $1::bigint AND worker_id = $2
@@ -354,7 +354,7 @@ export class PostgresJobRepository implements DurableJobRepository {
         throw new Error("Execution attempt sequence must be contiguous");
 
       const inserted = await client.query(
-        `INSERT INTO execution_attempts (
+        `INSERT INTO public.execution_attempts (
            job_id, sequence_number, attempt_key, phase, idempotency_key,
            outcome, started_at
          )
@@ -375,7 +375,7 @@ export class PostgresJobRepository implements DurableJobRepository {
       if (!inserted.rows[0])
         throw new Error("Duplicate execution attempt key or idempotency key");
       const updated = await client.query(
-        `UPDATE execution_jobs
+        `UPDATE public.execution_jobs
          SET attempt_count = attempt_count + 1,
              state_version = state_version + 1,
              updated_at = statement_timestamp()
@@ -401,7 +401,7 @@ export class PostgresJobRepository implements DurableJobRepository {
       if (lease.stateVersion !== job.version || !await hasValidLease(client, job, lease))
         throw new StaleExecutionJobError("Worker lease is stale or expired");
       await client.query(
-        `DELETE FROM job_leases
+        `DELETE FROM public.job_leases
          WHERE job_id = $1::bigint AND worker_id = $2
            AND fencing_token = $3::numeric
            AND expires_at > statement_timestamp()`,
@@ -426,7 +426,7 @@ export class PostgresJobRepository implements DurableJobRepository {
       if (lease.stateVersion !== job.version || !await hasValidLease(client, job, lease))
         throw new StaleExecutionJobError("Worker lease is stale or expired");
       const updated = await client.query(
-        `UPDATE execution_jobs
+        `UPDATE public.execution_jobs
          SET failure_code = $3, failure_description = $4,
              state_version = state_version + 1,
              updated_at = statement_timestamp()
@@ -448,8 +448,8 @@ export class PostgresJobRepository implements DurableJobRepository {
       const expired = await client.query(
         `SELECT j.job_id::text AS job_id, j.state, j.state_version,
                 l.fencing_token::text AS fencing_token
-         FROM execution_jobs j
-         JOIN job_leases l ON l.job_id = j.job_id
+         FROM public.execution_jobs j
+         JOIN public.job_leases l ON l.job_id = j.job_id
          WHERE l.expires_at <= statement_timestamp()
          ORDER BY l.expires_at, j.job_id
          FOR UPDATE OF j SKIP LOCKED`,
@@ -474,7 +474,7 @@ export class PostgresJobRepository implements DurableJobRepository {
           if (state === "ManualReview") manualReview += 1;
         }
         const deleted = await client.query(
-          `DELETE FROM job_leases
+          `DELETE FROM public.job_leases
            WHERE job_id = $1::bigint AND fencing_token = $2::numeric
              AND expires_at <= statement_timestamp()`,
           [jobId, requireString(row, "fencing_token")],
@@ -492,7 +492,7 @@ export class PostgresJobRepository implements DurableJobRepository {
       throw new Error("Execution job ID must be a positive BIGINT decimal string");
     return this.readOnly(async (client) => {
       const found = await client.query(
-        "SELECT job_id::text AS job_id FROM execution_jobs WHERE job_id = $1::bigint",
+        "SELECT job_id::text AS job_id FROM public.execution_jobs WHERE job_id = $1::bigint",
         [jobId],
       );
       return found.rows[0] ? readJob(client, jobId) : null;
@@ -503,7 +503,7 @@ export class PostgresJobRepository implements DurableJobRepository {
     validateJobKey(key);
     return this.readOnly(async (client) => {
       const result = await client.query(
-        `SELECT job_id::text AS job_id FROM execution_jobs
+        `SELECT job_id::text AS job_id FROM public.execution_jobs
          WHERE network_id = $1 AND contract_id = $2 AND payout_id = $3::numeric`,
         [key.networkId, key.contractId, key.payoutId],
       );
@@ -708,7 +708,7 @@ async function lockJob(
 ): Promise<PersistedExecutionJob | null> {
   validateJobKey(key);
   const found = await client.query(
-    `SELECT job_id::text AS job_id FROM execution_jobs
+    `SELECT job_id::text AS job_id FROM public.execution_jobs
      WHERE network_id = $1 AND contract_id = $2 AND payout_id = $3::numeric
      FOR UPDATE`,
     [key.networkId, key.contractId, key.payoutId],
@@ -739,7 +739,7 @@ async function readJob(
   const attemptRows = await client.query(
     `SELECT attempt_key, sequence_number, phase, idempotency_key,
             started_at, outcome
-     FROM execution_attempts
+     FROM public.execution_attempts
      WHERE job_id = $1::bigint
      ORDER BY sequence_number`,
     [jobId],
@@ -882,7 +882,7 @@ async function hasValidLease(
 ): Promise<boolean> {
   const result = await client.query(
     `SELECT worker_id, fencing_token::text AS fencing_token
-     FROM job_leases
+     FROM public.job_leases
      WHERE job_id = $1::bigint AND worker_id = $2
        AND fencing_token = $3::numeric
        AND expires_at > statement_timestamp()
@@ -907,7 +907,7 @@ async function updateJobState(
   next: JobState,
 ): Promise<void> {
   const updated = await client.query(
-    `UPDATE execution_jobs
+    `UPDATE public.execution_jobs
      SET state = $4, state_version = state_version + 1,
          updated_at = statement_timestamp()
      WHERE job_id = $1::bigint AND state = $2 AND state_version = $3`,
@@ -922,7 +922,7 @@ async function bumpVersion(
   version: number,
 ): Promise<void> {
   const updated = await client.query(
-    `UPDATE execution_jobs
+    `UPDATE public.execution_jobs
      SET state_version = state_version + 1,
          updated_at = statement_timestamp()
      WHERE job_id = $1::bigint AND state_version = $2`,
@@ -937,7 +937,7 @@ async function advanceLeaseVersion(
   lease: Lease,
 ): Promise<void> {
   const advanced = await client.query(
-    `SELECT 1 FROM job_leases
+    `SELECT 1 FROM public.job_leases
      WHERE job_id = $1::bigint AND worker_id = $2
        AND fencing_token = $3::numeric
        AND expires_at > statement_timestamp()`,
@@ -953,7 +953,7 @@ async function deleteCurrentLease(
   lease: Lease,
 ): Promise<void> {
   const deleted = await client.query(
-    `DELETE FROM job_leases
+    `DELETE FROM public.job_leases
      WHERE job_id = $1::bigint AND worker_id = $2
        AND fencing_token = $3::numeric
        AND expires_at > statement_timestamp()`,
