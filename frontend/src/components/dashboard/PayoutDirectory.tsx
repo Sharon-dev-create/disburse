@@ -238,8 +238,8 @@ export default function PayoutDirectory() {
                       <tr key={payout.id}>
                         <th scope="row" className="px-5 py-4 font-mono font-medium text-ink">{payout.id}</th>
                         <td className="px-3 py-4"><PayoutSummary payoutId={payout.id} /></td>
-                        <td className="px-3 py-4 font-mono tabular-nums text-ink">{formatTokenAmount(payout.inputAmount)} {payout.sourceToken}</td>
-                        <td className="px-3 py-4 text-ink/65">Not quoted</td>
+                        <td className="px-3 py-4 font-mono tabular-nums text-ink">{payout.sourceNetwork} · {formatTokenAmount(payout.inputAmount)} {payout.sourceToken}</td>
+                        <td className="px-3 py-4 text-ink/65">Not quoted · {payout.destinationToken}</td>
                         <td className="px-3 py-4 text-ink">{payout.destinationNetwork}</td>
                         <td className="px-3 py-4"><PayoutStatusBadge status={payout.status} /></td>
                         <td className="px-3 py-4 text-ink/65">Not connected</td>
@@ -273,8 +273,8 @@ export default function PayoutDirectory() {
                         <PayoutStatusBadge status={payout.status} />
                       </div>
                       <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs sm:grid-cols-3">
-                        <div><dt className="text-ink/65">Source amount</dt><dd className="mt-1 font-mono font-medium text-ink">{formatTokenAmount(payout.inputAmount)} {payout.sourceToken}</dd></div>
-                        <div><dt className="text-ink/65">Expected output</dt><dd className="mt-1 font-medium text-ink">Not quoted</dd></div>
+                        <div><dt className="text-ink/65">Source amount</dt><dd className="mt-1 font-mono font-medium text-ink">{payout.sourceNetwork} · {formatTokenAmount(payout.inputAmount)} {payout.sourceToken}</dd></div>
+                        <div><dt className="text-ink/65">Expected output</dt><dd className="mt-1 font-medium text-ink">Not quoted · {payout.destinationToken}</dd></div>
                         <div><dt className="text-ink/65">Destination network</dt><dd className="mt-1 font-medium text-ink">{payout.destinationNetwork}</dd></div>
                         <div><dt className="text-ink/65">Execution status</dt><dd className="mt-1 font-medium text-ink">Not connected</dd></div>
                         <div><dt className="text-ink/65">Created</dt><dd className="mt-1 font-medium text-ink">{formatPayoutDate(payout.createdAt)}</dd></div>

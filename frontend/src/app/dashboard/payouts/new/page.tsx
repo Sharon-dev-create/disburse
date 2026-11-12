@@ -61,7 +61,7 @@ function getRemainingBudget(campaign: Campaign): bigint {
   const reserved = wholeTokensToBaseUnits(campaign.accounting.reserved, DEMO_TOKEN_DECIMALS);
   const settled = wholeTokensToBaseUnits(campaign.accounting.settled, DEMO_TOKEN_DECIMALS);
   const committed = reserved + settled;
-  return approved > committed ? approved - committed : 0n;
+  return approved > committed ? approved - committed : BigInt(0);
 }
 
 export default function NewPayoutPage() {
@@ -94,8 +94,8 @@ export default function NewPayoutPage() {
   const expectedBaseUnits = parseTokenAmount(expectedOutputAmount, DEMO_TOKEN_DECIMALS);
   const availableBaseUnits = campaign
     ? wholeTokensToBaseUnits(campaign.accounting.available, DEMO_TOKEN_DECIMALS)
-    : 0n;
-  const remainingBudget = campaign ? getRemainingBudget(campaign) : 0n;
+    : BigInt(0);
+  const remainingBudget = campaign ? getRemainingBudget(campaign) : BigInt(0);
   const remainingAvailable = inputBaseUnits !== null && inputBaseUnits <= availableBaseUnits
     ? availableBaseUnits - inputBaseUnits
     : availableBaseUnits;
@@ -113,7 +113,7 @@ export default function NewPayoutPage() {
 
   const reviewAmounts = () => {
     const next: AmountErrors = {};
-    if (inputBaseUnits === null || inputBaseUnits <= 0n) {
+    if (inputBaseUnits === null || inputBaseUnits <= BigInt(0)) {
       next.inputAmount = "Enter a positive amount with no more than six decimal places.";
     } else if (inputBaseUnits > availableBaseUnits) {
       next.inputAmount = "The proposed reservation exceeds this campaign's available balance.";
@@ -121,12 +121,16 @@ export default function NewPayoutPage() {
       next.inputAmount = "The proposed reservation exceeds the remaining approved-budget ceiling.";
     }
 
-    if (expectedBaseUnits === null || expectedBaseUnits <= 0n) {
+    if (expectedBaseUnits === null || expectedBaseUnits <= BigInt(0)) {
       next.expectedOutputAmount = "Enter a positive illustrative output estimate with no more than six decimal places.";
     }
 
     setErrors(next);
-    if (Object.keys(next).length > 0) return;
+    if (Object.keys(next).length > 0) {
+      const firstInvalidField = next.inputAmount ? "payout-input-amount" : "payout-expected-output";
+      document.getElementById(firstInvalidField)?.focus();
+      return;
+    }
     setStep(4);
   };
 

@@ -1,4 +1,8 @@
-import { getDemoCampaign, type Campaign } from "./campaign-demo-data";
+import {
+  demoCampaigns,
+  getDemoCampaign,
+  type Campaign,
+} from "./campaign-demo-data";
 import {
   getRecipientById,
   type Recipient,
@@ -351,6 +355,48 @@ export const demoPayouts: readonly Payout[] = [
   },
 ];
 
+export function assertDemoPayoutAccounting(): void {
+  for (const payout of demoPayouts) {
+    const campaign = getDemoCampaign(payout.campaignId);
+    const recipient = getRecipientById(payout.recipientId);
+    const inputAmount = parseTokenAmount(payout.inputAmount);
+    const reservedAmount = parseTokenAmount(payout.reservedAmount);
+
+    if (!campaign || !recipient || inputAmount === null || reservedAmount === null) {
+      throw new Error(`Demo payout ${payout.id} references invalid data.`);
+    }
+    if (
+      payout.sourceNetwork !== campaign.sourceNetwork ||
+      payout.sourceToken !== campaign.acceptedToken ||
+      payout.destinationNetwork !== recipient.destinationNetwork ||
+      payout.destinationToken !== recipient.preferredToken
+    ) {
+      throw new Error(`Demo payout ${payout.id} has mismatched campaign or recipient assets.`);
+    }
+    if (reservedAmount > inputAmount) {
+      throw new Error(`Demo payout ${payout.id} reserves more than its source input.`);
+    }
+    if (
+      payout.status === "Succeeded" &&
+      (!payout.settlementVerification.verified || !payout.actualVerifiedOutputAmount)
+    ) {
+      throw new Error(`Demo payout ${payout.id} cannot be succeeded without verified output.`);
+    }
+  }
+
+  for (const campaign of demoCampaigns) {
+    const sampleReservations = demoPayouts
+      .filter((payout) => payout.campaignId === campaign.id)
+      .reduce((total, payout) => total + (parseTokenAmount(payout.reservedAmount) ?? BigInt(0)), BigInt(0));
+    const campaignReservations = wholeTokensToBaseUnits(campaign.accounting.reserved);
+    if (sampleReservations !== campaignReservations) {
+      throw new Error(`Demo payouts for campaign ${campaign.id} do not match its illustrative reserved balance.`);
+    }
+  }
+}
+
+assertDemoPayoutAccounting();
+
 export function getDemoPayout(payoutId: string): Payout | undefined {
   return demoPayouts.find((payout) => payout.id === payoutId);
 }
@@ -371,7 +417,7 @@ export function parseTokenAmount(value: string, decimals = 6): bigint | null {
   const fraction = match[2] ?? "";
   if (fraction.length > decimals) return null;
 
-  const scale = 10n ** BigInt(decimals);
+  const scale = BigInt(10) ** BigInt(decimals);
   const fractionalUnits = fraction.padEnd(decimals, "0");
   return BigInt(match[1]) * scale + BigInt(fractionalUnits || "0");
 }
@@ -380,14 +426,14 @@ export function wholeTokensToBaseUnits(value: number, decimals = 6): bigint {
   if (!Number.isSafeInteger(value) || value < 0) {
     throw new Error("Campaign demo balance must be a non-negative safe integer.");
   }
-  return BigInt(value) * 10n ** BigInt(decimals);
+  return BigInt(value) * BigInt(10) ** BigInt(decimals);
 }
 
 export function formatTokenAmount(value: string | bigint, decimals = 6): string {
   const units = typeof value === "bigint" ? value : parseTokenAmount(value, decimals);
   if (units === null) return "Not available";
 
-  const scale = 10n ** BigInt(decimals);
+  const scale = BigInt(10) ** BigInt(decimals);
   const whole = units / scale;
   const fraction = (units % scale).toString().padStart(decimals, "0").replace(/0+$/, "");
   const wholeFormatted = whole.toLocaleString("en-US");
@@ -413,7 +459,7 @@ export function payoutReservedAmount(payouts: readonly Payout[] = demoPayouts): 
       throw new Error(`Payout ${payout.id} has an invalid reserved amount.`);
     }
     return total + amount;
-  }, 0n);
+  }, BigInt(0));
 }
 
 export function getPayoutDisplayStatus(status: ContractPayoutStatus): string {
