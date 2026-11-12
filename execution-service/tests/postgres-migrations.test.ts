@@ -9,19 +9,23 @@ const migration = {
 };
 
 void test("migration history rejects checksum, name, missing, and unknown-version drift", () => {
-  assert.doesNotThrow(() => assertMigrationHistoryMatches([migration], [migration]));
+  assert.doesNotThrow(() =>
+    assertMigrationHistoryMatches([migration], [migration]),
+  );
   assert.throws(
     () =>
-      assertMigrationHistoryMatches([migration], [
-        { ...migration, checksum: "b".repeat(64) },
-      ]),
+      assertMigrationHistoryMatches(
+        [migration],
+        [{ ...migration, checksum: "b".repeat(64) }],
+      ),
     /name or checksum mismatch/,
   );
   assert.throws(
     () =>
-      assertMigrationHistoryMatches([migration], [
-        { ...migration, name: "other_name" },
-      ]),
+      assertMigrationHistoryMatches(
+        [migration],
+        [{ ...migration, name: "other_name" }],
+      ),
     /name or checksum mismatch/,
   );
   assert.throws(
@@ -30,10 +34,10 @@ void test("migration history rejects checksum, name, missing, and unknown-versio
   );
   assert.throws(
     () =>
-      assertMigrationHistoryMatches([migration], [
-        migration,
-        { ...migration, version: "0003" },
-      ]),
+      assertMigrationHistoryMatches(
+        [migration],
+        [migration, { ...migration, version: "0003" }],
+      ),
     /unknown migration version/,
   );
 });

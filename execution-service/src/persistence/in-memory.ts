@@ -95,9 +95,9 @@ export class InMemoryJobRepository implements JobRepository {
     if (!candidate) return null;
 
     const storageKey = executionJobKeyString(candidate.key);
-    if (candidate.state === "Queued") {
-      assertTransition("Queued", "Leased");
-    }
+    if (candidate.state === "Leased") assertTransition("Leased", "Queued");
+    assertTransition("Queued", "Leased");
+    const versionIncrement = candidate.state === "Leased" ? 2 : 1;
     const fencingToken = (
       BigInt(this.storage.nextFencingToken.get(storageKey) ?? "0") + 1n
     ).toString();
@@ -105,13 +105,13 @@ export class InMemoryJobRepository implements JobRepository {
     const lease: Lease = {
       workerId,
       fencingToken,
-      stateVersion: candidate.version + 1,
+      stateVersion: candidate.version + versionIncrement,
       expiresAtMs: nowMs + ttlMs,
     };
     const claimed: ExecutionJobRecord = {
       ...candidate,
       state: "Leased",
-      version: candidate.version + 1,
+      version: candidate.version + versionIncrement,
       updatedAtMs: nowMs,
       lease,
     };

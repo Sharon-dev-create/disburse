@@ -137,7 +137,9 @@ export function assertMigrationHistoryMatches(
 ): void {
   for (const row of recorded) {
     if (!expected.some((migration) => migration.version === row.version))
-      throw new Error(`PostgreSQL contains unknown migration version ${row.version}`);
+      throw new Error(
+        `PostgreSQL contains unknown migration version ${row.version}`,
+      );
   }
   for (const migration of expected) {
     const row = recorded.find((item) => item.version === migration.version);
