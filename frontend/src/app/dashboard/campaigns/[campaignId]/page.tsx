@@ -3,7 +3,11 @@ import { ArrowLeft, CircleDollarSign } from "lucide-react";
 import { notFound } from "next/navigation";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import CampaignStatusBadge from "@/components/dashboard/CampaignStatusBadge";
-import { campaignStatusDescription, formatUsd, getDemoCampaign } from "@/lib/campaign-demo-data";
+import { campaignStatusDescription, demoCampaigns, formatUsd, getDemoCampaign } from "@/lib/campaign-demo-data";
+
+export function generateStaticParams() {
+  return demoCampaigns.map(({ id }) => ({ campaignId: id }));
+}
 
 export default async function CampaignDetailPage({ params }: PageProps<"/dashboard/campaigns/[campaignId]">) {
   const { campaignId } = await params;
