@@ -613,6 +613,8 @@ export function validateExecutionJobCreation(
   creation: ExecutionJobCreation,
 ): void {
   const { event, payout, idempotencyKey } = creation;
+  if (!isRecord(event) || !isRecord(event.identity) || !isPayoutSnapshot(payout))
+    throw new Error("Execution-job creation payload is malformed");
   validatePayoutSnapshot(payout);
   validateJobKey({
     networkId: event.identity.networkId,
@@ -629,26 +631,31 @@ export function validateExecutionJobCreation(
     payout.contractStatus !== "Reserved"
   )
     throw new Error("Only a matching Reserved payout observation can create a job");
-  for (const value of [
-    event.identity.transactionHash,
-    event.identity.blockHash,
-    event.identity.receiptId,
-  ])
-    if (!value.trim()) throw new Error("Discovery event identity is incomplete");
+  validateText(event.identity.transactionHash, "Discovery transaction hash", 512);
+  validateText(event.identity.blockHash, "Discovery block hash", 512);
+  validateText(event.identity.receiptId, "Discovery receipt ID", 512);
   if (!Number.isSafeInteger(event.identity.eventIndex) || event.identity.eventIndex < 0)
     throw new Error("Discovery event index must be a non-negative safe integer");
   validateU128(payout.inputAmount.atomicAmount, "Input amount");
   validateU128(payout.expectedOutput.atomicAmount, "Expected output amount");
   if (!payout.inputAmount.tokenId.trim() || !payout.expectedOutput.tokenId.trim())
     throw new Error("Payout token identifiers are required");
-  if (!idempotencyKey.trim() || idempotencyKey.length > 256 || /[\u0000-\u001f\u007f]/.test(idempotencyKey))
-    throw new Error("Job-creation idempotency key is invalid");
+  validateText(idempotencyKey, "Job-creation idempotency key", 256);
 }
 
 function validateJobKey(key: ExecutionJobKey): void {
-  if (!key.networkId.trim() || !key.contractId.trim())
-    throw new Error("Payout network and contract identity are required");
+  validateText(key.networkId, "Payout network identity", 256);
+  validateText(key.contractId, "Payout contract identity", 256);
   validateU64(key.payoutId, "Payout ID");
+}
+
+function validateText(value: string, label: string, maximumLength: number): void {
+  if (
+    !value.trim() ||
+    value.length > maximumLength ||
+    /[\u0000-\u001f\u007f]/.test(value)
+  )
+    throw new Error(`${label} is invalid`);
 }
 
 function validateU64(value: string, label: string): void {
@@ -672,13 +679,16 @@ function validateAttempt(attempt: ExecutionAttempt): void {
   if (
     !Number.isSafeInteger(attempt.sequence) ||
     attempt.sequence < 1 ||
-    !attempt.attemptKey.trim() ||
-    attempt.attemptKey.length > 256 ||
-    !attempt.idempotencyKey.trim() ||
-    attempt.idempotencyKey.length > 256 ||
     !Number.isSafeInteger(attempt.startedAtMs)
   )
     throw new Error("Execution attempt is malformed");
+  validateText(attempt.attemptKey, "Execution attempt key", 256);
+  validateText(attempt.idempotencyKey, "Execution attempt idempotency key", 256);
+  if (
+    !["validate", "quote", "prepare", "submit", "confirm", "verify", "settle"].includes(attempt.phase) ||
+    !["started", "accepted", "rejected", "unknown", "verified", "failed"].includes(attempt.outcome)
+  )
+    throw new Error("Execution attempt phase or outcome is invalid");
 }
 
 function validateFailure(failure: ExecutionJobFailure): void {
@@ -807,11 +817,32 @@ function parsePayoutSnapshot(value: unknown): PayoutSnapshot {
       throw new Error("Persisted payout snapshot is malformed JSON");
     }
   }
-  if (!isRecord(parsed))
+  if (!isPayoutSnapshot(parsed))
     throw new Error("Persisted payout snapshot is not an object");
-  const snapshot = parsed as unknown as PayoutSnapshot;
-  validatePayoutSnapshot(snapshot);
-  return snapshot;
+  validatePayoutSnapshot(parsed);
+  return parsed;
+}
+
+function isPayoutSnapshot(value: unknown): value is PayoutSnapshot {
+  if (!isRecord(value)) return false;
+  const isAmount = (amount: unknown): boolean =>
+    isRecord(amount) &&
+    typeof amount.tokenId === "string" &&
+    typeof amount.atomicAmount === "string" &&
+    typeof amount.decimals === "number";
+  return (
+    typeof value.payoutId === "string" &&
+    typeof value.campaignId === "string" &&
+    isAmount(value.inputAmount) &&
+    typeof value.destinationChainId === "string" &&
+    typeof value.recipientAddress === "string" &&
+    isAmount(value.expectedOutput) &&
+    typeof value.contractStatus === "string" &&
+    (value.executionReference === null ||
+      typeof value.executionReference === "string") &&
+    (value.settlementEvidenceReference === null ||
+      typeof value.settlementEvidenceReference === "string")
+  );
 }
 
 function mapAttempt(row: Readonly<Record<string, unknown>>): ExecutionAttempt {

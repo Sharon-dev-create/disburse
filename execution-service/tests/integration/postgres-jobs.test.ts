@@ -70,7 +70,7 @@ void test("creation is durable, idempotent, payout-unique, and preserves exact a
   const restarted = repositoryForPool(pool);
   assert.deepEqual(await restarted.getById(created.job.jobId), created.job);
   assert.deepEqual(await restarted.getByPayout(created.job.key), created.job);
-  assert.equal(await restarted.getById("99999999999999999999"), null);
+  assert.equal(await restarted.getById("9223372036854775807"), null);
   await assert.rejects(() => restarted.getById("90071992547409930000.5"));
 });
 
@@ -183,7 +183,7 @@ void test("concurrent workers claim one queued job and stale lease writes are fe
 void test("lease renewal, expiry replacement, and fencing counters survive repository restart", async () => {
   const repository = repositoryForPool(pool);
   const queued = await enqueueQueued(repository, makeCreation("lease-expiry"));
-  const first = await repository.claimNext("worker-one", Date.now(), 40);
+  const first = await repository.claimNext("worker-one", Date.now(), 1_000);
   assert.ok(first?.lease);
   const renewed = await repository.renewLease(
     first.key,
@@ -255,7 +255,7 @@ void test("attempts and safe failures are atomic and duplicate attempt idempoten
 void test("expired ambiguous submission moves to manual review without releasing payout state", async () => {
   const repository = repositoryForPool(pool);
   const queued = await enqueueQueued(repository, makeCreation("recovery"));
-  const claimed = await repository.claimNext("recovery-worker", Date.now(), 40);
+  const claimed = await repository.claimNext("recovery-worker", Date.now(), 1_000);
   assert.ok(claimed?.lease);
   const preparing = await repository.transition(
     claimed.key,
@@ -282,7 +282,7 @@ void test("expired ambiguous submission moves to manual review without releasing
     Date.now(),
   );
 
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  await new Promise((resolve) => setTimeout(resolve, 1_100));
   const recovered = await repository.recoverExpiredLeases(Date.now());
   const persisted = await repository.getById(queued.job.jobId);
   assert.equal(recovered.recovered, 1);

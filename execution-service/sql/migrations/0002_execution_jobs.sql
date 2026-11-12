@@ -9,8 +9,10 @@ BEGIN
      OR to_regclass('public.execution_jobs_idempotency_uq') IS NOT NULL
      OR to_regclass('public.execution_jobs_discovery_event_uq') IS NOT NULL
      OR to_regclass('public.execution_jobs_claimable_idx') IS NOT NULL
-     OR to_regclass('public.execution_jobs_payout_identity_uq') IS NOT NULL
      OR to_regclass('public.execution_jobs_execution_reference_uq') IS NOT NULL
+     OR to_regclass('public.execution_jobs_pkey') IS NOT NULL
+     OR to_regclass('public.execution_attempts_pkey') IS NOT NULL
+     OR to_regclass('public.job_leases_pkey') IS NOT NULL
      OR to_regclass('public.execution_attempts_attempt_key_uq') IS NOT NULL
      OR to_regclass('public.execution_attempts_idempotency_uq') IS NOT NULL
      OR to_regclass('public.execution_attempts_sequence_uq') IS NOT NULL
@@ -21,19 +23,26 @@ BEGIN
   THEN
     RAISE EXCEPTION 'Found unversioned execution-job objects; refusing to adopt or modify them';
   END IF;
-END
+END;
 $$;
 
-CREATE TABLE execution_jobs (
+CREATE TABLE public.execution_jobs (
     job_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    network_id TEXT NOT NULL CHECK (length(btrim(network_id)) > 0),
-    contract_id TEXT NOT NULL CHECK (length(btrim(contract_id)) > 0),
+    network_id TEXT NOT NULL CHECK (
+        length(btrim(network_id)) BETWEEN 1 AND 256 AND network_id !~ '[[:cntrl:]]'
+    ),
+    contract_id TEXT NOT NULL CHECK (
+        length(btrim(contract_id)) BETWEEN 1 AND 256 AND contract_id !~ '[[:cntrl:]]'
+    ),
     payout_id NUMERIC(20, 0) NOT NULL
         CHECK (payout_id BETWEEN 0 AND 18446744073709551615),
     campaign_id NUMERIC(20, 0) NOT NULL
         CHECK (campaign_id BETWEEN 0 AND 18446744073709551615),
     job_creation_idempotency_key TEXT NOT NULL
-        CHECK (length(job_creation_idempotency_key) BETWEEN 1 AND 256),
+        CHECK (
+            length(job_creation_idempotency_key) BETWEEN 1 AND 256
+            AND job_creation_idempotency_key !~ '[[:cntrl:]]'
+        ),
     snapshot_digest CHAR(64) NOT NULL CHECK (snapshot_digest ~ '^[a-f0-9]{64}$'),
     payload_hash CHAR(64) NOT NULL CHECK (payload_hash ~ '^[a-f0-9]{64}$'),
     payout_snapshot JSONB NOT NULL CHECK (jsonb_typeof(payout_snapshot) = 'object'),
@@ -61,9 +70,18 @@ CREATE TABLE execution_jobs (
         failure_description IS NULL OR
         (length(failure_description) <= 1000 AND failure_description !~ '[[:cntrl:]]')
     ),
-    discovery_tx_hash TEXT NOT NULL CHECK (length(btrim(discovery_tx_hash)) > 0),
-    discovery_block_hash TEXT NOT NULL CHECK (length(btrim(discovery_block_hash)) > 0),
-    discovery_receipt_id TEXT NOT NULL CHECK (length(btrim(discovery_receipt_id)) > 0),
+    discovery_tx_hash TEXT NOT NULL CHECK (
+        length(btrim(discovery_tx_hash)) BETWEEN 1 AND 512
+        AND discovery_tx_hash !~ '[[:cntrl:]]'
+    ),
+    discovery_block_hash TEXT NOT NULL CHECK (
+        length(btrim(discovery_block_hash)) BETWEEN 1 AND 512
+        AND discovery_block_hash !~ '[[:cntrl:]]'
+    ),
+    discovery_receipt_id TEXT NOT NULL CHECK (
+        length(btrim(discovery_receipt_id)) BETWEEN 1 AND 512
+        AND discovery_receipt_id !~ '[[:cntrl:]]'
+    ),
     discovery_event_index INTEGER NOT NULL CHECK (discovery_event_index >= 0),
     discovery_block_height NUMERIC(20, 0) NOT NULL
         CHECK (discovery_block_height BETWEEN 0 AND 18446744073709551615),
@@ -82,19 +100,24 @@ CREATE TABLE execution_jobs (
         UNIQUE (network_id, contract_id, execution_reference)
 );
 
-CREATE INDEX execution_jobs_claimable_idx
-    ON execution_jobs (next_eligible_at, created_at, job_id)
+CREATE INDEX public.execution_jobs_claimable_idx
+    ON public.execution_jobs (next_eligible_at, created_at, job_id)
     WHERE state = 'Queued';
 
-CREATE TABLE execution_attempts (
+CREATE TABLE public.execution_attempts (
     attempt_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    job_id BIGINT NOT NULL REFERENCES execution_jobs(job_id),
+    job_id BIGINT NOT NULL REFERENCES public.execution_jobs(job_id),
     sequence_number INTEGER NOT NULL CHECK (sequence_number > 0),
-    attempt_key TEXT NOT NULL CHECK (length(attempt_key) BETWEEN 1 AND 256),
+    attempt_key TEXT NOT NULL CHECK (
+        length(attempt_key) BETWEEN 1 AND 256 AND attempt_key !~ '[[:cntrl:]]'
+    ),
     phase TEXT NOT NULL CHECK (phase IN (
         'validate', 'quote', 'prepare', 'submit', 'confirm', 'verify', 'settle'
     )),
-    idempotency_key TEXT NOT NULL CHECK (length(idempotency_key) BETWEEN 1 AND 256),
+    idempotency_key TEXT NOT NULL CHECK (
+        length(idempotency_key) BETWEEN 1 AND 256
+        AND idempotency_key !~ '[[:cntrl:]]'
+    ),
     outcome TEXT NOT NULL CHECK (outcome IN (
         'started', 'accepted', 'rejected', 'unknown', 'verified', 'failed'
     )),
@@ -105,8 +128,8 @@ CREATE TABLE execution_attempts (
     CONSTRAINT execution_attempts_job_attempt_uq UNIQUE (job_id, attempt_id)
 );
 
-CREATE TABLE job_leases (
-    job_id BIGINT PRIMARY KEY REFERENCES execution_jobs(job_id),
+CREATE TABLE public.job_leases (
+    job_id BIGINT PRIMARY KEY REFERENCES public.execution_jobs(job_id),
     worker_id TEXT NOT NULL CHECK (length(btrim(worker_id)) BETWEEN 1 AND 256),
     fencing_token NUMERIC(39, 0) NOT NULL CHECK (fencing_token > 0),
     acquired_at TIMESTAMPTZ NOT NULL,
@@ -116,7 +139,7 @@ CREATE TABLE job_leases (
     CHECK (renewed_at >= acquired_at)
 );
 
-CREATE INDEX job_leases_expiration_idx ON job_leases (expires_at);
+CREATE INDEX public.job_leases_expiration_idx ON public.job_leases (expires_at);
 
 CREATE FUNCTION public.disburse_prevent_execution_job_snapshot_mutation()
 RETURNS trigger
@@ -132,9 +155,9 @@ BEGIN
       NEW.discovery_tx_hash, NEW.discovery_block_hash, NEW.discovery_receipt_id,
       NEW.discovery_event_index, NEW.discovery_block_height
     ) IS DISTINCT FROM ROW(
-        OLD.job_id, OLD.network_id, OLD.contract_id, OLD.payout_id, OLD.campaign_id,
-        OLD.job_creation_idempotency_key, OLD.snapshot_digest, OLD.payload_hash,
-        OLD.payout_snapshot,
+      OLD.job_id, OLD.network_id, OLD.contract_id, OLD.payout_id, OLD.campaign_id,
+      OLD.job_creation_idempotency_key, OLD.snapshot_digest, OLD.payload_hash,
+      OLD.payout_snapshot,
       OLD.input_atomic_amount, OLD.expected_output_atomic_amount,
       OLD.observed_contract_status, OLD.execution_reference,
       OLD.discovery_tx_hash, OLD.discovery_block_hash, OLD.discovery_receipt_id,
@@ -144,10 +167,10 @@ BEGIN
     RAISE EXCEPTION 'Execution-job identity and payout snapshot are immutable';
   END IF;
   RETURN NEW;
-END
+END;
 $$;
 
 CREATE TRIGGER execution_jobs_snapshot_immutable
-    BEFORE UPDATE ON execution_jobs
+    BEFORE UPDATE ON public.execution_jobs
     FOR EACH ROW
     EXECUTE FUNCTION public.disburse_prevent_execution_job_snapshot_mutation();

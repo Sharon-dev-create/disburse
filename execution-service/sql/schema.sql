@@ -5,14 +5,21 @@
 -- Security tables near the end are applied by migration 0001; other future tables are reference-only.
 CREATE TABLE execution_jobs (
     job_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    network_id TEXT NOT NULL CHECK (length(btrim(network_id)) > 0),
-    contract_id TEXT NOT NULL CHECK (length(btrim(contract_id)) > 0),
+    network_id TEXT NOT NULL CHECK (
+        length(btrim(network_id)) BETWEEN 1 AND 256 AND network_id !~ '[[:cntrl:]]'
+    ),
+    contract_id TEXT NOT NULL CHECK (
+        length(btrim(contract_id)) BETWEEN 1 AND 256 AND contract_id !~ '[[:cntrl:]]'
+    ),
     payout_id NUMERIC(20, 0) NOT NULL
         CHECK (payout_id BETWEEN 0 AND 18446744073709551615),
     campaign_id NUMERIC(20, 0) NOT NULL
         CHECK (campaign_id BETWEEN 0 AND 18446744073709551615),
     job_creation_idempotency_key TEXT NOT NULL
-        CHECK (length(job_creation_idempotency_key) BETWEEN 1 AND 256),
+        CHECK (
+            length(job_creation_idempotency_key) BETWEEN 1 AND 256
+            AND job_creation_idempotency_key !~ '[[:cntrl:]]'
+        ),
     snapshot_digest CHAR(64) NOT NULL CHECK (snapshot_digest ~ '^[a-f0-9]{64}$'),
     payload_hash CHAR(64) NOT NULL CHECK (payload_hash ~ '^[a-f0-9]{64}$'),
     payout_snapshot JSONB NOT NULL CHECK (jsonb_typeof(payout_snapshot) = 'object'),
@@ -40,9 +47,18 @@ CREATE TABLE execution_jobs (
         failure_description IS NULL OR
         (length(failure_description) <= 1000 AND failure_description !~ '[[:cntrl:]]')
     ),
-    discovery_tx_hash TEXT NOT NULL CHECK (length(btrim(discovery_tx_hash)) > 0),
-    discovery_block_hash TEXT NOT NULL CHECK (length(btrim(discovery_block_hash)) > 0),
-    discovery_receipt_id TEXT NOT NULL CHECK (length(btrim(discovery_receipt_id)) > 0),
+    discovery_tx_hash TEXT NOT NULL CHECK (
+        length(btrim(discovery_tx_hash)) BETWEEN 1 AND 512
+        AND discovery_tx_hash !~ '[[:cntrl:]]'
+    ),
+    discovery_block_hash TEXT NOT NULL CHECK (
+        length(btrim(discovery_block_hash)) BETWEEN 1 AND 512
+        AND discovery_block_hash !~ '[[:cntrl:]]'
+    ),
+    discovery_receipt_id TEXT NOT NULL CHECK (
+        length(btrim(discovery_receipt_id)) BETWEEN 1 AND 512
+        AND discovery_receipt_id !~ '[[:cntrl:]]'
+    ),
     discovery_event_index INTEGER NOT NULL CHECK (discovery_event_index >= 0),
     discovery_block_height NUMERIC(20, 0) NOT NULL
         CHECK (discovery_block_height BETWEEN 0 AND 18446744073709551615),
@@ -69,11 +85,16 @@ CREATE TABLE execution_attempts (
     attempt_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     job_id BIGINT NOT NULL REFERENCES execution_jobs(job_id),
     sequence_number INTEGER NOT NULL CHECK (sequence_number > 0),
-    attempt_key TEXT NOT NULL CHECK (length(attempt_key) BETWEEN 1 AND 256),
+    attempt_key TEXT NOT NULL CHECK (
+        length(attempt_key) BETWEEN 1 AND 256 AND attempt_key !~ '[[:cntrl:]]'
+    ),
     phase TEXT NOT NULL CHECK (phase IN (
         'validate', 'quote', 'prepare', 'submit', 'confirm', 'verify', 'settle'
     )),
-    idempotency_key TEXT NOT NULL CHECK (length(idempotency_key) BETWEEN 1 AND 256),
+    idempotency_key TEXT NOT NULL CHECK (
+        length(idempotency_key) BETWEEN 1 AND 256
+        AND idempotency_key !~ '[[:cntrl:]]'
+    ),
     outcome TEXT NOT NULL CHECK (outcome IN (
         'started', 'accepted', 'rejected', 'unknown', 'verified', 'failed'
     )),
@@ -123,7 +144,7 @@ BEGIN
     RAISE EXCEPTION 'Execution-job identity and payout snapshot are immutable';
   END IF;
   RETURN NEW;
-END
+END;
 $$;
 
 CREATE TRIGGER execution_jobs_snapshot_immutable
@@ -144,7 +165,9 @@ CREATE TABLE provider_references (
     event_identifier_key TEXT NOT NULL DEFAULT '',
     first_observed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     last_observed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (provider_id, provider_execution_reference)
+    UNIQUE (provider_id, provider_execution_reference),
+    FOREIGN KEY (job_id, attempt_id)
+        REFERENCES execution_attempts(job_id, attempt_id)
 );
 
 CREATE UNIQUE INDEX provider_external_identity_uq
@@ -168,7 +191,9 @@ CREATE TABLE verification_records (
     content_hash TEXT,
     normalized_claims JSONB,
     reason TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    FOREIGN KEY (job_id, attempt_id)
+        REFERENCES execution_attempts(job_id, attempt_id)
 );
 
 CREATE TABLE settlement_submission_attempts (
@@ -187,7 +212,9 @@ CREATE TABLE settlement_submission_attempts (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (job_id, settlement_evidence_reference),
-    UNIQUE (network_id, contract_id, settlement_evidence_reference)
+    UNIQUE (network_id, contract_id, settlement_evidence_reference),
+    FOREIGN KEY (job_id, attempt_id)
+        REFERENCES execution_attempts(job_id, attempt_id)
 );
 
 CREATE TABLE processing_errors (
@@ -198,7 +225,9 @@ CREATE TABLE processing_errors (
     classification TEXT NOT NULL,
     retryable BOOLEAN NOT NULL,
     message TEXT NOT NULL,
-    occurred_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    FOREIGN KEY (job_id, attempt_id)
+        REFERENCES execution_attempts(job_id, attempt_id)
 );
 
 CREATE TABLE reconciliation_history (
