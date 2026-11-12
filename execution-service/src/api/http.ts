@@ -148,7 +148,7 @@ function payoutEnvelope(options: ExecutionApiOptions, payout: NearPayoutView) {
     options.reader.config.networkId,
     options.reader.config.contractId,
   );
-  const parsed = parsePayoutResponse(payout);
+  const parsed = parsePayoutResponse(payout, networkId);
   return {
     data: {
       networkId,
@@ -186,31 +186,37 @@ function accountingEnvelope(
   };
 }
 
-function parsePayoutResponse(payout: NearPayoutView) {
-  const id = parseU64(payout.id, "payout ID");
-  const campaignId = parseU64(payout.campaignId, "campaign ID");
-  if (!(PAYOUT_STATUSES as readonly string[]).includes(payout.status)) {
+function parsePayoutResponse(value: unknown, networkId: "mainnet" | "testnet") {
+  if (!isRecord(value) || !isRecord(value.destination)) {
+    throw new ResponseValidationError("Contract returned an invalid payout.");
+  }
+  const id = parseU64(value.id, "payout ID");
+  const campaignId = parseU64(value.campaignId, "campaign ID");
+  if (
+    typeof value.status !== "string" ||
+    !(PAYOUT_STATUSES as readonly string[]).includes(value.status)
+  ) {
     throw new ResponseValidationError("Contract returned an unknown payout status.");
   }
-  const inputAmount = parseTokenAmount(payout.inputAmount);
-  const expectedOutputAmount = parseTokenAmount(payout.expectedOutputAmount);
-  const destinationNetworkId = parseDestinationNetworkId(payout.destination.chainId);
+  const inputAmount = parseTokenAmount(value.inputAmount);
+  const expectedOutputAmount = parseTokenAmount(value.expectedOutputAmount);
+  const destinationNetworkId = parseDestinationNetworkId(value.destination.chainId);
   const recipientAddress = parseDestinationAddress(
     destinationNetworkId,
-    payout.destination.recipientAddress,
+    value.destination.recipientAddress,
   );
-  const createdAtNs = parseU64(payout.createdAtNs, "payout creation timestamp");
-  const executionReference = nullableReference(payout.executionReference);
+  const createdAtNs = parseU64(value.createdAtNs, "payout creation timestamp");
+  const executionReference = nullableReference(value.executionReference);
   const settlementEvidenceReference = nullableReference(
-    payout.settlementEvidenceReference,
+    value.settlementEvidenceReference,
   );
 
   return {
     id,
     campaignId,
-    status: payout.status,
+    status: value.status,
     source: {
-      networkId: `near:${nearNetworkIdFromPayout(payout)}`,
+      networkId: `near:${networkId}`,
       token: inputAmount.token,
       atomicAmount: inputAmount.atomicAmount,
       decimals: inputAmount.decimals,
@@ -228,8 +234,11 @@ function parsePayoutResponse(payout: NearPayoutView) {
   };
 }
 
-function parseTokenAmount(amount: NearPayoutView["inputAmount"]) {
-  const tokenKeys = Object.keys(amount.tokenId);
+function parseTokenAmount(value: unknown) {
+  if (!isRecord(value) || !isRecord(value.tokenId)) {
+    throw new ResponseValidationError("Contract returned an invalid token amount.");
+  }
+  const tokenKeys = Object.keys(value.tokenId);
   if (
     tokenKeys.length !== 1 ||
     (tokenKeys[0] !== "Near" && tokenKeys[0] !== "External")
@@ -238,36 +247,33 @@ function parseTokenAmount(amount: NearPayoutView["inputAmount"]) {
   }
   const tokenKey = tokenKeys[0];
   const tokenId = safeIdentifier(
-    amount.tokenId[tokenKey],
+    value.tokenId[tokenKey],
     "token identifier",
     256,
   );
   if (
-    !Number.isInteger(amount.decimals) ||
-    amount.decimals < 0 ||
-    amount.decimals > 255
+    typeof value.decimals !== "number" ||
+    !Number.isInteger(value.decimals) ||
+    value.decimals < 0 ||
+    value.decimals > 255
   ) {
     throw new ResponseValidationError("Contract returned invalid token decimals.");
   }
-  const atomicAmount = parseU128(amount.atomicAmount, "token amount");
+  const atomicAmount = parseU128(value.atomicAmount, "token amount");
   if (BigInt(atomicAmount) <= 0n) {
     throw new ResponseValidationError("Contract returned a non-positive payout amount.");
   }
   return {
     token: tokenKey === "Near" ? { Near: tokenId } : { External: tokenId },
     atomicAmount,
-    decimals: amount.decimals,
+    decimals: value.decimals,
   };
 }
 
-function parseAccountingResponse(accounting: {
-  readonly campaignId: string;
-  readonly budget: string;
-  readonly funded: string;
-  readonly reserved: string;
-  readonly spent: string;
-  readonly available: string;
-}) {
+function parseAccountingResponse(accounting: unknown) {
+  if (!isRecord(accounting)) {
+    throw new ResponseValidationError("Contract returned invalid campaign accounting.");
+  }
   const campaignId = parseU64(accounting.campaignId, "campaign ID");
   const budget = parseU128(accounting.budget, "campaign budget");
   const funded = parseU128(accounting.funded, "funded amount");
@@ -322,7 +328,7 @@ function parseU64PathId(value: string, label: string): string {
   }
 }
 
-function parseU64(value: string, label: string): string {
+function parseU64(value: unknown, label: string): string {
   if (
     typeof value !== "string" ||
     !/^(?:0|[1-9][0-9]{0,19})$/.test(value) ||
@@ -333,7 +339,7 @@ function parseU64(value: string, label: string): string {
   return value;
 }
 
-function parseU128(value: string, label: string): string {
+function parseU128(value: unknown, label: string): string {
   if (
     typeof value !== "string" ||
     !/^(?:0|[1-9][0-9]{0,38})$/.test(value) ||
@@ -344,7 +350,7 @@ function parseU128(value: string, label: string): string {
   return value;
 }
 
-function safeIdentifier(value: string, label: string, maximumLength: number): string {
+function safeIdentifier(value: unknown, label: string, maximumLength: number): string {
   if (
     typeof value !== "string" ||
     value.length === 0 ||
@@ -357,7 +363,7 @@ function safeIdentifier(value: string, label: string, maximumLength: number): st
   return value;
 }
 
-function nullableReference(value: string | null): string | null {
+function nullableReference(value: unknown): string | null {
   if (value === null) return null;
   return safeIdentifier(value, "payout reference", 256);
 }
@@ -369,14 +375,16 @@ function nearNetworkId(value: string): "mainnet" | "testnet" {
   return value;
 }
 
-function nearNetworkIdFromPayout(_payout: NearPayoutView): "mainnet" | "testnet" {
-  throw new Error("Internal source-network context was not provided.");
-}
-
 function contractAccountId(networkId: string, value: string): string {
   const account = safeIdentifier(value, "contract account ID", 64);
   const suffix = networkId === "testnet" ? ".testnet" : ".near";
-  if (!account.endsWith(suffix)) {
+  const base = account.slice(0, -suffix.length);
+  if (
+    !account.endsWith(suffix) ||
+    base.length < 2 ||
+    base.length > 64 ||
+    !/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/.test(base)
+  ) {
     throw new Error("Contract account ID does not match the configured NEAR network.");
   }
   return account;
@@ -448,6 +456,10 @@ function sendError(
   sendJson(response, statusCode, { error: { code, message } });
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function errorResponse(error: unknown): {
   readonly statusCode: number;
   readonly code: string;
@@ -488,22 +500,3 @@ function errorResponse(error: unknown): {
 
 class RequestValidationError extends Error {}
 class ResponseValidationError extends Error {}
-
-export function executionApiErrorResponse(error: unknown): {
-  readonly statusCode: number;
-  readonly body: { readonly error: { readonly code: string; readonly message: string } };
-} {
-  const result = errorResponse(error);
-  return {
-    statusCode: result.statusCode,
-    body: { error: { code: result.code, message: result.message } },
-  };
-}
-
-export function executionApiAddress(server: Server): AddressInfo {
-  const address = server.address();
-  if (!address || typeof address === "string") {
-    throw new Error("Execution API server is not listening on a TCP address.");
-  }
-  return address;
-}
