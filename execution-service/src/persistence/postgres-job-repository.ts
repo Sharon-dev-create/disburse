@@ -42,7 +42,7 @@ const jobSelect = `
     j.job_id::text AS job_id,
     j.network_id, j.contract_id, j.payout_id::text AS payout_id,
     j.campaign_id::text AS campaign_id,
-    j.job_creation_idempotency_key, j.payload_hash,
+    j.job_creation_idempotency_key, j.snapshot_digest, j.payload_hash,
     j.payout_snapshot, j.input_atomic_amount::text AS input_atomic_amount,
     j.expected_output_atomic_amount::text AS expected_output_atomic_amount,
     j.observed_contract_status, j.state, j.execution_reference,
@@ -101,7 +101,8 @@ export class PostgresJobRepository implements DurableJobRepository {
       payoutId: payout.payoutId,
     };
     const snapshotJson = canonicalJson(payout);
-    const payloadHash = hashExecutionJobPayload(key, payout);
+    const snapshotDigest = hashPayoutSnapshot(payout);
+    const payloadHash = hashJobCreationPayload(key, payout, event);
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN", []);
@@ -109,14 +110,14 @@ export class PostgresJobRepository implements DurableJobRepository {
         `INSERT INTO execution_jobs (
           network_id, contract_id, payout_id, campaign_id,
           job_creation_idempotency_key, payload_hash, payout_snapshot,
-          input_atomic_amount, expected_output_atomic_amount,
+          snapshot_digest, input_atomic_amount, expected_output_atomic_amount,
           observed_contract_status, state, execution_reference,
           discovery_tx_hash, discovery_block_hash, discovery_receipt_id,
           discovery_event_index, discovery_block_height
         ) VALUES (
           $1, $2, $3::numeric, $4::numeric,
-          $5, $6, $7::jsonb, $8::numeric, $9::numeric,
-          'Reserved', 'Discovered', $10, $11, $12, $13, $14, $15::numeric
+          $5, $6, $7, $8::jsonb, $9::numeric, $10::numeric,
+          'Reserved', 'Discovered', $11, $12, $13, $14, $15, $16::numeric
         )
         ON CONFLICT DO NOTHING
         RETURNING job_id::text AS job_id`,
@@ -126,6 +127,7 @@ export class PostgresJobRepository implements DurableJobRepository {
           key.payoutId,
           payout.campaignId,
           idempotencyKey,
+          snapshotDigest,
           payloadHash,
           snapshotJson,
           payout.inputAmount.atomicAmount,
@@ -146,7 +148,8 @@ export class PostgresJobRepository implements DurableJobRepository {
         created = true;
       } else {
         const conflicts = await client.query(
-          `SELECT job_id::text AS job_id, payload_hash, network_id,
+          `SELECT job_id::text AS job_id, payload_hash, snapshot_digest,
+                  network_id,
                   contract_id, payout_id::text AS payout_id,
                   job_creation_idempotency_key
            FROM execution_jobs
@@ -159,8 +162,16 @@ export class PostgresJobRepository implements DurableJobRepository {
         if (conflicts.rows.length !== 1)
           throw new JobCreationConflictError();
         const existing = conflicts.rows[0]!;
+        const existingIdempotencyKey = requireString(
+          existing,
+          "job_creation_idempotency_key",
+        );
+        const payloadMatches =
+          existingIdempotencyKey === idempotencyKey
+            ? requireString(existing, "payload_hash") === payloadHash
+            : requireString(existing, "snapshot_digest") === snapshotDigest;
         if (
-          requireString(existing, "payload_hash") !== payloadHash ||
+          !payloadMatches ||
           requireString(existing, "network_id") !== key.networkId ||
           requireString(existing, "contract_id") !== key.contractId ||
           requireString(existing, "payout_id") !== key.payoutId
@@ -198,8 +209,8 @@ export class PostgresJobRepository implements DurableJobRepository {
            AND j.next_eligible_at <= statement_timestamp()
            AND (l.job_id IS NULL OR l.expires_at <= statement_timestamp())
          ORDER BY j.next_eligible_at, j.created_at, j.job_id
-         FOR UPDATE OF j SKIP LOCKED
          LIMIT 1`,
+         FOR UPDATE OF j SKIP LOCKED`,
         [],
       );
       if (!result.rows[0]) return null;
@@ -556,6 +567,20 @@ export function hashExecutionJobPayload(
     .digest("hex");
 }
 
+export function hashPayoutSnapshot(payout: PayoutSnapshot): string {
+  return createHash("sha256").update(canonicalJson(payout), "utf8").digest("hex");
+}
+
+export function hashJobCreationPayload(
+  key: ExecutionJobKey,
+  payout: PayoutSnapshot,
+  event: PayoutReservedEvent,
+): string {
+  return createHash("sha256")
+    .update(canonicalJson({ key, payout, event }), "utf8")
+    .digest("hex");
+}
+
 export function canonicalJson(value: unknown): string {
   if (value === null || typeof value === "string" || typeof value === "boolean")
     return JSON.stringify(value);
@@ -731,13 +756,26 @@ async function readJob(
     eventIndex: requireSafeInteger(row, "discovery_event_index"),
     blockHeight: requireString(row, "discovery_block_height"),
   };
+  const event: PayoutReservedEvent = {
+    event: "payout_reserved",
+    payoutId: key.payoutId,
+    campaignId: payout.campaignId,
+    contractStatus: "Reserved",
+    identity: discoveryEvent,
+  };
+  if (
+    requireString(row, "snapshot_digest") !== hashPayoutSnapshot(payout) ||
+    requireString(row, "payload_hash") !==
+      hashJobCreationPayload(key, payout, event)
+  )
+    throw new Error("Persisted execution-job snapshot digest is inconsistent");
   const observedStatus = requireString(row, "observed_contract_status");
   if (observedStatus !== "Reserved")
     throw new Error("Persisted job has an unsupported observed contract status");
   return {
     jobId: requireString(row, "job_id"),
     idempotencyKey: requireString(row, "job_creation_idempotency_key"),
-    snapshotDigest: requireString(row, "payload_hash"),
+    snapshotDigest: requireString(row, "snapshot_digest"),
     fencingCounter: requireString(row, "fencing_counter"),
     attemptCount,
     nextEligibleAtMs: dateMs(row.next_eligible_at, "next_eligible_at"),

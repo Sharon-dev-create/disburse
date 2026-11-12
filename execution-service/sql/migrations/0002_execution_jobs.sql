@@ -34,6 +34,7 @@ CREATE TABLE execution_jobs (
         CHECK (campaign_id BETWEEN 0 AND 18446744073709551615),
     job_creation_idempotency_key TEXT NOT NULL
         CHECK (length(job_creation_idempotency_key) BETWEEN 1 AND 256),
+    snapshot_digest CHAR(64) NOT NULL CHECK (snapshot_digest ~ '^[a-f0-9]{64}$'),
     payload_hash CHAR(64) NOT NULL CHECK (payload_hash ~ '^[a-f0-9]{64}$'),
     payout_snapshot JSONB NOT NULL CHECK (jsonb_typeof(payout_snapshot) = 'object'),
     input_atomic_amount NUMERIC(39, 0) NOT NULL
@@ -124,14 +125,16 @@ AS $$
 BEGIN
   IF ROW(
       NEW.job_id, NEW.network_id, NEW.contract_id, NEW.payout_id, NEW.campaign_id,
-      NEW.job_creation_idempotency_key, NEW.payload_hash, NEW.payout_snapshot,
+      NEW.job_creation_idempotency_key, NEW.snapshot_digest, NEW.payload_hash,
+      NEW.payout_snapshot,
       NEW.input_atomic_amount, NEW.expected_output_atomic_amount,
       NEW.observed_contract_status, NEW.execution_reference,
       NEW.discovery_tx_hash, NEW.discovery_block_hash, NEW.discovery_receipt_id,
       NEW.discovery_event_index, NEW.discovery_block_height
     ) IS DISTINCT FROM ROW(
         OLD.job_id, OLD.network_id, OLD.contract_id, OLD.payout_id, OLD.campaign_id,
-      OLD.job_creation_idempotency_key, OLD.payload_hash, OLD.payout_snapshot,
+        OLD.job_creation_idempotency_key, OLD.snapshot_digest, OLD.payload_hash,
+        OLD.payout_snapshot,
       OLD.input_atomic_amount, OLD.expected_output_atomic_amount,
       OLD.observed_contract_status, OLD.execution_reference,
       OLD.discovery_tx_hash, OLD.discovery_block_hash, OLD.discovery_receipt_id,
