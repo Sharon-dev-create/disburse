@@ -10,6 +10,12 @@ import {
   type ExecutionDataResult,
 } from "./execution-api-shared";
 
+function demoApiAuthorizationHeader(): string | undefined {
+  const token = process.env.DISBURSE_EXECUTION_API_DEMO_TOKEN?.trim();
+  if (!token) return undefined;
+  return `Bearer ${token}`;
+}
+
 export async function loadExecutionData<T>(
   request: (client: ExecutionApiClient) => Promise<T>,
 ): Promise<ExecutionDataResult<T>> {
@@ -20,6 +26,15 @@ export async function loadExecutionData<T>(
     const cookie = incomingHeaders.get("cookie");
     if (authorization) forwardedHeaders.set("authorization", authorization);
     if (cookie) forwardedHeaders.set("cookie", cookie);
+
+    // Local/demo-only: server-side shared token for execution-service auth.
+    // Never expose via NEXT_PUBLIC_*; not production identity authentication.
+    if (!forwardedHeaders.has("authorization")) {
+      const demoAuthorization = demoApiAuthorizationHeader();
+      if (demoAuthorization) {
+        forwardedHeaders.set("authorization", demoAuthorization);
+      }
+    }
 
     const client = new ExecutionApiClient(
       executionApiBaseUrlFromEnvironment(process.env),

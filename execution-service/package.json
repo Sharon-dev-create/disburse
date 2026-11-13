@@ -15,6 +15,7 @@
     "test:postgres": "node --experimental-strip-types --test tests/integration/postgres-*.test.ts",
     "db:migrate:dev": "node --experimental-strip-types src/persistence/migrate.ts development",
     "db:migrate:test": "node --experimental-strip-types src/persistence/migrate.ts test",
+    "start": "node --experimental-strip-types src/host.ts",
     "check": "pnpm format:check && pnpm typecheck && pnpm lint && pnpm test"
   },
   "devDependencies": {
