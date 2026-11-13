@@ -3,6 +3,8 @@ import { ArrowLeft, ArrowUpRight, CircleAlert } from "lucide-react";
 import { notFound } from "next/navigation";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import PayoutStatusBadge from "@/components/dashboard/PayoutStatusBadge";
+import ExecutionPayoutDetails from "@/components/dashboard/ExecutionPayoutDetails";
+import { loadExecutionData } from "@/lib/execution-api-server";
 import { getDemoCampaign, formatUsd } from "@/lib/campaign-demo-data";
 import {
   demoPayouts,
@@ -21,6 +23,35 @@ export default async function PayoutDetailsPage({
   params,
 }: PageProps<"/dashboard/payouts/[payoutId]">) {
   const { payoutId } = await params;
+  if (isContractPayoutId(payoutId)) {
+    const lookup = await loadExecutionData((client) =>
+      client.getPayout(payoutId),
+    );
+    if (lookup.kind === "error") {
+      return (
+        <ExecutionPayoutDetails
+          payoutId={payoutId}
+          contractResult={lookup}
+          executionResult={null}
+        />
+      );
+    }
+    const [contractResult, executionResult] = await Promise.all([
+      loadExecutionData((client) =>
+        client.getCampaignPayout(lookup.data.campaignId, payoutId),
+      ),
+      loadExecutionData((client) =>
+        client.getCampaignExecutionJob(lookup.data.campaignId, payoutId),
+      ),
+    ]);
+    return (
+      <ExecutionPayoutDetails
+        payoutId={payoutId}
+        contractResult={contractResult}
+        executionResult={executionResult}
+      />
+    );
+  }
   const payout = getDemoPayout(payoutId);
   if (!payout) notFound();
 
@@ -165,5 +196,12 @@ export default async function PayoutDetailsPage({
         </section>
       </div>
     </main>
+  );
+}
+
+function isContractPayoutId(value: string): boolean {
+  return (
+    /^(?:0|[1-9]\d{0,19})$/.test(value) &&
+    BigInt(value) <= (1n << 64n) - 1n
   );
 }

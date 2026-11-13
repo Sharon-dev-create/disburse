@@ -8,8 +8,9 @@ cases include payroll, creator payments, grants, DAO distributions, and other pl
 These are potential use cases, not claims that live payment workflows are available today.
 
 > **Current status: development foundation, not production payment software.** The repository
-> contains a NEAR contract, a Next.js demonstration frontend, and a TypeScript execution-service
-> foundation. The frontend is not connected to the contract or execution service. There is no
+> contains a NEAR contract, a Next.js frontend with an optional server-side read-API connection,
+> and a TypeScript execution-service foundation. Demo campaigns, recipients, and forms remain
+> illustrative. There is no
 > production worker, transaction signer, live payout submission, independent destination-chain
 > verifier, or complete quote-to-settlement pipeline. Do not use this repository to move production
 > funds.
@@ -60,7 +61,7 @@ repository.
 
 | Area | What exists | Important limitation |
 | --- | --- | --- |
-| Frontend | Marketing site and campaign, recipient, and payout dashboard routes | Demo data and browser-only forms; no backend, wallet, or contract connection |
+| Frontend | Marketing site, demo workflows, and server-side reads for configured accounting and payout data | Campaign discovery, auth provider, wallet, and mutation flows are not implemented |
 | NEAR contract | Campaign and payout accounting, roles, funding, payout reservation, lifecycle and verifier-attested settlement/recovery | No external-chain proof verification; no configured deployment |
 | Execution service | Read-only contract API module, event discovery/reconciliation, quote preview, authorization/refund-policy repositories, durable PostgreSQL jobs | No worker, signer, transaction submission, automatic refund, or settlement verifier |
 | NEAR Intents | `EXACT_OUTPUT` quote adapter that always requests `dry: true` | Preview only; no deposit, execution, status polling, or binding execution guarantee |
@@ -69,14 +70,14 @@ repository.
 ## Architecture
 
 The components below exist in the repository, but are not assembled into a deployed application.
-In particular, the frontend does not call the HTTP API, the API is not a standalone process, and
-the PostgreSQL job repository is not connected to a worker or to the discovery repository's
-single-writer file store.
+The Next.js server can call a configured host-composed read API; the API is not a standalone
+process, and the PostgreSQL job repository is not connected to a worker or to the discovery
+repository's single-writer file store.
 
 ```mermaid
 flowchart LR
   subgraph UI["User interface"]
-    Browser[Browser] --> Frontend["Next.js frontend<br/>illustrative demo data"]
+    Browser[Browser] --> Frontend["Next.js frontend<br/>server-side API reads + demo fixtures"]
   end
 
   subgraph Contract["NEAR contract"]
@@ -87,6 +88,7 @@ flowchart LR
     API["Node HTTP API module<br/>GET endpoints"]
     Reader["Read-only NEAR JSON-RPC reader"]
     API --> Reader --> ContractState
+    API --> JobRepository["Optional persisted job repository"]
   end
 
   subgraph Discovery["Read-only event discovery"]
@@ -98,6 +100,7 @@ flowchart LR
     Postgres[(PostgreSQL)]
     Repositories["Authorization, refund-policy,<br/>job, attempt and lease repositories"]
     Postgres <--> Repositories
+    JobRepository --> Repositories
   end
 
   subgraph Quotes["Quote preview"]
@@ -122,14 +125,19 @@ icons, and Geist fonts through `next/font`. Its routes include:
 | `/dashboard/recipients`, `/dashboard/recipients/new`, `/dashboard/recipients/[recipientId]` | Recipient directory, configuration review, and demo details |
 | `/dashboard/payouts`, `/dashboard/payouts/new`, `/dashboard/payouts/[payoutId]` | Payout directory, proposal preview, and demo details |
 
-Campaign, recipient, and payout records are deterministic demo data in `frontend/src/lib`. Form
-submissions show local review/confirmation states; they do not persist a record or send data to a
-backend. Address checks validate format only, not ownership or on-chain eligibility. Displayed
-balances and activity are not authoritative financial records.
+Campaign, recipient, and presentation-only payout records remain deterministic demo data in
+`frontend/src/lib`; local form submissions do not persist or send data. The dashboard accounting
+panel and numeric campaign detail pages read accounting from the execution API. The payout
+directory reads persisted PostgreSQL job snapshots by numeric campaign ID, and numeric payout
+details combine a current contract read with a persisted execution-job read. Demo campaign,
+recipient, proposal, and payout-example workflows remain separately labeled. Address checks
+validate format only, not ownership or on-chain eligibility.
 
-The frontend has no API client or wallet integration. The optional
-`NEXT_PUBLIC_LAUNCH_URL` value changes the marketing calls-to-action; when it is unset, those
-buttons use the page's `#get-started` anchor. There is no frontend `.env.example`.
+The server-only API client reads `DISBURSE_EXECUTION_API_BASE_URL`, forwards only the incoming
+`Authorization` and `Cookie` headers to that configured service, and disables response caching.
+The service's host-provided authorization callback remains authoritative; there is no static token
+or browser-to-PostgreSQL connection. `NEXT_PUBLIC_LAUNCH_URL` remains optional and only changes
+marketing calls-to-action. See [`frontend/.env.example`](frontend/.env.example).
 
 ### NEAR smart contract
 
@@ -194,23 +202,29 @@ The HTTP module exposes only these read endpoints:
 
 | Method and path | Behavior |
 | --- | --- |
-| `GET /healthz` | Liveness response only; it does not query NEAR and is unauthenticated |
+| `GET /healthz` | Liveness response only; it does not query NEAR or PostgreSQL and is unauthenticated |
 | `GET /v1/payouts/{payoutId}` | Reads a payout from the configured contract |
 | `GET /v1/campaigns/{campaignId}/payouts/{payoutId}` | Reads a payout scoped to its campaign |
-| `GET /v1/campaigns/{campaignId}/accounting` | Reads campaign payout accounting |
+| `GET /v1/campaigns/{campaignId}/accounting` | Reads campaign accounting and funding-token precision |
+| `GET /v1/campaigns/{campaignId}/payouts` | Reads up to 100 persisted job snapshots for the campaign |
+| `GET /v1/campaigns/{campaignId}/payouts/{payoutId}/execution` | Reads persisted execution state and attempts |
 
-All three data endpoints require a host-supplied `authorize(request)` callback. The API validates
+All data endpoints require a host-supplied `authorize(request)` callback. Persisted-job routes also
+require the host to inject the PostgreSQL job repository. The API validates
 identifiers, response shapes, exact integer strings, destination formats, and accounting
 invariants. It has no quote, authorization, job-mutation, execution, refund, verification,
 reconciliation, or settlement endpoint. A host must explicitly construct and start the API with a
-configured reader; there is no ready-to-run server in the package, and the frontend does not call
-it.
+configured reader; there is no ready-to-run server in the package. Accounting token precision
+comes from the campaign's NEP-141 `ft_metadata` view. Persisted job status is operational data;
+the contract remains authoritative for current contract state, and `Completed` is not independent
+proof of destination-chain delivery.
 
 PostgreSQL migrations are additive and checksummed:
 
 - `0001_security_repositories` creates `execution_authorizations` and
   `payout_refund_policies`.
 - `0002_execution_jobs` creates `execution_jobs`, `execution_attempts`, and `job_leases`.
+- `0003_execution_jobs_campaign_read_index` adds the index used by campaign-scoped job reads.
 
 The job repository uses database constraints and transactions for idempotency and updates. Claims
 use row locking with `SKIP LOCKED`; lease-protected writes check the owner, fencing token, state
