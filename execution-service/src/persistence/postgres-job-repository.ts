@@ -357,6 +357,15 @@ export class PostgresJobRepository implements DurableJobRepository {
         !(await hasValidLease(client, job, lease))
       )
         throw new StaleExecutionJobError("Worker lease is stale or expired");
+      const duplicate = await client.query(
+        `SELECT 1 FROM public.execution_attempts
+         WHERE job_id = $1::bigint
+           AND (attempt_key = $2 OR idempotency_key = $3)
+         LIMIT 1`,
+        [job.jobId, attempt.attemptKey, attempt.idempotencyKey],
+      );
+      if (duplicate.rows.length > 0)
+        throw new Error("Duplicate execution attempt key or idempotency key");
       if (attempt.sequence !== job.attemptCount + 1)
         throw new Error("Execution attempt sequence must be contiguous");
 

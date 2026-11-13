@@ -100,7 +100,7 @@ CREATE TABLE public.execution_jobs (
         UNIQUE (network_id, contract_id, execution_reference)
 );
 
-CREATE INDEX public.execution_jobs_claimable_idx
+CREATE INDEX execution_jobs_claimable_idx
     ON public.execution_jobs (next_eligible_at, created_at, job_id)
     WHERE state = 'Queued';
 
@@ -139,7 +139,7 @@ CREATE TABLE public.job_leases (
     CHECK (renewed_at >= acquired_at)
 );
 
-CREATE INDEX public.job_leases_expiration_idx ON public.job_leases (expires_at);
+CREATE INDEX job_leases_expiration_idx ON public.job_leases (expires_at);
 
 CREATE FUNCTION public.disburse_prevent_execution_job_snapshot_mutation()
 RETURNS trigger
