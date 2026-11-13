@@ -40,14 +40,21 @@ before(async () => {
   assert.equal(identity.rows[0]?.role, "disburse_test");
   await applyPostgresMigrations(pool);
   await assertPostgresMigrationsCurrent(pool);
-  // Keep prior test jobs from being claimed by tests in this run.
+  await repositoryForPool(pool).recoverExpiredLeases(Date.now());
   await pool.query(
     `UPDATE public.execution_jobs
      SET next_eligible_at = statement_timestamp() + interval '1 day'
-     WHERE state = 'Queued'
-       AND network_id = 'near:testnet'
-       AND contract_id = 'disburse.testnet'`,
+     WHERE state = 'Queued'`,
   );
+  const claimable = await pool.query<{ count: string }>(
+    `SELECT count(*)::text AS count
+     FROM public.execution_jobs j
+     LEFT JOIN public.job_leases l ON l.job_id = j.job_id
+     WHERE j.state IN ('Queued', 'Leased')
+       AND j.next_eligible_at <= statement_timestamp()
+       AND (l.job_id IS NULL OR l.expires_at <= statement_timestamp())`,
+  );
+  assert.equal(claimable.rows[0]?.count, "0");
 });
 
 after(async () => pool.end());
