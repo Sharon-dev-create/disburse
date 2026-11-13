@@ -5,8 +5,8 @@ import {
   ExecutionApiClient,
   ExecutionApiError,
   executionApiBaseUrlFromEnvironment,
-  type ExecutionDataResult,
 } from "./execution-api";
+import type { ExecutionDataResult } from "./execution-api-shared";
 
 export async function loadExecutionData<T>(
   request: (client: ExecutionApiClient) => Promise<T>,

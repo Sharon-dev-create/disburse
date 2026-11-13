@@ -17,12 +17,12 @@ import {
   type ContractPayoutStatus,
 } from "@/lib/payout-demo-data";
 import { DESTINATION_NETWORKS } from "@/lib/recipient-demo-data";
+import { formatAtomicAmount } from "@/lib/execution-api-shared";
 import {
-  formatAtomicAmount,
   getContractStatusLabel,
   type CampaignPayoutList,
   type ExecutionDataResult,
-} from "@/lib/execution-api";
+} from "@/lib/execution-api-shared";
 import ExecutionStateBadge from "@/components/dashboard/ExecutionStateBadge";
 
 type StatusFilter = "All statuses" | ContractPayoutStatus;

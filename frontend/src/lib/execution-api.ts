@@ -6,9 +6,12 @@ import {
 import type {
   CampaignAccounting,
   CampaignPayoutList,
+  ContractPayoutStatus,
   ContractPayout,
+  ExecutionAttempt,
   ExecutionJobState,
   PersistedExecutionJob,
+  TokenIdentity,
 } from "./execution-api-shared";
 
 const U64_MAX = (1n << 64n) - 1n;

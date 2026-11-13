@@ -2,7 +2,7 @@ import {
   formatAtomicAmount,
   type CampaignAccounting,
   type ExecutionDataResult,
-} from "@/lib/execution-api";
+} from "@/lib/execution-api-shared";
 
 type Props = {
   campaignId: string;

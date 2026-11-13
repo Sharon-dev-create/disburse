@@ -6,10 +6,12 @@ import ExecutionStateBadge from "@/components/dashboard/ExecutionStateBadge";
 import {
   formatAtomicAmount,
   formatTokenIdentity,
-  type ContractPayout,
-  type ExecutionDataResult,
-  type PersistedExecutionJob,
-} from "@/lib/execution-api";
+} from "@/lib/execution-api-shared";
+import type {
+  ContractPayout,
+  ExecutionDataResult,
+  PersistedExecutionJob,
+} from "@/lib/execution-api-shared";
 
 type Props = {
   payoutId: string;

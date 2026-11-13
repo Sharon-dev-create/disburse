@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   ExecutionApiClient,
-  ExecutionApiError,
   executionApiBaseUrlFromEnvironment,
-  formatAtomicAmount,
 } from "../src/lib/execution-api";
+import {
+  ExecutionApiError,
+  formatAtomicAmount,
+} from "../src/lib/execution-api-shared";
 
 const accounting = {
   campaignId: "42",

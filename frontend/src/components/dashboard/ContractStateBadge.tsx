@@ -1,7 +1,7 @@
 import {
   getContractStatusLabel,
   type ContractPayoutStatus,
-} from "@/lib/execution-api";
+} from "@/lib/execution-api-shared";
 
 const STATUS_CLASSES: Record<ContractPayoutStatus, string> = {
   Created: "bg-sand text-ink/70",

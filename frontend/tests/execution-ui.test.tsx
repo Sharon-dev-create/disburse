@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import ContractStateBadge from "../src/components/dashboard/ContractStateBadge";
 import ExecutionAccountingPanel from "../src/components/dashboard/ExecutionAccountingPanel";
 import ExecutionStateBadge from "../src/components/dashboard/ExecutionStateBadge";
-import { ExecutionApiError } from "../src/lib/execution-api";
+import { ExecutionApiError } from "../src/lib/execution-api-shared";
 
 const accounting = {
   campaignId: "42",

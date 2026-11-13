@@ -1,7 +1,7 @@
 import {
   getExecutionStateLabel,
   type ExecutionJobState,
-} from "@/lib/execution-api";
+} from "@/lib/execution-api-shared";
 
 const STATE_CLASSES: Record<ExecutionJobState, string> = {
   Discovered: "bg-sand text-ink/70",
