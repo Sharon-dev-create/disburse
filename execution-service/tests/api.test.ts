@@ -7,6 +7,7 @@ import {
 } from "../src/api/http.ts";
 import { NearRpcError, NearContractReader } from "../src/near/rpc.ts";
 import type { NearRpcTransport } from "../src/near/rpc.ts";
+import type { PersistedExecutionJob } from "../src/persistence/repository.ts";
 
 const payout = {
   id: "7",
@@ -61,9 +62,13 @@ class FixtureRpc implements NearRpcTransport {
     methodName: string,
     args: Readonly<Record<string, unknown>>,
   ): Promise<unknown> {
-    assert.equal(contractId, "disburse.testnet");
     void args;
     this.calls.push(methodName);
+    if (methodName === "ft_metadata") {
+      assert.equal(contractId, "wrap.testnet");
+      return { decimals: 6 };
+    }
+    assert.equal(contractId, "disburse.testnet");
     if (methodName === "is_paused") return false;
     if (methodName === "get_payout" && this.payoutError) {
       throw this.payoutError;
@@ -72,11 +77,23 @@ class FixtureRpc implements NearRpcTransport {
       return this.payoutValue;
     if (methodName === "get_campaign_payout_accounting")
       return this.accountingValue;
+    if (methodName === "get_campaign_funding") {
+      return {
+        campaign_id: "42",
+        token_id: "wrap.testnet",
+        budget: "10000",
+        funded: "6000",
+        remaining_budget: "4000",
+      };
+    }
     throw new Error(`Unexpected contract view ${methodName}`);
   }
 }
 
-function createOptions(rpc: FixtureRpc): ExecutionApiOptions {
+function createOptions(
+  rpc: FixtureRpc,
+  jobs?: ExecutionApiOptions["jobs"],
+): ExecutionApiOptions {
   return {
     reader: new NearContractReader(
       { networkId: "testnet", contractId: "disburse.testnet" },
@@ -85,6 +102,83 @@ function createOptions(rpc: FixtureRpc): ExecutionApiOptions {
     authorize: (request: IncomingMessage) =>
       request.headers.authorization === "Bearer test-api-token",
     now: () => new Date("2026-11-12T12:00:00.000Z"),
+    ...(jobs ? { jobs } : {}),
+  };
+}
+
+const persistedJob: PersistedExecutionJob = {
+  key: {
+    networkId: "near:testnet",
+    contractId: "disburse.testnet",
+    payoutId: "7",
+  },
+  payout: {
+    payoutId: "7",
+    campaignId: "42",
+    inputAmount: {
+      tokenId: "wrap.testnet",
+      atomicAmount: "1000000",
+      decimals: 6,
+    },
+    destinationChainId: "eip155:8453",
+    recipientAddress: "0x1234567890123456789012345678901234567890",
+    expectedOutput: {
+      tokenId: "0x0987654321098765432109876543210987654321",
+      atomicAmount: "990000",
+      decimals: 6,
+    },
+    contractStatus: "Reserved",
+    executionReference: "execution:fixture",
+    settlementEvidenceReference: null,
+  },
+  discoveryEvent: {
+    networkId: "near:testnet",
+    contractId: "disburse.testnet",
+    transactionHash: "fixture-transaction",
+    blockHash: "fixture-block",
+    receiptId: "fixture-receipt",
+    eventIndex: 0,
+    blockHeight: "100",
+  },
+  state: "Queued",
+  version: 1,
+  createdAtMs: Date.parse("2026-11-12T11:00:00.000Z"),
+  updatedAtMs: Date.parse("2026-11-12T11:30:00.000Z"),
+  lease: null,
+  attempts: [
+    {
+      attemptKey: "attempt-1",
+      sequence: 1,
+      phase: "validate",
+      idempotencyKey: "attempt-idempotency-1",
+      startedAtMs: Date.parse("2026-11-12T11:05:00.000Z"),
+      outcome: "started",
+    },
+  ],
+  jobId: "1001",
+  idempotencyKey: "job-idempotency-1",
+  snapshotDigest: "a".repeat(64),
+  fencingCounter: "0",
+  attemptCount: 1,
+  nextEligibleAtMs: 0,
+  failure: null,
+};
+
+function createJobs(
+  job: PersistedExecutionJob | null = persistedJob,
+): NonNullable<ExecutionApiOptions["jobs"]> {
+  return {
+    async getByPayout(key) {
+      return key.payoutId === job?.key.payoutId ? job : null;
+    },
+    async listByCampaign(scope, campaignId) {
+      return job &&
+        scope.networkId === job.key.networkId &&
+        scope.contractId === job.key.contractId &&
+        campaignId === job.payout.campaignId
+        ? [job]
+        : [];
+    },
   };
 }
 
@@ -172,7 +266,74 @@ void test("authenticated read routes return validated payout and accounting view
       reserved: "1000",
       spent: "2000",
       available: "3000",
+      tokenId: "wrap.testnet",
+      tokenDecimals: 6,
     });
+  });
+});
+
+void test("authenticated payout list and execution detail expose validated persisted job state", async () => {
+  const rpc = new FixtureRpc();
+  await withApi(createOptions(rpc, createJobs()), async (baseUrl) => {
+    const list = await authorizedFetch(
+      `${baseUrl}/v1/campaigns/42/payouts`,
+    );
+    assert.equal(list.status, 200);
+    const listBody = await list.json();
+    assert.equal(listBody.data.jobs.length, 1);
+    assert.equal(listBody.data.jobs[0].payoutId, "7");
+    assert.equal(listBody.data.jobs[0].state, "Queued");
+    assert.equal(listBody.data.jobs[0].observedContractStatus, "Reserved");
+    assert.equal(listBody.data.jobs[0].source.atomicAmount, "1000000");
+    assert.equal(listBody.data.jobs[0].createdAt, "2026-11-12T11:00:00.000Z");
+    assert.equal(listBody.data.truncated, false);
+
+    const detail = await authorizedFetch(
+      `${baseUrl}/v1/campaigns/42/payouts/7/execution`,
+    );
+    assert.equal(detail.status, 200);
+    const detailBody = await detail.json();
+    assert.equal(detailBody.data.job.state, "Queued");
+    assert.equal(detailBody.data.job.attempts[0].phase, "validate");
+    assert.equal(
+      detailBody.data.job.attempts[0].startedAt,
+      "2026-11-12T11:05:00.000Z",
+    );
+  });
+});
+
+void test("persisted payout routes enforce authorization, scope, and configuration", async () => {
+  const rpc = new FixtureRpc();
+  await withApi(createOptions(rpc, createJobs()), async (baseUrl) => {
+    const unauthorized = await fetch(
+      `${baseUrl}/v1/campaigns/42/payouts`,
+    );
+    assert.equal(unauthorized.status, 401);
+
+    const otherCampaign = await authorizedFetch(
+      `${baseUrl}/v1/campaigns/43/payouts/7/execution`,
+    );
+    assert.equal(otherCampaign.status, 404);
+    assert.equal(
+      (await otherCampaign.json()).error.code,
+      "execution_job_not_found",
+    );
+
+    const invalidCampaign = await authorizedFetch(
+      `${baseUrl}/v1/campaigns/01/payouts`,
+    );
+    assert.equal(invalidCampaign.status, 400);
+  });
+
+  await withApi(createOptions(rpc), async (baseUrl) => {
+    const unavailable = await authorizedFetch(
+      `${baseUrl}/v1/campaigns/42/payouts`,
+    );
+    assert.equal(unavailable.status, 503);
+    assert.equal(
+      (await unavailable.json()).error.code,
+      "persistence_unavailable",
+    );
   });
 });
 
