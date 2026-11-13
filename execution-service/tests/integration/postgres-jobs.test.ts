@@ -59,13 +59,13 @@ before(async () => {
 
 after(async () => pool.end());
 
-void test("job migration applies idempotently and records version 0002", async () => {
+void test("job migrations apply idempotently and record version 0003", async () => {
   const first = await applyPostgresMigrations(pool);
   const second = await applyPostgresMigrations(pool);
   assert.deepEqual(first.applied, []);
   assert.deepEqual(second.applied, []);
-  assert.equal(first.currentVersion, "0002");
-  assert.equal(second.currentVersion, "0002");
+  assert.equal(first.currentVersion, "0003");
+  assert.equal(second.currentVersion, "0003");
 });
 
 void test("creation is durable, idempotent, payout-unique, and preserves exact amounts", async () => {
@@ -98,6 +98,28 @@ void test("creation is durable, idempotent, payout-unique, and preserves exact a
   assert.deepEqual(await restarted.getByPayout(created.job.key), created.job);
   assert.equal(await restarted.getById("9223372036854775807"), null);
   await assert.rejects(() => restarted.getById("90071992547409930000.5"));
+});
+
+void test("campaign job listing is scoped to the configured contract and campaign", async () => {
+  const repository = repositoryForPool(pool);
+  const campaignId = String(++nextId);
+  const matching = makeCreation("campaign-list-match", campaignId);
+  const otherCampaign = makeCreation(
+    "campaign-list-other",
+    String(BigInt(campaignId) + 1n),
+  );
+  const matchingJob = await repository.createIdempotent(matching);
+  await repository.createIdempotent(otherCampaign);
+
+  const listed = await repository.listByCampaign(
+    { networkId: "near:testnet", contractId: "disburse.testnet" },
+    campaignId,
+    101,
+  );
+  assert.deepEqual(
+    listed.map((job) => job.jobId),
+    [matchingJob.job.jobId],
+  );
 });
 
 void test("same idempotency key or payout identity rejects conflicting protected payloads", async () => {
@@ -415,12 +437,12 @@ async function enqueueQueued(
   return { job: created.job, queued };
 }
 
-function makeCreation(suffix: string): ExecutionJobCreation {
+function makeCreation(suffix: string, campaignId = "7"): ExecutionJobCreation {
   const id = String(++nextId);
   const event: PayoutReservedEvent = {
     event: "payout_reserved",
     payoutId: id,
-    campaignId: "7",
+    campaignId,
     contractStatus: "Reserved",
     identity: {
       networkId: "near:testnet",
@@ -434,7 +456,7 @@ function makeCreation(suffix: string): ExecutionJobCreation {
   };
   const payout: PayoutSnapshot = {
     payoutId: id,
-    campaignId: "7",
+    campaignId,
     inputAmount: {
       tokenId: "near",
       atomicAmount: "900719925474099312345",
