@@ -67,7 +67,7 @@ export default function HeroSection() {
             <p className="mt-1 font-mono text-lg font-medium">$24,800</p>
             <p className="mt-0.5 text-[10px] text-forest">Illustrative demo</p>
           </div>
-          <div className="relative z-10 w-[min(100%,324px)] rotate-[2deg]">
+          <div className="relative z-10 w-[min(100%,260px)] rotate-[2deg] sm:w-[min(100%,292px)] lg:w-[min(100%,324px)]">
             <PhoneMockup />
           </div>
           <div aria-hidden="true" className="absolute bottom-[13%] right-[-1%] z-20 hidden rotate-3 border border-white/15 bg-[#1d5b42] px-4 py-3 text-canvas shadow-[0_16px_40px_rgba(12,40,26,0.16)] sm:block">

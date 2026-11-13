@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, CircleAlert } from "lucide-react";
 import { notFound } from "next/navigation";
@@ -19,9 +20,11 @@ export function generateStaticParams() {
   return demoPayouts.map(({ id }) => ({ payoutId: id }));
 }
 
-export default async function PayoutDetailsPage({
+async function PayoutDetailsContent({
   params,
-}: PageProps<"/dashboard/payouts/[payoutId]">) {
+}: {
+  params: PageProps<"/dashboard/payouts/[payoutId]">["params"];
+}) {
   const { payoutId } = await params;
   if (isContractPayoutId(payoutId)) {
     const lookup = await loadExecutionData((client) =>
@@ -196,6 +199,16 @@ export default async function PayoutDetailsPage({
         </section>
       </div>
     </main>
+  );
+}
+
+export default function PayoutDetailsPage({
+  params,
+}: PageProps<"/dashboard/payouts/[payoutId]">) {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-mist">Loading payout…</div>}>
+      <PayoutDetailsContent params={params} />
+    </Suspense>
   );
 }
 

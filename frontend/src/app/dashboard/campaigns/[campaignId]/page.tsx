@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { ArrowLeft, CircleDollarSign } from "lucide-react";
 import { notFound } from "next/navigation";
@@ -7,7 +8,11 @@ import ExecutionAccountingPanel from "@/components/dashboard/ExecutionAccounting
 import { loadExecutionData } from "@/lib/execution-api-server";
 import { campaignStatusDescription, campaignStatuses, formatCampaignDate, formatUsd, getDemoCampaign } from "@/lib/campaign-demo-data";
 
-export default async function CampaignDetailPage({ params }: PageProps<"/dashboard/campaigns/[campaignId]">) {
+async function CampaignDetailContent({
+  params,
+}: {
+  params: PageProps<"/dashboard/campaigns/[campaignId]">["params"];
+}) {
   const { campaignId } = await params;
   if (isContractCampaignId(campaignId)) {
     const result = await loadExecutionData((client) =>
@@ -41,6 +46,16 @@ export default async function CampaignDetailPage({ params }: PageProps<"/dashboa
     <section className="mt-8" aria-labelledby="accounting-heading"><div className="flex items-center gap-3"><span className="flex size-8 items-center justify-center rounded-full bg-sand text-forest"><CircleDollarSign size={16} aria-hidden="true" /></span><div><h2 id="accounting-heading" className="text-base font-medium text-ink">Accounting breakdown</h2><p className="text-xs text-ink/55">Funded = available + reserved + settled</p></div></div><div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{balances.map(([label, amount, detail]) => <article key={label} className="rounded-2xl border border-hairline bg-white p-5"><p className="text-xs font-medium text-ink/65">{label}</p><p className="mt-5 font-mono text-2xl font-medium tracking-[-0.05em] text-ink">{formatUsd(amount)}</p><p className="mt-2 text-xs leading-5 text-ink/55">{detail}</p></article>)}</div></section>
     <div className="mt-8 grid gap-8 lg:grid-cols-[.75fr_1.25fr]"><section className="rounded-2xl border border-hairline bg-sand p-5 sm:p-6" aria-labelledby="lifecycle-heading"><p className="text-[10px] font-medium uppercase tracking-[0.16em] text-mist">Lifecycle</p><h2 id="lifecycle-heading" className="mt-2 text-xl font-medium tracking-[-0.04em] text-ink">{campaign.status}</h2><p className="mt-3 text-sm leading-6 text-ink/65">{campaignStatusDescription[campaign.status]}</p><p className="mt-5 text-xs leading-5 text-ink/65">Possible lifecycle statuses</p><ul className="mt-2 flex flex-wrap gap-2" aria-label="Possible campaign statuses">{campaignStatuses.map((status) => <li key={status}><CampaignStatusBadge status={status} /></li>)}</ul><p className="mt-5 text-xs leading-5 text-ink/65">Lifecycle transitions are not available in this frontend demo.</p></section><section className="rounded-2xl border border-hairline bg-white p-5 sm:p-6" aria-labelledby="activity-heading"><p className="text-[10px] font-medium uppercase tracking-[0.16em] text-mist">Demo activity</p><h2 id="activity-heading" className="mt-1 text-base font-medium text-ink">Campaign record</h2><ol className="mt-5 space-y-5">{campaign.activity.map((event) => <li key={`${event.date}-${event.title}`} className="border-l border-hairline pl-4"><p className="text-xs font-medium text-ink">{event.title}</p><p className="mt-1 text-sm leading-6 text-ink/65">{event.description}</p><p className="mt-1.5 font-mono text-[10px] text-mist">{event.date}</p></li>)}</ol></section></div>
   </div></main>;
+}
+
+export default function CampaignDetailPage({
+  params,
+}: PageProps<"/dashboard/campaigns/[campaignId]">) {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-mist">Loading campaign…</div>}>
+      <CampaignDetailContent params={params} />
+    </Suspense>
+  );
 }
 
 function isContractCampaignId(value: string): boolean {

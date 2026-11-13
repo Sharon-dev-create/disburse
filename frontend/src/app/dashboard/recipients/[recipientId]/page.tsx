@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, CircleAlert } from "lucide-react";
 import { notFound } from "next/navigation";
@@ -14,9 +15,11 @@ export function generateStaticParams() {
   return demoRecipients.map(({ id }) => ({ recipientId: id }));
 }
 
-export default async function RecipientDetailsPage({
+async function RecipientDetailsContent({
   params,
-}: PageProps<"/dashboard/recipients/[recipientId]">) {
+}: {
+  params: PageProps<"/dashboard/recipients/[recipientId]">["params"];
+}) {
   const { recipientId } = await params;
   const recipient = getRecipientById(recipientId);
   if (!recipient) notFound();
@@ -133,5 +136,15 @@ export default async function RecipientDetailsPage({
         </section>
       </div>
     </main>
+  );
+}
+
+export default function RecipientDetailsPage({
+  params,
+}: PageProps<"/dashboard/recipients/[recipientId]">) {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-mist">Loading recipient…</div>}>
+      <RecipientDetailsContent params={params} />
+    </Suspense>
   );
 }
