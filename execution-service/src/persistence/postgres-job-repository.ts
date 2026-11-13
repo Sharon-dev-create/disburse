@@ -541,6 +541,32 @@ export class PostgresJobRepository implements DurableJobRepository {
     });
   }
 
+  async listByCampaign(
+    scope: Pick<ExecutionJobKey, "networkId" | "contractId">,
+    campaignId: string,
+    limit: number,
+  ): Promise<readonly PersistedExecutionJob[]> {
+    validateText(scope.networkId, "Payout network identity", 256);
+    validateText(scope.contractId, "Payout contract identity", 256);
+    validateU64(campaignId, "Campaign ID");
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 101)
+      throw new Error("Campaign payout limit must be from 1 to 101");
+    return this.readOnly(async (client) => {
+      const result = await client.query(
+        `SELECT job_id::text AS job_id FROM public.execution_jobs
+         WHERE network_id = $1 AND contract_id = $2 AND campaign_id = $3::numeric
+         ORDER BY created_at DESC, job_id DESC
+         LIMIT $4`,
+        [scope.networkId, scope.contractId, campaignId, limit],
+      );
+      return Promise.all(
+        result.rows.map((row) =>
+          readJob(client, requireString(row, "job_id")),
+        ),
+      );
+    });
+  }
+
   async get(key: ExecutionJobKey): Promise<ExecutionJobRecord | null> {
     return this.getByPayout(key);
   }

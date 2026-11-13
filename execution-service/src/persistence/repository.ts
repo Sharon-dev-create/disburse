@@ -71,6 +71,11 @@ export interface DurableJobRepository extends JobRepository {
   }>;
   getById(jobId: string): Promise<PersistedExecutionJob | null>;
   getByPayout(key: ExecutionJobKey): Promise<PersistedExecutionJob | null>;
+  listByCampaign(
+    scope: Pick<ExecutionJobKey, "networkId" | "contractId">,
+    campaignId: string,
+    limit: number,
+  ): Promise<readonly PersistedExecutionJob[]>;
   releaseLease(
     key: ExecutionJobKey,
     lease: Lease,

@@ -308,7 +308,30 @@ export class NearContractReader implements ContractReader {
         "Campaign accounting response does not match the request",
       );
     }
-    return parsed;
+    const funding = await this.call("get_campaign_funding", {
+      campaign_id: nearU64(campaignId, "campaign ID"),
+    });
+    if (!isRecord(funding)) {
+      throw malformed("Invalid campaign funding response");
+    }
+    const tokenId = nonEmptyString(funding.token_id, "funding token account");
+    if (
+      tokenId.length > 64 ||
+      !/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/.test(tokenId)
+    ) {
+      throw malformed("Invalid campaign funding token account");
+    }
+    const metadata = await this.rpc.viewFunction(tokenId, "ft_metadata", {});
+    if (
+      !isRecord(metadata) ||
+      typeof metadata.decimals !== "number" ||
+      !Number.isInteger(metadata.decimals) ||
+      metadata.decimals < 0 ||
+      metadata.decimals > 255
+    ) {
+      throw malformed("Invalid funding token metadata");
+    }
+    return { ...parsed, tokenId, tokenDecimals: metadata.decimals };
   }
 
   async isPaused(): Promise<boolean> {

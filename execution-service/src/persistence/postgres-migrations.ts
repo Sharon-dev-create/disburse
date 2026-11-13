@@ -30,6 +30,14 @@ const migrations: readonly MigrationFile[] = [
       import.meta.url,
     ),
   },
+  {
+    version: "0003",
+    name: "execution_jobs_campaign_read_index",
+    url: new URL(
+      "../../sql/migrations/0003_execution_jobs_campaign_read_index.sql",
+      import.meta.url,
+    ),
+  },
 ];
 
 const migrationTable = "public.disburse_schema_migrations";

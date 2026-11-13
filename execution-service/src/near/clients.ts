@@ -46,6 +46,8 @@ export interface CampaignAccountingSnapshot {
   readonly reserved: string;
   readonly spent: string;
   readonly available: string;
+  readonly tokenId: string;
+  readonly tokenDecimals: number;
 }
 
 export interface NearTransactionResult {
