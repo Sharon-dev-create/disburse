@@ -87,7 +87,12 @@ export async function startExecutionApiServer(
 ): Promise<Server> {
   validateOptions(options, listen);
   await options.reader.verifyNetwork();
-  await options.reader.isPaused();
+  const paused = await options.reader.isPaused();
+  if (paused !== true) {
+    throw new Error(
+      "Configured contract must be paused for read-only host startup.",
+    );
+  }
 
   const server = createExecutionApiServer(options);
   await new Promise<void>((resolve, reject) => {

@@ -117,15 +117,6 @@ export async function startExecutionHost(
     const transport = deps.createTransport(config);
     const reader = deps.createReader(config, transport);
 
-    // Enforce read-only contract condition for this milestone before binding.
-    await reader.verifyNetwork();
-    const paused = await reader.isPaused();
-    if (paused !== true) {
-      throw new Error(
-        "Configured contract must be paused for read-only host startup.",
-      );
-    }
-
     server = await startExecutionApiServer(
       {
         reader,

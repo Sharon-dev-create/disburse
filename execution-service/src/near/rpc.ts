@@ -34,8 +34,9 @@ export class NearRpcError extends Error {
       | "network-mismatch"
       | "malformed",
     message: string,
+    options?: { readonly cause?: unknown },
   ) {
-    super(message);
+    super(message, options);
     this.name = "NearRpcError";
     this.kind = kind;
     this.retryable = ["timeout", "unavailable", "rate-limited"].includes(kind);
@@ -152,7 +153,9 @@ export class HttpNearRpcTransport implements NearRpcTransport {
       if (controller.signal.aborted) {
         throw new NearRpcError("timeout", "NEAR RPC request timed out");
       }
-      throw new NearRpcError("unavailable", "NEAR RPC request failed");
+      throw new NearRpcError("unavailable", "NEAR RPC request failed", {
+        cause: safeRpcCause(error),
+      });
     } finally {
       clearTimeout(timeout);
     }
@@ -183,7 +186,16 @@ export class HttpNearRpcTransport implements NearRpcTransport {
           "unavailable",
           `NEAR RPC returned HTTP ${response.status}`,
         );
-      const body: unknown = await response.json();
+      let body: unknown;
+      try {
+        body = await response.json();
+      } catch (error) {
+        throw new NearRpcError(
+          "malformed",
+          "NEAR status response returned invalid JSON",
+          { cause: safeRpcCause(error) },
+        );
+      }
       if (
         !isRecord(body) ||
         !isRecord(body.result) ||
@@ -199,7 +211,9 @@ export class HttpNearRpcTransport implements NearRpcTransport {
       if (error instanceof NearRpcError) throw error;
       if (controller.signal.aborted)
         throw new NearRpcError("timeout", "NEAR status request timed out");
-      throw new NearRpcError("unavailable", "NEAR status request failed");
+      throw new NearRpcError("unavailable", "NEAR status request failed", {
+        cause: safeRpcCause(error),
+      });
     } finally {
       clearTimeout(timeout);
     }
@@ -519,6 +533,17 @@ function nonEmptyString(value: unknown, label: string): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function safeRpcCause(error: unknown): unknown {
+  if (!(error instanceof Error)) return undefined;
+  const code = (error as { code?: unknown }).code;
+  const name = error.name;
+  if (typeof code === "string") return { name, code };
+  if (typeof name === "string" && name.length > 0 && name !== "Error") {
+    return { name };
+  }
+  return undefined;
 }
 
 function malformed(message: string): NearRpcError {

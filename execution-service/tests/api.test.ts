@@ -48,6 +48,7 @@ const accounting = {
 
 class FixtureRpc implements NearRpcTransport {
   actualNetworkId = "testnet";
+  paused: unknown = true;
   payoutValue: unknown = payout;
   accountingValue: unknown = accounting;
   payoutError: NearRpcError | null = null;
@@ -69,7 +70,7 @@ class FixtureRpc implements NearRpcTransport {
       return { decimals: 6 };
     }
     assert.equal(contractId, "disburse.testnet");
-    if (methodName === "is_paused") return false;
+    if (methodName === "is_paused") return this.paused;
     if (methodName === "get_payout" && this.payoutError) {
       throw this.payoutError;
     }
@@ -210,24 +211,42 @@ async function authorizedFetch(
   return fetch(url, { ...init, headers });
 }
 
-void test("startup checks the configured RPC network and deployed contract ABI", async () => {
+void test("network verification failure prevents HTTP listening", async () => {
   const rpc = new FixtureRpc();
-  const options = createOptions(rpc);
-  const server = await startExecutionApiServer(options, {
-    host: "127.0.0.1",
-    port: 0,
-  });
-  assert.deepEqual(rpc.calls, ["is_paused"]);
-  await new Promise<void>((resolve, reject) => {
-    server.close((error) => (error ? reject(error) : resolve()));
-  });
-
   rpc.actualNetworkId = "mainnet";
+  const options = createOptions(rpc);
   await assert.rejects(
     startExecutionApiServer(options, { host: "127.0.0.1", port: 0 }),
     (error: unknown) =>
       error instanceof NearRpcError && error.kind === "network-mismatch",
   );
+  assert.deepEqual(rpc.calls, []);
+});
+
+void test("contract paused state false prevents HTTP listening", async () => {
+  const rpc = new FixtureRpc();
+  rpc.paused = false;
+  const options = createOptions(rpc);
+  await assert.rejects(
+    startExecutionApiServer(options, { host: "127.0.0.1", port: 0 }),
+    /Configured contract must be paused for read-only host startup\./,
+  );
+  assert.deepEqual(rpc.calls, ["is_paused"]);
+});
+
+void test("contract paused state true permits HTTP listening", async () => {
+  const rpc = new FixtureRpc();
+  rpc.paused = true;
+  const options = createOptions(rpc);
+  const server = await startExecutionApiServer(options, {
+    host: "127.0.0.1",
+    port: 0,
+  });
+  assert.equal(server.listening, true);
+  assert.deepEqual(rpc.calls, ["is_paused"]);
+  await new Promise<void>((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+  });
 });
 
 void test("authenticated read routes return validated payout and accounting views", async () => {
