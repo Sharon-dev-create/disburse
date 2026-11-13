@@ -314,6 +314,12 @@ export class NearContractReader implements ContractReader {
     if (!isRecord(funding)) {
       throw malformed("Invalid campaign funding response");
     }
+    if (
+      asU64String(funding.campaign_id, "campaign ID") !==
+      asU64String(campaignId, "campaign ID")
+    ) {
+      throw malformed("Campaign funding response does not match the request");
+    }
     const tokenId = nonEmptyString(funding.token_id, "funding token account");
     if (
       tokenId.length > 64 ||

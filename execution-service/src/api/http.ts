@@ -5,8 +5,10 @@ import {
   type ServerResponse,
 } from "node:http";
 import { NearRpcError, type NearContractReader } from "../near/rpc.ts";
+import type { PersistedExecutionJob } from "../persistence/repository.ts";
 
 const U64_MAX = (1n << 64n) - 1n;
+const MAX_CAMPAIGN_JOBS = 100;
 const U128_MAX = (1n << 128n) - 1n;
 const PAYOUT_STATUSES = [
   "Created",
@@ -21,10 +23,56 @@ const PAYOUT_STATUSES = [
   "ManualReview",
   "ReservationReleased",
 ] as const;
+const JOB_STATES = [
+  "Discovered",
+  "Queued",
+  "Leased",
+  "Preparing",
+  "SubmissionStarted",
+  "SubmissionUnknown",
+  "Submitted",
+  "ConfirmationPending",
+  "VerificationPending",
+  "SettlementReady",
+  "SettlementSubmitted",
+  "Completed",
+  "RetryableFailure",
+  "ManualReview",
+  "Abandoned",
+] as const;
+const ATTEMPT_PHASES = [
+  "validate",
+  "quote",
+  "prepare",
+  "submit",
+  "confirm",
+  "verify",
+  "settle",
+] as const;
+const ATTEMPT_OUTCOMES = [
+  "started",
+  "accepted",
+  "rejected",
+  "unknown",
+  "verified",
+  "failed",
+] as const;
 
 export interface ExecutionApiOptions {
   readonly reader: NearContractReader;
   readonly authorize: (request: IncomingMessage) => boolean | Promise<boolean>;
+  readonly jobs?: {
+    getByPayout(key: {
+      readonly networkId: string;
+      readonly contractId: string;
+      readonly payoutId: string;
+    }): Promise<PersistedExecutionJob | null>;
+    listByCampaign(
+      scope: { readonly networkId: string; readonly contractId: string },
+      campaignId: string,
+      limit: number,
+    ): Promise<readonly PersistedExecutionJob[]>;
+  };
   readonly now?: () => Date;
 }
 
@@ -112,9 +160,104 @@ async function handleRequest(
   const payoutMatch = /^\/v1\/payouts\/([^/]+)$/.exec(pathname);
   const campaignPayoutMatch =
     /^\/v1\/campaigns\/([^/]+)\/payouts\/([^/]+)$/.exec(pathname);
+  const campaignPayoutListMatch =
+    /^\/v1\/campaigns\/([^/]+)\/payouts$/.exec(pathname);
+  const campaignExecutionMatch =
+    /^\/v1\/campaigns\/([^/]+)\/payouts\/([^/]+)\/execution$/.exec(pathname);
   const accountingMatch = /^\/v1\/campaigns\/([^/]+)\/accounting$/.exec(
     pathname,
   );
+
+  if (campaignPayoutListMatch) {
+    const campaignId = parseU64PathId(
+      campaignPayoutListMatch[1] ?? "",
+      "campaign ID",
+    );
+    if (!options.jobs) {
+      sendError(
+        response,
+        503,
+        "persistence_unavailable",
+        "Persisted execution records are not configured.",
+      );
+      return;
+    }
+    const jobs = await options.jobs.listByCampaign(
+      {
+        networkId: `near:${options.reader.config.networkId}`,
+        contractId: options.reader.config.contractId,
+      },
+      campaignId,
+      MAX_CAMPAIGN_JOBS + 1,
+    );
+    const truncated = jobs.length > MAX_CAMPAIGN_JOBS;
+    const parsedJobs = jobs
+      .slice(0, MAX_CAMPAIGN_JOBS)
+      .map((job) =>
+        parsePersistedJob(job, options, campaignId),
+      );
+    sendJson(response, 200, {
+      data: {
+        networkId: `near:${nearNetworkId(options.reader.config.networkId)}`,
+        contractId: contractAccountId(
+          options.reader.config.networkId,
+          options.reader.config.contractId,
+        ),
+        campaignId,
+        jobs: parsedJobs,
+        truncated,
+      },
+      meta: { readAt: readTimestamp(options.now) },
+    });
+    return;
+  }
+
+  if (campaignExecutionMatch) {
+    const campaignId = parseU64PathId(
+      campaignExecutionMatch[1] ?? "",
+      "campaign ID",
+    );
+    const payoutId = parseU64PathId(
+      campaignExecutionMatch[2] ?? "",
+      "payout ID",
+    );
+    if (!options.jobs) {
+      sendError(
+        response,
+        503,
+        "persistence_unavailable",
+        "Persisted execution records are not configured.",
+      );
+      return;
+    }
+    const job = await options.jobs.getByPayout({
+      networkId: `near:${options.reader.config.networkId}`,
+      contractId: options.reader.config.contractId,
+      payoutId,
+    });
+    if (!job || job.payout.campaignId !== campaignId) {
+      sendError(
+        response,
+        404,
+        "execution_job_not_found",
+        "No persisted execution record exists for this campaign payout.",
+      );
+      return;
+    }
+    sendJson(response, 200, {
+      data: {
+        networkId: `near:${nearNetworkId(options.reader.config.networkId)}`,
+        contractId: contractAccountId(
+          options.reader.config.networkId,
+          options.reader.config.contractId,
+        ),
+        campaignId,
+        job: parsePersistedJob(job, options, campaignId),
+      },
+      meta: { readAt: readTimestamp(options.now) },
+    });
+    return;
+  }
 
   if (payoutMatch) {
     const payoutId = parseU64PathId(payoutMatch[1] ?? "", "payout ID");
@@ -203,6 +346,8 @@ function accountingEnvelope(
     readonly reserved: string;
     readonly spent: string;
     readonly available: string;
+    readonly tokenId: string;
+    readonly tokenDecimals: number;
   },
 ) {
   const networkId = nearNetworkId(options.reader.config.networkId);
@@ -329,6 +474,27 @@ function parseAccountingResponse(accounting: unknown) {
   const reserved = parseU128(accounting.reserved, "reserved amount");
   const spent = parseU128(accounting.spent, "spent amount");
   const available = parseU128(accounting.available, "available amount");
+  const tokenId = safeIdentifier(
+    accounting.tokenId,
+    "campaign funding token account",
+    64,
+  );
+  if (!/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/.test(tokenId)) {
+    throw new ResponseValidationError(
+      "Contract returned an invalid campaign funding token account.",
+    );
+  }
+  const tokenDecimals = accounting.tokenDecimals;
+  if (
+    typeof tokenDecimals !== "number" ||
+    !Number.isInteger(tokenDecimals) ||
+    tokenDecimals < 0 ||
+    tokenDecimals > 255
+  ) {
+    throw new ResponseValidationError(
+      "Contract returned invalid campaign token decimals.",
+    );
+  }
 
   if (
     BigInt(funded) > BigInt(budget) ||
@@ -339,7 +505,182 @@ function parseAccountingResponse(accounting: unknown) {
       "Contract returned inconsistent campaign accounting.",
     );
   }
-  return { campaignId, budget, funded, reserved, spent, available };
+  return {
+    campaignId,
+    budget,
+    funded,
+    reserved,
+    spent,
+    available,
+    tokenId,
+    tokenDecimals,
+  };
+}
+
+function parsePersistedJob(
+  value: PersistedExecutionJob,
+  options: ExecutionApiOptions,
+  expectedCampaignId: string,
+) {
+  if (!isRecord(value) || !isRecord(value.key) || !isRecord(value.payout)) {
+    throw new PersistedJobValidationError();
+  }
+  const jobId = value.jobId;
+  if (
+    typeof jobId !== "string" ||
+    !/^[1-9]\d*$/.test(jobId) ||
+    BigInt(jobId) > 9_223_372_036_854_775_807n
+  ) {
+    throw new PersistedJobValidationError();
+  }
+  const payoutId = parsePersistedU64(value.payout.payoutId);
+  const campaignId = parsePersistedU64(value.payout.campaignId);
+  const networkId = value.key.networkId;
+  const contractId = value.key.contractId;
+  if (
+    typeof networkId !== "string" ||
+    networkId !== `near:${options.reader.config.networkId}` ||
+    typeof contractId !== "string" ||
+    contractId !== options.reader.config.contractId ||
+    payoutId !== value.key.payoutId ||
+    campaignId !== expectedCampaignId
+  ) {
+    throw new PersistedJobValidationError();
+  }
+  if (
+    typeof value.state !== "string" ||
+    !(JOB_STATES as readonly string[]).includes(value.state) ||
+    typeof value.payout.contractStatus !== "string" ||
+    !(PAYOUT_STATUSES as readonly string[]).includes(
+      value.payout.contractStatus,
+    )
+  ) {
+    throw new PersistedJobValidationError();
+  }
+  const source = parsePersistedAmount(value.payout.inputAmount);
+  const expected = parsePersistedAmount(value.payout.expectedOutput);
+  const destinationNetworkId = parseDestinationNetworkId(
+    value.payout.destinationChainId,
+  );
+  const recipientAddress = parseDestinationAddress(
+    destinationNetworkId,
+    value.payout.recipientAddress,
+  );
+  if (
+    !Number.isSafeInteger(value.attemptCount) ||
+    value.attemptCount < 0 ||
+    !Array.isArray(value.attempts)
+  ) {
+    throw new PersistedJobValidationError();
+  }
+  const attempts = value.attempts.map((attempt) => {
+    if (
+      !isRecord(attempt) ||
+      !Number.isSafeInteger(attempt.sequence) ||
+      attempt.sequence < 1 ||
+      typeof attempt.phase !== "string" ||
+      !(ATTEMPT_PHASES as readonly string[]).includes(attempt.phase) ||
+      typeof attempt.outcome !== "string" ||
+      !(ATTEMPT_OUTCOMES as readonly string[]).includes(attempt.outcome)
+    ) {
+      throw new PersistedJobValidationError();
+    }
+    return {
+      sequence: attempt.sequence,
+      phase: attempt.phase,
+      outcome: attempt.outcome,
+      startedAt: timestampFromMilliseconds(attempt.startedAtMs),
+    };
+  });
+  const failureCode =
+    value.failure === null
+      ? null
+      : isRecord(value.failure) &&
+          typeof value.failure.code === "string" &&
+          /^[a-z0-9][a-z0-9._-]{0,63}$/.test(value.failure.code)
+        ? value.failure.code
+        : (() => {
+            throw new PersistedJobValidationError();
+          })();
+  const leaseExpiresAt =
+    value.lease === null
+      ? null
+      : isRecord(value.lease)
+        ? timestampFromMilliseconds(value.lease.expiresAtMs)
+        : (() => {
+            throw new PersistedJobValidationError();
+          })();
+
+  return {
+    jobId,
+    payoutId,
+    campaignId,
+    state: value.state,
+    observedContractStatus: value.payout.contractStatus,
+    source: source,
+    destination: {
+      networkId: destinationNetworkId,
+      recipientAddress,
+      tokenId: safeIdentifier(expected.tokenId, "token identifier", 256),
+      expectedAtomicAmount: expected.atomicAmount,
+      decimals: expected.decimals,
+    },
+    createdAt: timestampFromMilliseconds(value.createdAtMs),
+    updatedAt: timestampFromMilliseconds(value.updatedAtMs),
+    attemptCount: value.attemptCount,
+    attempts,
+    leaseExpiresAt,
+    failureCode,
+  };
+}
+
+function parsePersistedAmount(value: unknown) {
+  if (!isRecord(value)) throw new PersistedJobValidationError();
+  if (
+    typeof value.atomicAmount !== "string" ||
+    !/^[1-9]\d{0,38}$/.test(value.atomicAmount) ||
+    BigInt(value.atomicAmount) > U128_MAX ||
+    typeof value.tokenId !== "string" ||
+    value.tokenId.length === 0 ||
+    value.tokenId.length > 256 ||
+    value.tokenId !== value.tokenId.trim() ||
+    hasControlCharacters(value.tokenId) ||
+    typeof value.decimals !== "number" ||
+    !Number.isInteger(value.decimals) ||
+    value.decimals < 0 ||
+    value.decimals > 255
+  ) {
+    throw new PersistedJobValidationError();
+  }
+  return {
+    tokenId: value.tokenId,
+    atomicAmount: value.atomicAmount,
+    decimals: value.decimals,
+  };
+}
+
+function parsePersistedU64(value: unknown): string {
+  if (
+    typeof value !== "string" ||
+    !/^(?:0|[1-9]\d{0,19})$/.test(value) ||
+    BigInt(value) > U64_MAX
+  ) {
+    throw new PersistedJobValidationError();
+  }
+  return value;
+}
+
+function timestampFromMilliseconds(value: unknown): string {
+  if (
+    typeof value !== "number" ||
+    !Number.isSafeInteger(value) ||
+    value < 0
+  ) {
+    throw new PersistedJobValidationError();
+  }
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) throw new PersistedJobValidationError();
+  return date.toISOString();
 }
 
 function parseDestinationNetworkId(value: unknown): string {
@@ -554,6 +895,13 @@ function errorResponse(error: unknown): {
       message: "The configured contract returned data that failed validation.",
     };
   }
+  if (error instanceof PersistedJobValidationError) {
+    return {
+      statusCode: 502,
+      code: "invalid_persisted_response",
+      message: "Persisted execution data failed validation.",
+    };
+  }
   if (error instanceof NearRpcError) {
     return {
       statusCode:
@@ -576,3 +924,4 @@ function errorResponse(error: unknown): {
 
 class RequestValidationError extends Error {}
 class ResponseValidationError extends Error {}
+class PersistedJobValidationError extends Error {}
