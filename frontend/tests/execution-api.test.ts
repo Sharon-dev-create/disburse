@@ -153,3 +153,27 @@ describe("exact token amount formatting", () => {
     expect(formatAtomicAmount("123456789", 0)).toBe("123,456,789");
   });
 });
+
+import { buildExecutionApiForwardHeaders } from "../src/lib/execution-api-auth";
+
+describe("frontend execution API authentication behavior", () => {
+  it("attaches the server-side demo token when configured and no incoming authorization is present", () => {
+    const headers = buildExecutionApiForwardHeaders(new Headers(), {
+      DISBURSE_EXECUTION_API_DEMO_TOKEN: "demo-token-123456",
+    });
+    expect(headers.get("authorization")).toBe("Bearer demo-token-123456");
+  });
+
+  it("does not expose or inject a demo token when unconfigured", () => {
+    const headers = buildExecutionApiForwardHeaders(new Headers(), {});
+    expect(headers.get("authorization")).toBeNull();
+  });
+
+  it("prefers an incoming authorization header over the demo token", () => {
+    const headers = buildExecutionApiForwardHeaders(
+      new Headers({ authorization: "Bearer incoming-token" }),
+      { DISBURSE_EXECUTION_API_DEMO_TOKEN: "demo-token-123456" },
+    );
+    expect(headers.get("authorization")).toBe("Bearer incoming-token");
+  });
+});

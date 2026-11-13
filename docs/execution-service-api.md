@@ -73,11 +73,24 @@ Bind to loopback by default and put deployment-grade TLS, identity,
 authorization policy, rate limiting, and audit logging in the trusted host
 environment.
 
-No Disburse testnet deployment is currently evidenced in this repository.
-The Next.js frontend has a server-side client for this API, but the repository
-does not contain a standalone API host or identity provider. A host must
-compose the reader, PostgreSQL jobs repository, and its own authorization
-callback. No credentials or static bearer token are supplied by the frontend.
+The repository now includes a runnable local HTTP host entry point
+(`execution-service/src/host.ts`) for demo/integration use. It loads and
+validates environment configuration, creates the PostgreSQL pool, runs existing
+checksummed migrations, composes the durable jobs repository and read-only NEAR
+contract reader, enforces a paused/read-only startup condition, configures the
+existing API routes with a host-supplied demo bearer-token authorizer, and
+closes the server/pool gracefully on SIGINT/SIGTERM.
+
+**Local/demo authentication:** the host accepts a server-side shared token
+(`DISBURSE_EXECUTION_API_DEMO_TOKEN`) as `Authorization: Bearer <token>`.
+Missing, malformed, or incorrect credentials are rejected; credentials are never
+logged and never exposed via `NEXT_PUBLIC_*`. This is for local/demo use only
+and is not production identity authentication or user management. The frontend
+server-side API loader can attach this token from server environment when
+configured.
+
+See `execution-service/.env.example` and `execution-service/README.md` for
+required variables, startup, and limitations.
 
 ## Deliberately unavailable operations
 

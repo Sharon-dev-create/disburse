@@ -1,7 +1,11 @@
 import type { Server } from "node:http";
 import type { Pool } from "pg";
 import { startExecutionApiServer } from "../api/http.ts";
-import { HttpNearRpcTransport, NearContractReader } from "../near/rpc.ts";
+import {
+  HttpNearRpcTransport,
+  NearContractReader,
+  type NearRpcTransport,
+} from "../near/rpc.ts";
 import { applyPostgresMigrations } from "../persistence/postgres-migrations.ts";
 import { PostgresJobRepository } from "../persistence/postgres-job-repository.ts";
 import {
@@ -23,17 +27,67 @@ export interface ExecutionHostLogger {
   error(message: string): void;
 }
 
+export interface ExecutionHostDependencies {
+  createPool(config: ExecutionHostConfig): Pool;
+  applyMigrations(pool: Pool): Promise<unknown>;
+  createJobsRepository(pool: Pool): PostgresJobRepository;
+  createTransport(config: ExecutionHostConfig): NearRpcTransport;
+  createReader(
+    config: ExecutionHostConfig,
+    transport: NearRpcTransport,
+  ): NearContractReader;
+}
+
 const silentLogger: ExecutionHostLogger = {
   info() {},
   error() {},
 };
 
+const defaultDependencies: ExecutionHostDependencies = {
+  createPool(config) {
+    return createPostgresPool(config.postgres);
+  },
+  applyMigrations(pool) {
+    return applyPostgresMigrations(pool);
+  },
+  createJobsRepository(pool) {
+    return new PostgresJobRepository({
+      connect: async () => {
+        const client = await pool.connect();
+        return {
+          query: createPostgresQuery(client),
+          release: () => client.release(),
+        };
+      },
+    });
+  },
+  createTransport(config) {
+    return new HttpNearRpcTransport(
+      config.nearRpcEndpoint,
+      config.nearRpcTimeoutMs,
+    );
+  },
+  createReader(config, transport) {
+    return new NearContractReader(
+      {
+        networkId: config.nearNetworkId,
+        contractId: config.contractAccountId,
+      },
+      transport,
+    );
+  },
+};
+
 export async function startExecutionHost(
   config: ExecutionHostConfig,
-  options: { readonly logger?: ExecutionHostLogger } = {},
+  options: {
+    readonly logger?: ExecutionHostLogger;
+    readonly dependencies?: Partial<ExecutionHostDependencies>;
+  } = {},
 ): Promise<ExecutionHost> {
   const logger = options.logger ?? silentLogger;
-  const pool = createPostgresPool(config.postgres);
+  const deps = { ...defaultDependencies, ...options.dependencies };
+  const pool = deps.createPool(config);
 
   let server: Server | undefined;
   let closed = false;
@@ -51,34 +105,17 @@ export async function startExecutionHost(
 
   try {
     await pool.query("SELECT 1");
-    const migration = await applyPostgresMigrations(pool);
+    const migration = (await deps.applyMigrations(pool)) as
+      { applied?: readonly string[] } | undefined;
     logger.info(
-      migration.applied.length > 0
+      migration?.applied && migration.applied.length > 0
         ? `Applied PostgreSQL migrations: ${migration.applied.join(", ")}`
         : "PostgreSQL migrations are current.",
     );
 
-    const jobs = new PostgresJobRepository({
-      connect: async () => {
-        const client = await pool.connect();
-        return {
-          query: createPostgresQuery(client),
-          release: () => client.release(),
-        };
-      },
-    });
-
-    const transport = new HttpNearRpcTransport(
-      config.nearRpcEndpoint,
-      config.nearRpcTimeoutMs,
-    );
-    const reader = new NearContractReader(
-      {
-        networkId: config.nearNetworkId,
-        contractId: config.contractAccountId,
-      },
-      transport,
-    );
+    const jobs = deps.createJobsRepository(pool);
+    const transport = deps.createTransport(config);
+    const reader = deps.createReader(config, transport);
 
     // Enforce read-only contract condition for this milestone before binding.
     await reader.verifyNetwork();
@@ -147,12 +184,22 @@ function boundPort(server: Server): number {
 function sanitizeHostStartupError(error: unknown): Error {
   if (error instanceof Error) {
     const message = error.message;
-    if (/postgres|database|connection|password|credential/i.test(message)) {
+    const rawCode = (error as { code?: unknown }).code;
+    const code = typeof rawCode === "string" ? rawCode : "";
+    if (
+      /postgres|database|password|credential|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EHOSTUNREACH|ENETUNREACH|ECONNRESET|connection/i.test(
+        `${message} ${code}`,
+      ) ||
+      /^28|^08|^3D|^57P/.test(code)
+    ) {
       return new Error(
         "PostgreSQL startup failed; connection details are redacted.",
       );
     }
-    return new Error(message);
+    if (/near|rpc|network-mismatch|paused|contract/i.test(message)) {
+      return new Error(message);
+    }
+    return new Error("Execution service startup failed.");
   }
   return new Error("Execution service startup failed.");
 }

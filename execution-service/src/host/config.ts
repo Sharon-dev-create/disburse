@@ -138,11 +138,15 @@ function validateContractAccountId(
   networkId: "mainnet" | "testnet",
   value: string,
 ): void {
+  const hasControlOrWhitespace = Array.from(value).some((character) => {
+    const code = character.codePointAt(0) ?? 0;
+    return code <= 0x20 || (code >= 0x7f && code <= 0x9f);
+  });
   if (
     value.length === 0 ||
     value.length > 64 ||
     value !== value.trim() ||
-    /[\x00-\x20\x7f-\x9f]/.test(value)
+    hasControlOrWhitespace
   ) {
     throw new HostConfigError(
       "DISBURSE_CONTRACT_ID must be a valid NEAR account ID.",

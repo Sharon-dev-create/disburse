@@ -1,109 +1,151 @@
-# Disburse execution-service foundation
+# Disburse execution-service
 
-This is a separate strict TypeScript package containing provider-neutral execution interfaces and
-a read-only NEAR payout discovery foundation. PostgreSQL supports internal durable job primitives
-and security repositories. The package does not submit transactions, sign NEAR transactions, or
-move funds.
+This package contains the Disburse execution-service TypeScript foundation and a runnable **local, read-only HTTP host** for demo/integration use.
 
-## What is here
+The host composes existing components:
+- PostgreSQL pool, migrations, and durable job repository reads
+- Read-only NEAR JSON-RPC contract reader (existing views only)
+- Authenticated read-only HTTP API routes (`src/api/http.ts`)
 
-- `src/domain`: exact-string payout/job identifiers and normalized contract payout views.
-- `src/state-machine`: allowed operational transitions and safety preconditions.
-- `src/providers`: provider adapter boundary and restart reconciliation policy.
-- `src/providers/networks.ts`, `recipient.ts`, and `refund.ts`: canonical network identities,
-  chain-aware recipient checks, and payout-bound refund policy fingerprints. The in-memory refund
-  repository is a test double; a PostgreSQL adapter is also available under `src/persistence`.
-- `src/providers/signing.ts`: policy evaluation and a Created/Approved/Consumed/Expired/Revoked
-  authorization lifecycle with local hash integrity checks. The deterministic in-memory repository
-  is a test double; the PostgreSQL adapter provides durable state transitions. Neither a hash nor a
-  repository substitutes for an authenticated signer.
-- `src/providers/quote.ts` and `src/providers/near-intents`: provider-neutral quote-only types and a deterministic-testable NEAR Intents 1Click `dry: true` adapter. It has no deposit, execution, tracking, signing, or settlement methods.
-- `src/verification`: independent evidence-verification interface.
-- `src/near`: read-only, Operator/Admin, and Verifier contract client boundaries.
-- `src/near/rpc.ts`: read-only JSON-RPC contract reader for existing ABI views.
-- `src/api/http.ts`: authenticated read-only contract views and optional PostgreSQL job-list/detail reads.
-- `src/near/providers/fastnear-neardata.ts`: finalized-block historical event source for FastNear
-  NEAR Data with bounded HTTP retries and opaque block/log cursors.
-- `src/discovery`: NEP-297 decoder, replayable source interface, durable local file repository,
-  discovery processor, and chain-view reconciler.
-- `src/persistence`: shared job/lease interface, test-only in-memory implementation, internal
-  PostgreSQL job repository, and PostgreSQL security repositories.
-- `src/persistence/postgres-security-repositories.ts`: PostgreSQL authorization and refund-policy
-  repository adapters behind an injected query function.
-- `src/persistence/postgres-job-repository.ts`: transactionally persists jobs, creation idempotency,
-  attempts, failures, leases, fencing, and state-aware expired-lease recovery. It is not connected
-  to a worker or public mutation route.
-- `src/coordinator`: coordinator/discovery ports and deterministic bounded references.
-- `tests`: deterministic execution and discovery tests, including provider HTTP fixtures, restart,
-  duplicate delivery, cursor atomicity, and RPC failures.
-- `sql/migrations/0001_security_repositories.sql` through
-  `sql/migrations/0003_execution_jobs_campaign_read_index.sql`: additive, checksummed PostgreSQL migrations.
-- `sql/schema.sql`: reference schema; provider, verification, settlement, processing-error, and
-  reconciliation tables remain unapplied.
+It does **not** execute payouts, sign transactions, store private keys, submit NEAR Intents deposits, verify destination-chain settlement, or expose public mutation routes.
 
-The local discovery index and PostgreSQL jobs are operational state, not a financial ledger. The contract remains
-authoritative. Provider claims require independent verification, and ambiguous submissions go to
-reconciliation or ManualReview rather than automatic resubmission.
+## Architecture
 
-`DurableFileDiscoveryRepository` supports a single local indexer/worker process and implements the
-existing `JobRepository` interface, so discovered jobs flow into the operational state machine. Its
-atomic snapshot contains block/event archives, incidents, recovery runs, observations, jobs, leases,
-discrepancies, failures, and cursors.
-Use the PostgreSQL repository for durable job primitives across processes; no worker consumes those
-jobs yet. The live provider implementation is read-only and currently has no configured Disburse
-testnet deployment to ingest. See
-[`../docs/near-event-provider-integration.md`](../docs/near-event-provider-integration.md) for
-setup and [`../docs/near-payout-discovery.md`](../docs/near-payout-discovery.md) for discovery
-limits.
+```text
+Frontend (Next.js server-side data loading)
+  -> Execution API Host (Node.js, authenticated read-only)
+     -> PostgreSQL (migrations + persisted execution job reads)
+     -> NEAR RPC (read-only contract views / readiness checks)
+```
 
-Milestone 10.1 archives block observations and exact matching event logs, records conflicting
-historical responses without replacing originals, pauses normal ingestion on integrity incidents,
-and supports bounded recovery with its own durable cursor. Recovery reconciles current contract
-views and never creates/deletes jobs. FastNear has no documented historical retention SLA; archive
-backup and operator investigation remain necessary. See
-[`../docs/near-discovery-integrity.md`](../docs/near-discovery-integrity.md) for the operator
-procedure and precise limits.
+**Component responsibilities**
+- **API layer (`src/api/http.ts`)**: route handling, request validation, auth callback enforcement, response shaping/validation, error mapping.
+- **Host (`src/host/*`, `src/host.ts`)**: environment validation, PostgreSQL pool creation, migration execution, repository/reader composition, server startup, graceful shutdown.
+- **Persistence (`src/persistence/*`)**: config, pool, checksummed migrations, PostgreSQL job/security repositories.
+- **NEAR client (`src/near/rpc.ts`)**: read-only JSON-RPC transport and contract reader, network verification, paused-state/readiness view.
+- **Domain/discovery/provider modules**: existing provider-neutral primitives and read-only discovery foundations (not wired into this HTTP host for live execution).
 
-The read API is a library boundary, not a fully composed production service. It requires a
-host-supplied request authorizer, validates the configured RPC network and contract ABI before
-binding, and requires a host-injected PostgreSQL jobs repository for persisted job reads. It
-exposes no quote, authorization mutation, worker, refund, verification, or settlement operations.
-See [`../docs/execution-service-api.md`](../docs/execution-service-api.md) for routes and limits.
+## What it does
 
-## Commands
+- Starts a local HTTP server with authenticated read-only endpoints.
+- Runs existing PostgreSQL migrations (`0001`–`0003`) on startup (safe, checksummed, deterministic).
+- Verifies configured NEAR network and performs contract readiness checks (including paused/read-only condition) before binding.
+- Serves contract accounting/payout views and persisted execution-job list/detail reads where available.
 
-Run from this directory after installing dependencies:
+## What it does not do
+
+- No background workers or automatic payout execution.
+- No transaction signing, wallet access, private-key handling, or contract mutation.
+- No NEAR Intents deposit submission or destination-chain settlement verification.
+- No public mutation endpoints, no production authentication/identity system.
+- No mainnet deployment or real-money transfer flow.
+
+Persisted execution jobs are operational state, not proof of successful destination-chain delivery. Contract state and execution-job state are separate.
+
+## Environment setup
+
+Copy `.env.example` to an untracked local file (for example `.env.local`) and set values.
+
+Required host variables (actual names):
+- `DISBURSE_API_HOST` (default `127.0.0.1`)
+- `DISBURSE_API_PORT` (default `4000`)
+- `DISBURSE_EXECUTION_API_DEMO_TOKEN` (server-side shared demo token, >=16 chars; **local/demo only**)
+- `DISBURSE_POSTGRES_TARGET` (`development` | `test` | `production`, default `development`)
+- `DISBURSE_DEV_DATABASE_URL` / `DISBURSE_TEST_DATABASE_URL` / `DISBURSE_DATABASE_URL` (based on target)
+- `NEAR_NETWORK` (`mainnet` | `testnet`)
+- `NEAR_RPC_ENDPOINT` (HTTP/HTTPS NEAR RPC endpoint)
+- `DISBURSE_CONTRACT_ID` (must match configured NEAR network suffix)
+
+Optional:
+- `DISBURSE_NEAR_RPC_TIMEOUT_MS` (default `10000`)
+- PostgreSQL pool/timeout vars supported by existing config: `DISBURSE_DB_POOL_MAX`, `DISBURSE_DB_CONNECTION_TIMEOUT_MS`, `DISBURSE_DB_QUERY_TIMEOUT_MS`
+
+Configuration is validated at startup and fails with actionable, non-sensitive error messages. Connection strings, passwords, tokens, and private keys are never printed.
+
+## Authentication (local/demo)
+
+- Protected routes require `Authorization: Bearer <token>`.
+- The host uses a **server-side shared demo token** from `DISBURSE_EXECUTION_API_DEMO_TOKEN`.
+- Missing, malformed, or incorrect credentials are rejected (401).
+- Credentials are compared safely and never logged.
+- Authorization is never silently disabled when configuration is missing.
+- `/healthz` is liveness-only and does not require auth or contract reads.
+
+**Limitation:** this is for local/demo use only and is **not** production identity authentication, authorization policy, or user management.
+
+## PostgreSQL setup and migrations
+
+- Uses existing migration system in `src/persistence/postgres-migrations.ts` and SQL files in `sql/migrations/`.
+- Preserves migrations `0001`, `0002`, and `0003` (no rewrites/deletes).
+- Startup runs `applyPostgresMigrations(...)` in order; checksums/history are validated and advisory locks protect migration application.
+- No automatic database resets, drops, or truncation.
+- Existing database target protections remain enforced (development/test targets must be local and correctly named/roled per `loadPostgresRuntimeConfig`).
+
+Example local migration commands (existing scripts):
+```sh
+pnpm db:migrate:dev
+pnpm db:migrate:test
+```
+
+## Starting the service
+
+From `execution-service/`:
 
 ```sh
 pnpm install --frozen-lockfile
+# set required env vars (untracked .env.local or exported env)
+pnpm start
+```
+
+`pnpm start` runs `node --experimental-strip-types src/host.ts`.
+
+## Starting the frontend against the host
+
+From `frontend/`:
+
+```sh
+pnpm install
+# set DISBURSE_EXECUTION_API_BASE_URL=http://127.0.0.1:4000
+# set DISBURSE_EXECUTION_API_DEMO_TOKEN to the same server-side demo token (never NEXT_PUBLIC)
+pnpm dev
+```
+
+The frontend server-side execution API loader forwards incoming auth/cookie headers when present and can attach the configured server-side demo token for local/demo access without exposing it to browser JavaScript.
+
+## Verifying API connectivity
+
+With the service running and a valid token:
+
+```sh
+curl -sS http://127.0.0.1:4000/healthz
+curl -sS -H "Authorization: Bearer $DISBURSE_EXECUTION_API_DEMO_TOKEN" \
+  http://127.0.0.1:4000/v1/campaigns/<campaignId>/accounting
+```
+
+Protected routes return 401 without/with invalid credentials. Contract and persisted-job data depend on configured NEAR contract and PostgreSQL state.
+
+## Tests and checks
+
+From `execution-service/`:
+
+```sh
 pnpm format:check
 pnpm typecheck
 pnpm lint
 pnpm test
 pnpm check
+# Protected PostgreSQL integration suite (requires isolated local test DB)
+DISBURSE_TEST_DATABASE_URL=postgresql://disburse_test:...@127.0.0.1:5432/disburse_test pnpm test:postgres
 ```
 
-For supported local tool versions, isolated PostgreSQL setup, and the current runtime boundary, see
-[`../docs/execution-service-development.md`](../docs/execution-service-development.md).
+`pnpm test` runs `tests/*.test.ts` (including host config/auth/startup/API composition tests). `pnpm test:postgres` runs real PostgreSQL integration tests against the protected `disburse_test` target (no SQL mocks).
 
-## Not production-ready
+## Current demo limitations
 
-There is no production worker loop, destination-chain verifier, signer integration, secret store,
-or testnet execution flow. PostgreSQL composition exposes the job repository internally only;
-there is no public job-mutation route. Real PostgreSQL integration tests require the isolated
-`disburse_test` database and do not use a SQL mock.
-EVM mixed-case recipients use a local Keccak-256 EIP-55 implementation because this package does not
-currently include an audited Ethereum checksum library; replace it with a reviewed maintained
-dependency before production use. NEAR Intents quotes remain preview-only and exact-output committed
-execution compatibility is not established.
-The file-backed discovery adapter is intended for local/single-writer operation only. See
-[`../docs/execution-service-architecture.md`](../docs/execution-service-architecture.md) and
-[`../docs/execution-service-threat-model.md`](../docs/execution-service-threat-model.md) for
-integration requirements and security boundaries.
+- Read-only host only: no worker loop, no provider execution, no signing, no settlement verification, no refunds.
+- Demo shared token auth is local-only and not a production identity model.
+- Requires a reachable, configured NEAR contract (network-verified and paused for this host milestone) and a configured PostgreSQL database.
+- No standalone production deployment artifacts, TLS termination, rate limiting, or audit-grade auth policy in this package.
+- Real-money/mainnet payout execution is explicitly out of scope.
 
-See [`../docs/near-intents-integration.md`](../docs/near-intents-integration.md) for the API research,
-quote-only boundary, exact-output compatibility assessment, and unresolved integration blockers.
-e713f5839c0453bf284e43d547a2fa98c0c0056d413fa334
-8501e82ac1ae7f720d1e483f40e9b216b4b45f0e9e092882
-fd3f4f2377cb4560e80e7b438e8e2bc8aacda1e44d2f4f02
-e5d006a6a2978c6193ab14cf3431feac68d8fc8babb21b08
+See also: `docs/execution-service-api.md`, `docs/execution-service-development.md`, and related docs in `../docs/`.

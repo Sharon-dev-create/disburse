@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Disburse frontend
 
-## Getting Started
+Next.js frontend for Disburse demo flows. Execution-service data is loaded server-side (no browser-side execution API calls, no Next.js API proxy routes).
 
-First, run the development server:
+## Architecture (demo integration)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```text
+Frontend (server components / server-side loaders)
+  -> Execution API Host (authenticated read-only)
+     -> PostgreSQL / NEAR Read-only RPC
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The frontend reads contract accounting/payout views and persisted execution-job state from the execution service. Contract state and execution-job state are displayed separately and are not treated as proof of destination-chain delivery.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env.example` to an untracked local file (for example `.env.local`):
 
-## Learn More
+- `DISBURSE_EXECUTION_API_BASE_URL` (server-only, e.g. `http://127.0.0.1:4000`)
+- `DISBURSE_EXECUTION_API_DEMO_TOKEN` (optional local/demo-only server-side shared token sent as `Authorization: Bearer <token>` to the execution service; **never** `NEXT_PUBLIC_*`)
+- `NEXT_PUBLIC_LAUNCH_URL` (optional marketing CTA only)
 
-To learn more about Next.js, take a look at the following resources:
+The demo token is attached only on the server when configured and no incoming authorization header is present. This is not production identity authentication.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Local development
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```sh
+pnpm install
+pnpm dev
+```
 
-## Deploy on Vercel
+Open [http://localhost:3000](http://localhost:3000).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Start the execution service first when viewing dashboard pages that depend on execution data. See `../execution-service/README.md`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Verify API connectivity
+
+- Ensure `DISBURSE_EXECUTION_API_BASE_URL` points to the running execution host.
+- If the host requires demo auth, set matching `DISBURSE_EXECUTION_API_DEMO_TOKEN` in the frontend server environment.
+- Open dashboard routes that load campaign accounting/payout/execution data and confirm success/error states render without exposing sensitive details.
+
+## Tests and checks
+
+```sh
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+## Current demo limitations
+
+- Read-only integration only: no payout execution, signing, settlement verification, or mutation routes.
+- Demo-only campaign/recipient creation flows in the UI are separate from authoritative backend records.
+- No production auth/session management; server-side demo token is for local use only.
