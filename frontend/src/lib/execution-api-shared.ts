@@ -160,7 +160,7 @@ export const EXECUTION_JOB_STATES: readonly ExecutionJobState[] = [
   "Abandoned",
 ];
 
-const U128_MAX = (1n << 128n) - 1n;
+const U128_MAX = (BigInt(1) << BigInt(128)) - BigInt(1);
 
 export function formatAtomicAmount(atomicAmount: string, decimals: number): string {
   if (
@@ -174,7 +174,7 @@ export function formatAtomicAmount(atomicAmount: string, decimals: number): stri
   }
   const amount = BigInt(atomicAmount);
   if (decimals === 0) return groupInteger(amount.toString());
-  const scale = 10n ** BigInt(decimals);
+  const scale = BigInt(10) ** BigInt(decimals);
   const whole = amount / scale;
   const fractional = (amount % scale)
     .toString()

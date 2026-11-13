@@ -158,6 +158,11 @@ void test("contract reader exposes idempotency, accounting, pause, and role view
       spent: "1",
       available: "6",
     },
+    {
+      campaign_id: "7",
+      token_id: "token.testnet",
+    },
+    { decimals: 6 },
     true,
     false,
   ]);
@@ -166,6 +171,8 @@ void test("contract reader exposes idempotency, accounting, pause, and role view
   const accounting = await reader.getCampaignPayoutAccounting("7");
   assert.equal(accounting?.budget, maximum);
   assert.equal(accounting?.available, "6");
+  assert.equal(accounting?.tokenId, "token.testnet");
+  assert.equal(accounting?.tokenDecimals, 6);
   assert.equal(await reader.isPaused(), true);
   assert.equal(await reader.hasRole("operator.testnet", "Operator"), false);
 });

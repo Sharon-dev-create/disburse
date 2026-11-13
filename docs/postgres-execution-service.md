@@ -42,10 +42,12 @@ writes. A database owner/superuser can alter or disable triggers.
 
 ## Migrated job tables and trust boundary
 
-Migration `0002_execution_jobs` creates only `execution_jobs`,
-`execution_attempts`, and `job_leases`, plus their indexes and an immutable
-snapshot trigger. The provider-reference, verification, settlement, processing
-error, and reconciliation tables in `sql/schema.sql` remain reference-only.
+Migration `0002_execution_jobs` creates `execution_jobs`,
+`execution_attempts`, and `job_leases`, their core indexes, and an immutable
+snapshot trigger. Migration `0003_execution_jobs_campaign_read_index` adds the
+composite index used by authenticated campaign-scoped job reads. The
+provider-reference, verification, settlement, processing error, and
+reconciliation tables in `sql/schema.sql` remain reference-only.
 The reference schema is not itself executed by package scripts.
 
 Jobs are keyed by `network_id + contract_id + payout_id`. Job-creation

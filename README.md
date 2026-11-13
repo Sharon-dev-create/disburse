@@ -120,10 +120,10 @@ icons, and Geist fonts through `next/font`. Its routes include:
 | Route | Purpose |
 | --- | --- |
 | `/` | Marketing and product overview |
-| `/dashboard` | Illustrative operations overview |
-| `/dashboard/campaigns`, `/dashboard/campaigns/new`, `/dashboard/campaigns/[campaignId]` | Campaign directory, configuration preview, and demo details |
+| `/dashboard` | Demo operations overview plus configurable real campaign accounting |
+| `/dashboard/campaigns`, `/dashboard/campaigns/new`, `/dashboard/campaigns/[campaignId]` | Demo campaign directory/configuration; numeric campaign IDs show API accounting |
 | `/dashboard/recipients`, `/dashboard/recipients/new`, `/dashboard/recipients/[recipientId]` | Recipient directory, configuration review, and demo details |
-| `/dashboard/payouts`, `/dashboard/payouts/new`, `/dashboard/payouts/[payoutId]` | Payout directory, proposal preview, and demo details |
+| `/dashboard/payouts`, `/dashboard/payouts/new`, `/dashboard/payouts/[payoutId]` | Persisted payout-job list by campaign, demo proposal/examples, and numeric contract/execution details |
 
 Campaign, recipient, and presentation-only payout records remain deterministic demo data in
 `frontend/src/lib`; local form submissions do not persist or send data. The dashboard accounting

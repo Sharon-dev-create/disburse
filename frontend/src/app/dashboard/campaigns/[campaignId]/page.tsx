@@ -46,6 +46,6 @@ export default async function CampaignDetailPage({ params }: PageProps<"/dashboa
 function isContractCampaignId(value: string): boolean {
   return (
     /^(?:0|[1-9]\d{0,19})$/.test(value) &&
-    BigInt(value) <= (1n << 64n) - 1n
+    BigInt(value) <= (BigInt(1) << BigInt(64)) - BigInt(1)
   );
 }

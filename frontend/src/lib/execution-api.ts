@@ -14,8 +14,8 @@ import type {
   TokenIdentity,
 } from "./execution-api-shared";
 
-const U64_MAX = (1n << 64n) - 1n;
-const U128_MAX = (1n << 128n) - 1n;
+const U64_MAX = (BigInt(1) << BigInt(64)) - BigInt(1);
+const U128_MAX = (BigInt(1) << BigInt(128)) - BigInt(1);
 
 export function executionApiBaseUrlFromEnvironment(
   environment: Readonly<Record<string, string | undefined>> = process.env,

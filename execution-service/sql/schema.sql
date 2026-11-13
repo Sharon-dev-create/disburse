@@ -81,6 +81,15 @@ CREATE INDEX execution_jobs_claimable_idx
     ON execution_jobs (next_eligible_at, created_at, job_id)
     WHERE state = 'Queued';
 
+CREATE INDEX execution_jobs_campaign_read_idx
+    ON execution_jobs (
+        network_id,
+        contract_id,
+        campaign_id,
+        created_at DESC,
+        job_id DESC
+    );
+
 CREATE TABLE execution_attempts (
     attempt_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     job_id BIGINT NOT NULL REFERENCES execution_jobs(job_id),
