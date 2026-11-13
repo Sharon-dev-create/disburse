@@ -3,6 +3,8 @@ import Link from "next/link";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import MetricCard from "@/components/dashboard/MetricCard";
 import RecentActivity from "@/components/dashboard/RecentActivity";
+import ExecutionAccountingPanel from "@/components/dashboard/ExecutionAccountingPanel";
+import { loadExecutionData } from "@/lib/execution-api-server";
 import { demoRecipients, isRecipientPayoutReady } from "@/lib/recipient-demo-data";
 
 const campaigns = [
@@ -12,16 +14,36 @@ const campaigns = [
 ];
 const payoutReadyRecipients = demoRecipients.filter(isRecipientPayoutReady).length;
 
-export default function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: PageProps<"/dashboard">) {
+  const params = await searchParams;
+  const campaignId =
+    typeof params.campaignId === "string" ? params.campaignId : "";
+  const accountingResult = campaignId
+    ? await loadExecutionData((client) =>
+        client.getCampaignAccounting(campaignId),
+      )
+    : null;
+
   return (
     <main className="min-w-0 flex-1">
       <DashboardHeader />
       <div className="mx-auto max-w-7xl px-5 py-7 sm:px-8 sm:py-10 lg:px-10">
         <div className="mb-7 flex flex-col justify-between gap-4 rounded-2xl bg-[#1f3328] px-5 py-5 text-canvas sm:flex-row sm:items-end sm:px-6">
           <div><p className="text-[10px] font-medium uppercase tracking-[0.16em] text-canvas/60">Demo data</p><p className="mt-1 max-w-xl text-sm leading-6 text-canvas/85">These figures illustrate a financial operations workflow. They do not represent live balances, payments, or settlement activity.</p></div>
-          <span className="shrink-0 font-mono text-[10px] text-canvas/55">Updated just now</span>
+          <span className="shrink-0 font-mono text-[10px] text-canvas/55">Static presentation fixture</span>
         </div>
 
+        <ExecutionAccountingPanel
+          campaignId={campaignId}
+          result={accountingResult}
+        />
+
+        <div className="mb-3 mt-8">
+          <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-mist">Demo-only summary</p>
+          <h2 className="mt-1 text-base font-medium text-ink">Illustrative dashboard metrics</h2>
+        </div>
         <section aria-label="Key metrics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard label="Funded balance" value="$25,200" detail="All campaign contributions received" icon={WalletCards} tone="forest" />
           <MetricCard label="Available balance" value="$9,180" detail="Funded, not reserved or settled" icon={BadgeDollarSign} />
