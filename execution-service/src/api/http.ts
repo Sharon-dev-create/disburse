@@ -160,8 +160,9 @@ async function handleRequest(
   const payoutMatch = /^\/v1\/payouts\/([^/]+)$/.exec(pathname);
   const campaignPayoutMatch =
     /^\/v1\/campaigns\/([^/]+)\/payouts\/([^/]+)$/.exec(pathname);
-  const campaignPayoutListMatch =
-    /^\/v1\/campaigns\/([^/]+)\/payouts$/.exec(pathname);
+  const campaignPayoutListMatch = /^\/v1\/campaigns\/([^/]+)\/payouts$/.exec(
+    pathname,
+  );
   const campaignExecutionMatch =
     /^\/v1\/campaigns\/([^/]+)\/payouts\/([^/]+)\/execution$/.exec(pathname);
   const accountingMatch = /^\/v1\/campaigns\/([^/]+)\/accounting$/.exec(
@@ -204,9 +205,7 @@ async function handleRequest(
     const truncated = jobs.length > MAX_CAMPAIGN_JOBS;
     const parsedJobs = jobs
       .slice(0, MAX_CAMPAIGN_JOBS)
-      .map((job) =>
-        parsePersistedJob(job, options, campaignId),
-      );
+      .map((job) => parsePersistedJob(job, options, campaignId));
     sendJson(response, 200, {
       data: {
         networkId: `near:${nearNetworkId(options.reader.config.networkId)}`,
@@ -587,6 +586,7 @@ function parsePersistedJob(
   const attempts = value.attempts.map((attempt) => {
     if (
       !isRecord(attempt) ||
+      typeof attempt.sequence !== "number" ||
       !Number.isSafeInteger(attempt.sequence) ||
       attempt.sequence < 1 ||
       typeof attempt.phase !== "string" ||
@@ -682,11 +682,7 @@ function parsePersistedU64(value: unknown): string {
 }
 
 function timestampFromMilliseconds(value: unknown): string {
-  if (
-    typeof value !== "number" ||
-    !Number.isSafeInteger(value) ||
-    value < 0
-  ) {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
     throw new PersistedJobValidationError();
   }
   const date = new Date(value);

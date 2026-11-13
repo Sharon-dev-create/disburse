@@ -275,9 +275,7 @@ void test("authenticated read routes return validated payout and accounting view
 void test("authenticated payout list and execution detail expose validated persisted job state", async () => {
   const rpc = new FixtureRpc();
   await withApi(createOptions(rpc, createJobs()), async (baseUrl) => {
-    const list = await authorizedFetch(
-      `${baseUrl}/v1/campaigns/42/payouts`,
-    );
+    const list = await authorizedFetch(`${baseUrl}/v1/campaigns/42/payouts`);
     assert.equal(list.status, 200);
     const listBody = await list.json();
     assert.equal(listBody.data.jobs.length, 1);
@@ -305,9 +303,7 @@ void test("authenticated payout list and execution detail expose validated persi
 void test("persisted payout routes enforce authorization, scope, and configuration", async () => {
   const rpc = new FixtureRpc();
   await withApi(createOptions(rpc, createJobs()), async (baseUrl) => {
-    const unauthorized = await fetch(
-      `${baseUrl}/v1/campaigns/42/payouts`,
-    );
+    const unauthorized = await fetch(`${baseUrl}/v1/campaigns/42/payouts`);
     assert.equal(unauthorized.status, 401);
 
     const otherCampaign = await authorizedFetch(

@@ -212,7 +212,7 @@ The HTTP module exposes only these read endpoints:
 All data endpoints require a host-supplied `authorize(request)` callback. Persisted-job routes also
 require the host to inject the PostgreSQL job repository. The API validates
 identifiers, response shapes, exact integer strings, destination formats, and accounting
-invariants. It has no quote, authorization, job-mutation, execution, refund, verification,
+invariants. It has no quote, authorization mutation, job mutation, worker, refund, verification,
 reconciliation, or settlement endpoint. A host must explicitly construct and start the API with a
 configured reader; there is no ready-to-run server in the package. Accounting token precision
 comes from the campaign's NEP-141 `ft_metadata` view. Persisted job status is operational data;
@@ -435,29 +435,42 @@ From `frontend/`:
 ```sh
 cd frontend
 pnpm install --frozen-lockfile
-pnpm run dev
+DISBURSE_EXECUTION_API_BASE_URL=http://127.0.0.1:4000 pnpm run dev
 ```
 
-Open `http://localhost:3000`. The demo frontend runs independently and requires no PostgreSQL,
-execution service, wallet, or deployed contract. Available package checks are:
+Open `http://localhost:3000`. For API-backed pages, a trusted host-composed execution API must be
+available at the configured URL and must receive the host's authentication context. The repository
+does not provide a standalone API process, authentication provider, or deployed NEAR contract;
+without the API URL, persisted-data panels display a configuration error while demo-only pages
+remain available. No database URL is read by the browser or frontend package.
+
+The host-composed service must use the normal execution-service setup: provide a `NearContractReader`,
+the host's `authorize(request)` callback, and (for persisted payout reads) the PostgreSQL
+`PostgresJobRepository`. Configure database access in that host using the service's existing
+`DISBURSE_DATABASE_URL` settings. Never put database credentials or service secrets in frontend
+environment variables.
+
+Available frontend checks are:
 
 ```sh
 pnpm run lint
+pnpm run typecheck
+pnpm run test
 pnpm run build
 pnpm run start
 ```
 
-`pnpm run start` serves the production build after `pnpm run build`. The frontend package has no
-unit or end-to-end test script in the current repository.
+`pnpm run start` serves the production build after `pnpm run build`. The frontend tests mock HTTP
+responses and do not require production credentials.
 
 ### Which services need to run?
 
-There is no all-in-one application command. The frontend can be run by itself for the current
-demonstration UI. The execution-service API is an embeddable module and needs a host process to
-configure the NEAR reader, provide request authorization, and start the listener. PostgreSQL is
-needed for migrations and real database integration tests, but it does not start a worker.
-Discovery, the read API, the frontend, and PostgreSQL repositories are not composed into a
-complete live payout application.
+There is no all-in-one application command. Run the frontend as above and supply a separately
+hosted execution API. The execution-service API is an embeddable module; the host configures the
+NEAR reader, request authorizer, and PostgreSQL job repository before starting the listener.
+PostgreSQL is also needed for migrations and real database integration tests, but it does not start
+a worker. This repository still has no ready-to-run API host, configured contract deployment,
+worker, signer, or destination-chain verifier.
 
 ## Repository structure
 
@@ -506,7 +519,9 @@ complete live payout application.
 | Execution-service format, type, lint, unit tests | `cd execution-service && pnpm check` | Prettier, TypeScript, ESLint, and Node test runner |
 | Execution-service PostgreSQL integration/security | `cd execution-service && pnpm run test:postgres` | Real isolated PostgreSQL migrations, idempotency, concurrency, leases, recovery, authorization, and refund repository behavior |
 | Frontend lint | `cd frontend && pnpm run lint` | ESLint |
-| Frontend production build | `cd frontend && pnpm run build` | Next.js build and TypeScript validation |
+| Frontend typecheck | `cd frontend && pnpm run typecheck` | TypeScript |
+| Frontend tests | `cd frontend && pnpm run test` | Mocked API, amount, and rendered-state checks |
+| Frontend production build | `cd frontend && pnpm run build` | Next.js production build |
 
 The PostgreSQL suite is not an in-memory simulation and must be run against the dedicated local
 test database. No browser end-to-end test suite is present. A passing unit test or production build

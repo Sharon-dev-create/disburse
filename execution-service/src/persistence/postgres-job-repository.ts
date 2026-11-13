@@ -560,9 +560,7 @@ export class PostgresJobRepository implements DurableJobRepository {
         [scope.networkId, scope.contractId, campaignId, limit],
       );
       return Promise.all(
-        result.rows.map((row) =>
-          readJob(client, requireString(row, "job_id")),
-        ),
+        result.rows.map((row) => readJob(client, requireString(row, "job_id"))),
       );
     });
   }

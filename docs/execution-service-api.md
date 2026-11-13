@@ -2,8 +2,8 @@
 
 The execution service provides an authenticated HTTP boundary around the
 read-only NEAR contract client and, when supplied by the host, the durable
-PostgreSQL job repository. It has no payout mutation or execution routes. The
-API does not submit contract transactions, request 1Click quotes, create
+PostgreSQL job repository. It has no payout mutation or worker routes. The API
+does not submit contract transactions, request 1Click quotes, create
 execution authorizations, operate a worker, or independently verify
 destination-chain settlement.
 
@@ -82,8 +82,8 @@ callback. No credentials or static bearer token are supplied by the frontend.
 ## Deliberately unavailable operations
 
 The API has no quote endpoint, authorization creation/approval/consumption
-endpoint, execution-status or worker endpoint, refund endpoint, reconciliation
-endpoint, verification endpoint, or settlement endpoint. Although quote and
+endpoint, worker endpoint, refund endpoint, reconciliation endpoint,
+verification endpoint, or settlement endpoint. Although quote and
 authorization policy primitives exist, a coherent block-pinned reservation
 read, authenticated signer, production worker/provider, durable execution-job
 consumer, independent destination verifier, and live contract writer are not

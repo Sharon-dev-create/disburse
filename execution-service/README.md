@@ -21,7 +21,7 @@ move funds.
 - `src/verification`: independent evidence-verification interface.
 - `src/near`: read-only, Operator/Admin, and Verifier contract client boundaries.
 - `src/near/rpc.ts`: read-only JSON-RPC contract reader for existing ABI views.
-- `src/api/http.ts`: authenticated read-only HTTP endpoints for payout and campaign accounting views.
+- `src/api/http.ts`: authenticated read-only contract views and optional PostgreSQL job-list/detail reads.
 - `src/near/providers/fastnear-neardata.ts`: finalized-block historical event source for FastNear
   NEAR Data with bounded HTTP retries and opaque block/log cursors.
 - `src/discovery`: NEP-297 decoder, replayable source interface, durable local file repository,
@@ -36,8 +36,8 @@ move funds.
 - `src/coordinator`: coordinator/discovery ports and deterministic bounded references.
 - `tests`: deterministic execution and discovery tests, including provider HTTP fixtures, restart,
   duplicate delivery, cursor atomicity, and RPC failures.
-- `sql/migrations/0001_security_repositories.sql` and
-  `sql/migrations/0002_execution_jobs.sql`: additive, checksummed PostgreSQL migrations.
+- `sql/migrations/0001_security_repositories.sql` through
+  `sql/migrations/0003_execution_jobs_campaign_read_index.sql`: additive, checksummed PostgreSQL migrations.
 - `sql/schema.sql`: reference schema; provider, verification, settlement, processing-error, and
   reconciliation tables remain unapplied.
 
@@ -66,9 +66,9 @@ procedure and precise limits.
 
 The read API is a library boundary, not a fully composed production service. It requires a
 host-supplied request authorizer, validates the configured RPC network and contract ABI before
-binding, and exposes no quote, authorization, execution, refund, verification, or settlement
-operations. See [`../docs/execution-service-api.md`](../docs/execution-service-api.md) for routes
-and limits.
+binding, and requires a host-injected PostgreSQL jobs repository for persisted job reads. It
+exposes no quote, authorization mutation, worker, refund, verification, or settlement operations.
+See [`../docs/execution-service-api.md`](../docs/execution-service-api.md) for routes and limits.
 
 ## Commands
 
