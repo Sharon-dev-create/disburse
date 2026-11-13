@@ -171,9 +171,11 @@ void test("concurrent workers claim one queued job and stale lease writes are fe
       }),
     );
     assert.notEqual(pids[0], pids[1]);
-    const [left, right] = clients.map((client) =>
-      repositoryForClient(createPostgresQuery(client)),
+    const queries = barrierQueries(
+      clients.map(createPostgresQuery),
+      "j.job_id::text AS job_id, j.state, j.state_version",
     );
+    const [left, right] = queries.map(repositoryForClient);
     const claims = await Promise.all([
       left!.claimNext("worker-left", Date.now(), 60_000),
       right!.claimNext("worker-right", Date.now(), 60_000),
@@ -250,7 +252,11 @@ void test("lease renewal, expiry replacement, and fencing counters survive repos
 void test("attempts and safe failures are atomic and duplicate attempt idempotency rolls back", async () => {
   const repository = repositoryForPool(pool);
   const queued = await enqueueQueued(repository, makeCreation("attempts"));
-  const claim = await repository.claimNext("attempt-worker", Date.now(), 60_000);
+  const claim = await repository.claimNext(
+    "attempt-worker",
+    Date.now(),
+    60_000,
+  );
   assert.ok(claim?.lease);
   const failed = await repository.recordFailure(
     claim.key,

@@ -415,8 +415,8 @@ class MockPostgres {
       refund_address: parameters[4],
       policy_version: parameters[5],
       approved_at: new Date(String(parameters[6])),
-      approved_at_iso: parameters[6],
-      policy_fingerprint: parameters[7],
+      approved_at_iso: parameters[7],
+      policy_fingerprint: parameters[8],
     };
     this.refundPolicies.set(key, row);
     return result([copy(row)]);

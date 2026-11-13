@@ -230,48 +230,66 @@ void test("revocation and consumption race has exactly one terminal winner", asy
 
 void test("refund policy binds once, survives concurrent duplicate approval, and is immutable", async () => {
   const fixture = makeAuthorizationFixture(`${seed}-refund`);
-  const [first, duplicate] = await Promise.all([
-    refundPolicies.approve(fixture.refundPolicy),
-    refundPolicies.approve(fixture.refundPolicy),
-  ]);
-  assert.equal(first.fingerprint, duplicate.fingerprint);
-  assert.equal(
-    (
-      await refundPolicies.get(
-        fixture.refundPolicy.campaignId,
-        fixture.refundPolicy.payoutId,
-      )
-    )?.fingerprint,
-    first.fingerprint,
-  );
-  await assert.rejects(
-    () =>
-      refundPolicies.approve({
-        ...fixture.refundPolicy,
-        refundAddress: "another-treasury.near",
+  const clients = await Promise.all([pool.connect(), pool.connect()]);
+  try {
+    const pids = await Promise.all(
+      clients.map(async (client) => {
+        const result = await client.query<{ pid: number }>(
+          "SELECT pg_backend_pid() AS pid",
+        );
+        return result.rows[0]?.pid;
       }),
-    /immutable|already approved/i,
-  );
-  await assert.rejects(
-    () =>
-      pool.query(
-        "UPDATE payout_refund_policies SET refund_address = $1 WHERE campaign_id = $2 AND payout_id = $3",
-        [
-          "changed.near",
+    );
+    assert.notEqual(pids[0], pids[1]);
+    const [queryA, queryB] = barrierQueries(
+      clients.map(createPostgresQuery),
+      "INSERT INTO payout_refund_policies",
+    );
+    const [first, duplicate] = await Promise.all([
+      new PostgresRefundPolicyRepository(queryA!).approve(fixture.refundPolicy),
+      new PostgresRefundPolicyRepository(queryB!).approve(fixture.refundPolicy),
+    ]);
+    assert.equal(first.fingerprint, duplicate.fingerprint);
+    assert.equal(
+      (
+        await refundPolicies.get(
           fixture.refundPolicy.campaignId,
           fixture.refundPolicy.payoutId,
-        ],
-      ),
-    /immutable/i,
-  );
-  await assert.rejects(
-    () =>
-      pool.query(
-        "DELETE FROM payout_refund_policies WHERE campaign_id = $1 AND payout_id = $2",
-        [fixture.refundPolicy.campaignId, fixture.refundPolicy.payoutId],
-      ),
-    /immutable/i,
-  );
+        )
+      )?.fingerprint,
+      first.fingerprint,
+    );
+    await assert.rejects(
+      () =>
+        refundPolicies.approve({
+          ...fixture.refundPolicy,
+          refundAddress: "another-treasury.near",
+        }),
+      /immutable|already approved/i,
+    );
+    await assert.rejects(
+      () =>
+        pool.query(
+          "UPDATE payout_refund_policies SET refund_address = $1 WHERE campaign_id = $2 AND payout_id = $3",
+          [
+            "changed.near",
+            fixture.refundPolicy.campaignId,
+            fixture.refundPolicy.payoutId,
+          ],
+        ),
+      /immutable/i,
+    );
+    await assert.rejects(
+      () =>
+        pool.query(
+          "DELETE FROM payout_refund_policies WHERE campaign_id = $1 AND payout_id = $2",
+          [fixture.refundPolicy.campaignId, fixture.refundPolicy.payoutId],
+        ),
+      /immutable/i,
+    );
+  } finally {
+    clients.forEach((client) => client.release());
+  }
 });
 
 void test("concurrent conflicting refund bindings retain one authoritative policy", async () => {
