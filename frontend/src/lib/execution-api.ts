@@ -18,7 +18,7 @@ const U64_MAX = (1n << 64n) - 1n;
 const U128_MAX = (1n << 128n) - 1n;
 
 export function executionApiBaseUrlFromEnvironment(
-  environment: { readonly DISBURSE_EXECUTION_API_BASE_URL?: string } = process.env,
+  environment: Readonly<Record<string, string | undefined>> = process.env,
 ): string {
   const configured = environment.DISBURSE_EXECUTION_API_BASE_URL?.trim();
   if (!configured) {

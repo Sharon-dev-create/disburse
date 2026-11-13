@@ -78,7 +78,7 @@ function PayoutSummary({ payoutId }: { payoutId: string }) {
 
 export default function PayoutDirectory({ campaignId, result }: Props) {
   const [query, setQuery] = useState("");
-  const [campaignId, setCampaignId] = useState("All campaigns");
+  const [demoCampaignId, setDemoCampaignId] = useState("All campaigns");
   const [network, setNetwork] = useState("All networks");
   const [status, setStatus] = useState<StatusFilter>("All statuses");
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
@@ -97,7 +97,7 @@ export default function PayoutDirectory({ campaignId, result }: Props) {
         recipient?.fullName.toLowerCase().includes(normalizedQuery);
       return (
         matchesQuery &&
-        (campaignId === "All campaigns" || payout.campaignId === campaignId) &&
+        (demoCampaignId === "All campaigns" || payout.campaignId === demoCampaignId) &&
         (network === "All networks" || payout.destinationNetwork === network) &&
         (status === "All statuses" || payout.status === status)
       );
@@ -110,7 +110,7 @@ export default function PayoutDirectory({ campaignId, result }: Props) {
       const difference = Date.parse(left.createdAt) - Date.parse(right.createdAt);
       return sortOrder === "newest" ? -difference : difference;
     });
-  }, [campaignId, network, query, sortOrder, status]);
+  }, [demoCampaignId, network, query, sortOrder, status]);
 
   return (
     <main className="min-w-0 flex-1">
@@ -274,8 +274,8 @@ export default function PayoutDirectory({ campaignId, result }: Props) {
                 <label htmlFor="payout-campaign-filter" className="sr-only">Filter by campaign</label>
                 <select
                   id="payout-campaign-filter"
-                  value={campaignId}
-                  onChange={(event) => setCampaignId(event.target.value)}
+                  value={demoCampaignId}
+                  onChange={(event) => setDemoCampaignId(event.target.value)}
                   className="min-h-11 w-full rounded-lg border border-hairline bg-white px-3 text-sm text-ink outline-none focus:border-forest focus:ring-2 focus:ring-forest/20"
                 >
                   <option>All campaigns</option>

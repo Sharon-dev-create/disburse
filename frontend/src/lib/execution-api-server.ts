@@ -3,10 +3,12 @@ import "server-only";
 import { headers } from "next/headers";
 import {
   ExecutionApiClient,
-  ExecutionApiError,
   executionApiBaseUrlFromEnvironment,
 } from "./execution-api";
-import type { ExecutionDataResult } from "./execution-api-shared";
+import {
+  ExecutionApiError,
+  type ExecutionDataResult,
+} from "./execution-api-shared";
 
 export async function loadExecutionData<T>(
   request: (client: ExecutionApiClient) => Promise<T>,
