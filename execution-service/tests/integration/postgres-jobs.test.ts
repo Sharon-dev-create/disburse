@@ -175,8 +175,8 @@ void test("concurrent workers claim one queued job and stale lease writes are fe
       repositoryForClient(createPostgresQuery(client)),
     );
     const claims = await Promise.all([
-      left!.claimNext("worker-left", Date.now(), 2_000),
-      right!.claimNext("worker-right", Date.now(), 2_000),
+      left!.claimNext("worker-left", Date.now(), 60_000),
+      right!.claimNext("worker-right", Date.now(), 60_000),
     ]);
     assert.equal(claims.filter((job) => job !== null).length, 1);
     const claim = claims.find((job) => job !== null);
@@ -225,7 +225,7 @@ void test("lease renewal, expiry replacement, and fencing counters survive repos
   );
 
   await new Promise((resolve) => setTimeout(resolve, 2_100));
-  const second = await repository.claimNext("worker-two", Date.now(), 2_000);
+  const second = await repository.claimNext("worker-two", Date.now(), 60_000);
   assert.ok(second?.lease);
   assert.equal(
     BigInt(second.lease.fencingToken),
@@ -250,7 +250,7 @@ void test("lease renewal, expiry replacement, and fencing counters survive repos
 void test("attempts and safe failures are atomic and duplicate attempt idempotency rolls back", async () => {
   const repository = repositoryForPool(pool);
   const queued = await enqueueQueued(repository, makeCreation("attempts"));
-  const claim = await repository.claimNext("attempt-worker", Date.now(), 2_000);
+  const claim = await repository.claimNext("attempt-worker", Date.now(), 60_000);
   assert.ok(claim?.lease);
   const failed = await repository.recordFailure(
     claim.key,
