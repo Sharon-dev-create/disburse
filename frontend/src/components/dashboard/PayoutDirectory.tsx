@@ -17,9 +17,20 @@ import {
   type ContractPayoutStatus,
 } from "@/lib/payout-demo-data";
 import { DESTINATION_NETWORKS } from "@/lib/recipient-demo-data";
+import {
+  formatAtomicAmount,
+  getContractStatusLabel,
+  type CampaignPayoutList,
+  type ExecutionDataResult,
+} from "@/lib/execution-api";
+import ExecutionStateBadge from "@/components/dashboard/ExecutionStateBadge";
 
 type StatusFilter = "All statuses" | ContractPayoutStatus;
 type SortOrder = "newest" | "oldest";
+type Props = {
+  campaignId: string;
+  result: ExecutionDataResult<CampaignPayoutList> | null;
+};
 
 const NETWORKS = ["NEAR", ...DESTINATION_NETWORKS.filter((network) => network !== "NEAR")];
 
@@ -37,7 +48,7 @@ const metrics = [
   {
     label: "Processing payouts",
     value: "Unavailable",
-    detail: "No execution status API is connected",
+    detail: "Demo records have no persisted execution state",
   },
   {
     label: "Successfully settled",
@@ -65,7 +76,7 @@ function PayoutSummary({ payoutId }: { payoutId: string }) {
   );
 }
 
-export default function PayoutDirectory() {
+export default function PayoutDirectory({ campaignId, result }: Props) {
   const [query, setQuery] = useState("");
   const [campaignId, setCampaignId] = useState("All campaigns");
   const [network, setNetwork] = useState("All networks");
@@ -105,10 +116,114 @@ export default function PayoutDirectory() {
     <main className="min-w-0 flex-1">
       <DashboardHeader showTitle={false} />
       <div className="mx-auto max-w-7xl px-5 py-7 sm:px-8 sm:py-10 lg:px-10">
-        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <section
+          aria-labelledby="persisted-payouts-heading"
+          className="rounded-2xl border border-hairline bg-white p-5 sm:p-6"
+        >
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-forest">
+                Execution service · persisted jobs
+              </p>
+              <h1 id="persisted-payouts-heading" className="mt-1 text-xl font-medium text-ink">
+                Payout records
+              </h1>
+              <p className="mt-1 text-xs leading-5 text-ink/65">
+                PostgreSQL job snapshots for a real numeric campaign ID. Contract state is shown only as observed when the job was discovered.
+              </p>
+            </div>
+            <form action="/dashboard/payouts" method="get" className="flex gap-2">
+              <label className="sr-only" htmlFor="persisted-campaign-id">
+                Numeric campaign ID
+              </label>
+              <input
+                id="persisted-campaign-id"
+                name="campaignId"
+                inputMode="numeric"
+                pattern="(?:0|[1-9][0-9]{0,19})"
+                maxLength={20}
+                defaultValue={campaignId}
+                placeholder="Campaign ID"
+                className="min-h-10 w-36 rounded-lg border border-hairline bg-canvas px-3 font-mono text-xs text-ink"
+              />
+              <button
+                type="submit"
+                className="min-h-10 rounded-full bg-forest px-4 text-xs font-medium text-canvas hover:bg-forest-deep"
+              >
+                Load
+              </button>
+            </form>
+          </div>
+
+          {!campaignId ? (
+            <p className="mt-5 rounded-xl border border-dashed border-hairline bg-canvas px-4 py-4 text-sm leading-6 text-ink/65">
+              Enter a numeric campaign ID to look up persisted payout jobs. Demo campaign IDs are not contract IDs.
+            </p>
+          ) : result?.kind === "error" ? (
+            <p role="status" className="mt-5 rounded-xl border border-[#f2ded5] bg-[#fbf2ee] px-4 py-4 text-sm leading-6 text-alert">
+              {result.error.message}
+            </p>
+          ) : result?.kind === "success" && result.data.jobs.length === 0 ? (
+            <p className="mt-5 rounded-xl border border-dashed border-hairline bg-canvas px-4 py-4 text-sm leading-6 text-ink/65">
+              No persisted execution jobs were found for campaign {campaignId}.
+            </p>
+          ) : result?.kind === "success" ? (
+            <>
+              <div className="mt-5 overflow-x-auto">
+                <table className="w-full min-w-[760px] border-collapse text-left">
+                  <caption className="sr-only">Persisted execution jobs for campaign {campaignId}</caption>
+                  <thead className="border-b border-hairline bg-canvas text-[9px] font-medium uppercase tracking-[0.12em] text-mist">
+                    <tr>
+                      <th scope="col" className="px-3 py-3">Payout</th>
+                      <th scope="col" className="px-3 py-3">Source amount</th>
+                      <th scope="col" className="px-3 py-3">Execution state</th>
+                      <th scope="col" className="px-3 py-3">Contract snapshot</th>
+                      <th scope="col" className="px-3 py-3">Created</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-hairline text-xs text-ink">
+                    {result.data.jobs.map((job) => (
+                      <tr key={job.jobId}>
+                        <td className="px-3 py-4">
+                          <Link
+                            href={`/dashboard/payouts/${job.payoutId}`}
+                            className="font-mono font-medium text-forest underline decoration-forest/30 underline-offset-4"
+                          >
+                            {job.payoutId}
+                          </Link>
+                          <p className="mt-1 text-[10px] text-mist">Job {job.jobId}</p>
+                        </td>
+                        <td className="px-3 py-4 font-mono tabular-nums">
+                          {formatAtomicAmount(job.source.atomicAmount, job.source.decimals)} {job.source.tokenId}
+                        </td>
+                        <td className="px-3 py-4"><ExecutionStateBadge state={job.state} /></td>
+                        <td className="px-3 py-4 text-xs text-ink/65">
+                          {getContractStatusLabel(job.observedContractStatus)} at discovery
+                        </td>
+                        <td className="px-3 py-4 font-mono text-[10px] text-ink/65">
+                          <time dateTime={job.createdAt}>{job.createdAt}</time>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {result.data.truncated ? (
+                <p role="status" className="mt-3 text-xs text-alert">
+                  Showing the most recent 100 records; additional jobs exist for this campaign.
+                </p>
+              ) : null}
+              <p className="mt-3 text-xs leading-5 text-ink/55">
+                Persisted job state is operational data, not proof of destination-chain delivery. Open a payout for its current contract status.
+              </p>
+            </>
+          ) : null}
+        </section>
+
+        <div className="mt-10 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-mist">Payout operations · demo</p>
-            <h1 className="mt-2 text-3xl font-medium tracking-[-0.05em] text-ink">Payouts</h1>
+            <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-mist">Presentation-only examples</p>
+            <h2 className="mt-2 text-3xl font-medium tracking-[-0.05em] text-ink">Demo payout data</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-ink/65">
               Review illustrative payout states without initiating a reservation, transaction, or settlement.
             </p>
@@ -123,8 +238,7 @@ export default function PayoutDirectory() {
         </div>
 
         <p className="mt-6 rounded-xl border border-[#dce9d5] bg-[#eff5eb] px-4 py-3 text-xs leading-5 text-forest">
-          These six records are static UI examples, not contract or execution-service data. They contain no real payout IDs,
-          quote, authorization, transaction, verified output, timestamps, or event history. No live execution route is enabled.
+          The records below are separate frontend fixtures, not contract or execution-service data. They are never combined with persisted jobs.
         </p>
 
         <section aria-label="Payout summary" className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
