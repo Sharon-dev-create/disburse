@@ -40,15 +40,13 @@ before(async () => {
   assert.equal(identity.rows[0]?.role, "disburse_test");
   await applyPostgresMigrations(pool);
   await assertPostgresMigrationsCurrent(pool);
-  // Keep interrupted-run fixtures from being claimed by tests in this run.
+  // Keep prior test jobs from being claimed by tests in this run.
   await pool.query(
     `UPDATE public.execution_jobs
      SET next_eligible_at = statement_timestamp() + interval '1 day'
      WHERE state = 'Queued'
        AND network_id = 'near:testnet'
-       AND contract_id = 'disburse.testnet'
-       AND job_creation_idempotency_key LIKE 'jobs-%-idem'
-       AND discovery_tx_hash LIKE 'jobs-%'`,
+       AND contract_id = 'disburse.testnet'`,
   );
 });
 
