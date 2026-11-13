@@ -182,6 +182,17 @@ async function handleRequest(
       );
       return;
     }
+    const campaign =
+      await options.reader.getCampaignPayoutAccounting(campaignId);
+    if (!campaign) {
+      sendError(
+        response,
+        404,
+        "campaign_not_found",
+        "The campaign does not exist on the configured contract.",
+      );
+      return;
+    }
     const jobs = await options.jobs.listByCampaign(
       {
         networkId: `near:${options.reader.config.networkId}`,
