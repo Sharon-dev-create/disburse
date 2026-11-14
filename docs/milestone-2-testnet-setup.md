@@ -365,3 +365,20 @@ activity cannot be ruled out by this session's read-only observations.
 
 **STOP: request specific Stage A approval first. Stage B is unnecessary for Option
 A. Stage C requires separate approval. Milestone 3 remains unauthorized.**
+
+## Follow-up — Stage A confirmation check
+
+Read-only recheck on 2026-11-14: **Stage A is not complete**. At finalized
+Testnet block 277671689, `storage_balance_of` for
+`disburse-op-b966e36d.testnet` on `usdc.tidepool-sandbox.testnet` returned null,
+and `ft_balance_of` returned "0" (0 USDC). No successful storage-registration
+or USDC-receipt transaction hash was supplied or found in the queried account
+history; the history returned only an account-creation transaction, which does
+not establish token funding. Indexer history alone is not exhaustive proof.
+
+Both original and isolated contracts' full state values exactly match the audit
+baseline (finalized blocks 277671697 and 277671700 respectively); code hashes,
+NEAR balances and storage usage also match. Thus no net configuration change is
+observed on these two contracts. This cannot exclude a historical change that
+was subsequently reversed. No transactions were signed or submitted during this
+check. [Public recheck evidence](evidence/milestone-2/stage-a-recheck.json).
