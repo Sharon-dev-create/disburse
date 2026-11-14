@@ -99,6 +99,25 @@ pnpm start
 
 `pnpm start` runs `node --experimental-strip-types src/host.ts`.
 
+The entry point does not load `.env` files automatically. With an existing local
+`.env`, the equivalent explicit command is:
+
+```sh
+node --env-file=.env --experimental-strip-types src/host.ts
+```
+
+If Node's Testnet requests time out while `curl` can reach the same endpoint,
+this local runtime configuration was verified during environment restoration:
+
+```sh
+node --dns-result-order=ipv4first --network-family-autoselection-attempt-timeout=2000 --env-file=.env --experimental-strip-types src/host.ts
+```
+
+This keeps the configured RPC endpoint and contract ID unchanged. Startup still
+requires successful network verification and a paused contract; do not bypass
+those checks. Environment files and demo tokens must remain untracked.
+
+
 ## Starting the frontend against the host
 
 From `frontend/`:
