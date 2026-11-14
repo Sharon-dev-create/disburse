@@ -382,3 +382,31 @@ NEAR balances and storage usage also match. Thus no net configuration change is
 observed on these two contracts. This cannot exclude a historical change that
 was subsequently reversed. No transactions were signed or submitted during this
 check. [Public recheck evidence](evidence/milestone-2/stage-a-recheck.json).
+
+## Follow-up — owner signing access verified
+
+**PASS for owner signing access**, verified 2026-11-14. This resolves the
+owner-signing uncertainty in the earlier audit; it does not complete Stage A or
+authorize Stage C. The original owner's secure OS keychain is usable even though
+no legacy credential file exists for it.
+
+`near account list-keys disburse-topg.testnet network-config testnet now`
+reported one FullAccess key. The CLI's `near message sign-nep413 ... sign-as
+disburse-topg.testnet sign-with-keychain network-config testnet` successfully
+signed a fresh random-nonce, local-audit message explicitly authorizing no
+transaction, transfer, login or contract change. No private key or seed was
+exported, printed, copied into a script, or passed in arguments.
+
+Independent verification used Node's `crypto.verify` with Ed25519 over the
+SHA-256 of the NEP-413 Borsh payload (tag 2^31+413, message, 32-byte nonce,
+recipient and absent callback URL). Verification returned true. The public key
+`ed25519:A717NFatHs2CFEKHH7CDNNwZercpfMKnGMNUdtKsgKdC` exactly matches the
+on-chain FullAccess key in finalized Testnet block **277672506**, block hash
+`8XVAG62rxZqHk3LoLVqiHLgdkghznYpxsR6UTgMF2Jte`.
+
+The key therefore has signing authority for future approved configuration calls
+to `disburse-test-contract.testnet`. Recheck permissions, signer and target before
+actual execution. No transaction was signed or submitted, no nonce was consumed,
+and neither contract was changed. An off-chain signature has no transaction hash.
+
+[Public signature and finalized key evidence](evidence/milestone-2/owner-signing-access.json).
