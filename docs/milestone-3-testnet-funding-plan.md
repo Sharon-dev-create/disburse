@@ -5,13 +5,14 @@ Repository revision: `5587363ce19742e72bf6dc4aef316dc92d372eaa`.
 Initial `git status --short --branch`: clean `main`, initially ahead of origin by
 one commit; remote-tracking status later changed without any agent commit/push.
 
-**Latest execution status (2026-11-15): Gate M3-B PASS — campaign 0 is Approved.**
-The separately authorized creation and approval transactions finalized and were
-independently verified. No funding or activation occurred. See the
-[M3-B execution report](milestone-3-gate-b-execution.md) and the current M3-C
-manifest at the end of this document. The preflight values
-and initial planning verdict below are historical snapshots, not current empty state.
-The frontend title/status integration gap remains unresolved.
+**Latest execution status (2026-11-15): M3-C PASS — campaign 0 is funded with exactly 1 test USDC.**
+Creation, approval and funding finalized and were independently verified. Campaign 0
+remains Approved, with funded/available `1000000` and reserved/spent `0`.
+The read-only API/dashboard now display real title, status and exact accounting.
+See the [M3-C execution and integration report](milestone-3-gate-c-execution.md).
+All approval-pending statements and proposed manifests below are historical records
+superseded by the user's explicit Milestone 3C funding execution request.
+No activation or payout was performed.
 
 ## 1. Verdict and scope
 

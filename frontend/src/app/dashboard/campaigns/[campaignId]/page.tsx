@@ -4,7 +4,7 @@ import { ArrowLeft, CircleDollarSign } from "lucide-react";
 import { notFound } from "next/navigation";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import CampaignStatusBadge from "@/components/dashboard/CampaignStatusBadge";
-import ExecutionAccountingPanel from "@/components/dashboard/ExecutionAccountingPanel";
+import CampaignDetailsPanel from "@/components/dashboard/CampaignDetailsPanel";
 import { loadExecutionData } from "@/lib/execution-api-server";
 import { campaignStatusDescription, campaignStatuses, formatCampaignDate, formatUsd, getDemoCampaign } from "@/lib/campaign-demo-data";
 
@@ -16,7 +16,7 @@ async function CampaignDetailContent({
   const { campaignId } = await params;
   if (isContractCampaignId(campaignId)) {
     const result = await loadExecutionData((client) =>
-      client.getCampaignAccounting(campaignId),
+      client.getCampaign(campaignId),
     );
     return (
       <main className="min-w-0 flex-1">
@@ -28,10 +28,10 @@ async function CampaignDetailContent({
           <p className="mt-6 text-[10px] font-medium uppercase tracking-[0.16em] text-forest">Configured contract campaign</p>
           <h1 className="mt-2 text-3xl font-medium tracking-[-0.05em] text-ink">Campaign {campaignId}</h1>
           <p className="mt-2 text-sm leading-6 text-ink/65">
-            This page reads current accounting from the execution service. No campaign title or lifecycle data is available through the current read API.
+            Live campaign identity, lifecycle and accounting are read through the authenticated read-only execution service.
           </p>
           <div className="mt-8">
-            <ExecutionAccountingPanel campaignId={campaignId} result={result} />
+            <CampaignDetailsPanel campaignId={campaignId} result={result} />
           </div>
         </div>
       </main>

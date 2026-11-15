@@ -277,6 +277,17 @@ export interface NearContractReaderConfig {
   readonly contractId: string;
 }
 
+export interface NearCampaignDetails {
+  readonly id: string;
+  readonly title: string;
+  readonly creatorId: string;
+  readonly tokenId: string;
+  readonly status:
+    "Draft" | "Approved" | "Active" | "Paused" | "Completed" | "Cancelled";
+  readonly createdAtNs: string;
+  readonly accounting: CampaignAccountingSnapshot;
+}
+
 /** Concrete, read-only reader for the view methods present in the contract ABI. */
 export class NearContractReader implements ContractReader {
   readonly config: NearContractReaderConfig;
@@ -317,6 +328,52 @@ export class NearContractReader implements ContractReader {
     if (typeof value !== "boolean")
       throw malformed("Invalid token allowlist response");
     return value;
+  }
+
+  async getCampaign(campaignId: string): Promise<NearCampaignDetails | null> {
+    const requested = asU64String(campaignId, "campaign ID");
+    const value = await this.call("get_campaign", {
+      campaign_id: nearU64(requested, "campaign ID"),
+    });
+    if (value === null) return null;
+    if (!isRecord(value)) throw malformed("Invalid campaign response");
+    const id = asU64String(value.id, "campaign ID");
+    if (id !== requested)
+      throw malformed("Campaign response does not match requested ID");
+    const title = nonEmptyString(value.title, "campaign title");
+    if (Buffer.byteLength(title, "utf8") > 100)
+      throw malformed("Invalid campaign title");
+    const account = (v: unknown, label: string) => {
+      const text = nonEmptyString(v, label);
+      if (
+        text.length < 2 ||
+        text.length > 64 ||
+        !/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/.test(text)
+      )
+        throw malformed(`Invalid ${label}`);
+      return text;
+    };
+    const tokenId = account(value.token_id, "campaign token");
+    const creatorId = account(value.creator_id, "campaign creator");
+    const status = enumValue(
+      value.status,
+      [
+        "Draft",
+        "Approved",
+        "Active",
+        "Paused",
+        "Completed",
+        "Cancelled",
+      ] as const,
+      "campaign status",
+    );
+    const createdAtNs = asU64String(value.created_at_ns, "campaign timestamp");
+    // Raw Campaign u128 JSON numbers are deliberately not used for money.
+    // Existing U128-wrapped accounting/funding views preserve exact integers.
+    const accounting = await this.getCampaignPayoutAccounting(requested);
+    if (!accounting || accounting.tokenId !== tokenId)
+      throw malformed("Campaign accounting/token mismatch");
+    return { id, title, creatorId, tokenId, status, createdAtNs, accounting };
   }
 
   async getPayout(payoutId: PayoutId): Promise<NearPayoutView | null> {

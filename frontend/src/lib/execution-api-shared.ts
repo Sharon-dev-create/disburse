@@ -212,3 +212,13 @@ export interface ContractStatus {
   readonly payoutCountSource: "inferred_from_zero_campaigns";
   readonly readOnly: true;
 }
+
+export interface CampaignDetails {
+  readonly id: string;
+  readonly title: string;
+  readonly creatorId: string;
+  readonly tokenId: string;
+  readonly status: "Draft" | "Approved" | "Active" | "Paused" | "Completed" | "Cancelled";
+  readonly createdAtNs: string;
+  readonly accounting: CampaignAccounting;
+}

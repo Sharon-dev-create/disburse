@@ -207,6 +207,7 @@ Allowed routes are explicit, and only GET is accepted:
 | `/healthz` | Public | Liveness only |
 | `/v1/contract` | Bearer | Verified identity, code, owner, pause and campaign count |
 | `/v1/payouts/:payoutId` | Bearer | Contract payout view |
+| `/v1/campaigns/:campaignId` | Bearer | Live campaign title/status/creator and exact string-wrapped accounting |
 | `/v1/campaigns/:campaignId/accounting` | Bearer | Contract accounting and token metadata |
 | `/v1/campaigns/:campaignId/payouts` | Bearer | Persisted job list for an existing campaign |
 | `/v1/campaigns/:campaignId/payouts/:payoutId` | Bearer | Scoped contract payout view |
@@ -264,3 +265,16 @@ Disable by stopping these local processes and omitting the flag (or setting it
 false) on the next startup. The normal paused requirement resumes. No chain
 pause/unpause is needed to stop this mode. This mode is **not** a production
 execution configuration and adds no signing or settlement support.
+
+### Milestone 3 campaign reads
+
+The authenticated GET campaign-details route is included in the active Testnet
+read-only allowlist. It validates campaign identity, lifecycle status and accounting
+invariants. Monetary values come from string-wrapped accounting/funding views,
+not the raw Campaign JSON u128 fields. Errors do not produce sample balances.
+The dashboard overview and campaign index select the most recent campaign from
+the contract's monotonic campaign counter; numeric detail URLs select that ID.
+This is not a paginated campaign directory. API credentials stay server-side;
+creation, funding, execution, retry and refund routes remain denied.
+
+See [M3-C execution evidence](../docs/milestone-3-gate-c-execution.md).

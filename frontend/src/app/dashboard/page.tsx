@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import LiveContractOverview from "@/components/dashboard/LiveContractOverview";
-import ExecutionAccountingPanel from "@/components/dashboard/ExecutionAccountingPanel";
-import { loadExecutionData } from "@/lib/execution-api-server";
+import CampaignDetailsPanel from "@/components/dashboard/CampaignDetailsPanel";
+import { loadCampaignOverview } from "@/lib/execution-api-server";
 
 async function DashboardContent({
   searchParams,
@@ -10,20 +10,16 @@ async function DashboardContent({
   searchParams: PageProps<"/dashboard">["searchParams"];
 }) {
   const params = await searchParams;
-  const campaignId =
+  const requestedId =
     typeof params.campaignId === "string" ? params.campaignId : "";
-  const [status, accounting] = await Promise.all([
-    loadExecutionData((client) => client.getContractStatus()),
-    campaignId
-      ? loadExecutionData((client) => client.getCampaignAccounting(campaignId))
-      : null,
-  ]);
+  const { status, campaignId, campaign } =
+    await loadCampaignOverview(requestedId);
   return (
     <main className="min-w-0 flex-1">
       <DashboardHeader />
       <div className="mx-auto max-w-7xl space-y-7 px-5 py-7 sm:px-8">
         <LiveContractOverview result={status} />
-        <ExecutionAccountingPanel campaignId={campaignId} result={accounting} />
+        <CampaignDetailsPanel campaignId={campaignId} result={campaign} />
       </div>
     </main>
   );

@@ -35,3 +35,19 @@ export async function loadExecutionData<T>(
     throw error;
   }
 }
+
+/** Count is monotonic in the reviewed contract; pick the latest existing numeric ID, never a demo row. */
+export async function loadCampaignOverview(requestedId = "") {
+  const status = await loadExecutionData((client) =>
+    client.getContractStatus(),
+  );
+  const campaignId =
+    requestedId ||
+    (status.kind === "success" && BigInt(status.data.campaignCount) > 0n
+      ? (BigInt(status.data.campaignCount) - 1n).toString()
+      : "");
+  const campaign = campaignId
+    ? await loadExecutionData((client) => client.getCampaign(campaignId))
+    : null;
+  return { status, campaignId, campaign };
+}

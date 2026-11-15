@@ -1,0 +1,173 @@
+[
+  {
+    "path": "/v1/contract",
+    "method": "GET",
+    "status": 200,
+    "body": {
+      "data": {
+        "networkId": "testnet",
+        "contractId": "disburse-test-contract.testnet",
+        "codeHash": "CJUcu5UqBYA4ZV47TJMABQJWc7MdvdaYYMNdDeB1mxcf",
+        "ownerId": "disburse-topg.testnet",
+        "paused": false,
+        "campaignCount": "1",
+        "payoutCount": null,
+        "payoutCountSource": "inferred_from_zero_campaigns",
+        "readOnly": true
+      },
+      "meta": {
+        "readAt": "2026-11-15T07:16:36.877Z"
+      }
+    }
+  },
+  {
+    "path": "/v1/campaigns/0",
+    "method": "GET",
+    "status": 401,
+    "body": {
+      "error": {
+        "code": "unauthorized",
+        "message": "Authentication is required."
+      }
+    }
+  },
+  {
+    "path": "/v1/campaigns/0",
+    "method": "GET",
+    "status": 200,
+    "body": {
+      "data": {
+        "networkId": "testnet",
+        "contractId": "disburse-test-contract.testnet",
+        "campaign": {
+          "id": "0",
+          "title": "Disburse Milestone 3 funding verification",
+          "creatorId": "disburse-topg.testnet",
+          "tokenId": "usdc.tidepool-sandbox.testnet",
+          "status": "Approved",
+          "createdAtNs": "1794722173685400100",
+          "accounting": {
+            "campaignId": "0",
+            "budget": "1000000",
+            "funded": "1000000",
+            "reserved": "0",
+            "spent": "0",
+            "available": "1000000",
+            "tokenId": "usdc.tidepool-sandbox.testnet",
+            "tokenDecimals": 6
+          }
+        }
+      },
+      "meta": {
+        "readAt": "2026-11-15T07:16:37.824Z"
+      }
+    }
+  },
+  {
+    "path": "/v1/campaigns/0/accounting",
+    "method": "GET",
+    "status": 200,
+    "body": {
+      "data": {
+        "networkId": "testnet",
+        "contractId": "disburse-test-contract.testnet",
+        "accounting": {
+          "campaignId": "0",
+          "budget": "1000000",
+          "funded": "1000000",
+          "reserved": "0",
+          "spent": "0",
+          "available": "1000000",
+          "tokenId": "usdc.tidepool-sandbox.testnet",
+          "tokenDecimals": 6
+        }
+      },
+      "meta": {
+        "readAt": "2026-11-15T07:16:38.492Z"
+      }
+    }
+  },
+  {
+    "path": "/v1/campaigns/0/payouts",
+    "method": "GET",
+    "status": 200,
+    "body": {
+      "data": {
+        "networkId": "near:testnet",
+        "contractId": "disburse-test-contract.testnet",
+        "campaignId": "0",
+        "jobs": [],
+        "truncated": false
+      },
+      "meta": {
+        "readAt": "2026-11-15T07:16:39.193Z"
+      }
+    }
+  },
+  {
+    "path": "/v1/campaigns/999",
+    "method": "GET",
+    "status": 404,
+    "body": {
+      "error": {
+        "code": "campaign_not_found",
+        "message": "The campaign does not exist on the configured contract."
+      }
+    }
+  },
+  {
+    "path": "/v1/campaigns/0",
+    "method": "POST",
+    "status": 403,
+    "body": {
+      "error": {
+        "code": "read_only_mode",
+        "message": "This operation is unavailable in active Testnet read-only mode."
+      }
+    }
+  },
+  {
+    "path": "/v1/campaigns/0/fund",
+    "method": "POST",
+    "status": 403,
+    "body": {
+      "error": {
+        "code": "read_only_mode",
+        "message": "This operation is unavailable in active Testnet read-only mode."
+      }
+    }
+  },
+  {
+    "path": "/v1/payouts/0/execute",
+    "method": "POST",
+    "status": 403,
+    "body": {
+      "error": {
+        "code": "read_only_mode",
+        "message": "This operation is unavailable in active Testnet read-only mode."
+      }
+    }
+  },
+  {
+    "path": "/v1/payouts/0/retry",
+    "method": "GET",
+    "status": 403,
+    "body": {
+      "error": {
+        "code": "read_only_mode",
+        "message": "This operation is unavailable in active Testnet read-only mode."
+      }
+    }
+  },
+  {
+    "path": "/v1/refunds",
+    "method": "POST",
+    "status": 403,
+    "body": {
+      "error": {
+        "code": "read_only_mode",
+        "message": "This operation is unavailable in active Testnet read-only mode."
+      }
+    }
+  }
+]

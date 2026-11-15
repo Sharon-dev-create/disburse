@@ -5,6 +5,7 @@ import {
 } from "./execution-api-shared";
 import type {
   ContractStatus,
+  CampaignDetails,
   CampaignAccounting,
   CampaignPayoutList,
   ContractPayoutStatus,
@@ -102,6 +103,21 @@ export class ExecutionApiClient {
       },
       30_000,
     );
+  }
+
+  getCampaign(campaignId: string): Promise<CampaignDetails> {
+    const id = requireU64(campaignId, "campaign ID");
+    return this.get(`/v1/campaigns/${id}`, body => {
+      if (!isRecord(body) || !isRecord(body.data) || !isRecord(body.data.campaign)) return null;
+      const c = body.data.campaign;
+      if (c.id !== id || typeof c.title !== "string" || !c.title.trim() ||
+          new TextEncoder().encode(c.title).length > 100 ||
+          !isSafeText(c.creatorId, 64) || !isSafeText(c.tokenId, 64) ||
+          typeof c.status !== "string" || !["Draft", "Approved", "Active", "Paused", "Completed", "Cancelled"].includes(c.status) ||
+          !isU64(c.createdAtNs) || !isCampaignAccounting(c.accounting) ||
+          c.accounting.campaignId !== id || c.accounting.tokenId !== c.tokenId) return null;
+      return c as unknown as CampaignDetails;
+    }, 30_000);
   }
 
   getCampaignAccounting(campaignId: string): Promise<CampaignAccounting> {

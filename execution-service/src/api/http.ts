@@ -13,6 +13,7 @@ import type { PersistedExecutionJob } from "../persistence/repository.ts";
 
 const READ_ONLY_ROUTES = [
   /^\/v1\/contract$/,
+  /^\/v1\/campaigns\/[^/]+$/,
   /^\/v1\/payouts\/[^/]+$/,
   /^\/v1\/campaigns\/[^/]+\/accounting$/,
   /^\/v1\/campaigns\/[^/]+\/payouts$/,
@@ -201,6 +202,33 @@ async function handleRequest(
       : await readContractStatus(options.reader);
     sendJson(response, 200, {
       data: status,
+      meta: { readAt: (options.now?.() ?? new Date()).toISOString() },
+    });
+    return;
+  }
+
+  const campaignDetailsMatch = /^\/v1\/campaigns\/([^/]+)$/.exec(pathname);
+  if (campaignDetailsMatch) {
+    const id = parseU64PathId(campaignDetailsMatch[1] ?? "", "campaign ID");
+    const campaign = await options.reader.getCampaign(id);
+    if (!campaign) {
+      sendError(
+        response,
+        404,
+        "campaign_not_found",
+        "The campaign does not exist on the configured contract.",
+      );
+      return;
+    }
+    sendJson(response, 200, {
+      data: {
+        networkId: options.reader.config.networkId,
+        contractId: options.reader.config.contractId,
+        campaign: {
+          ...campaign,
+          accounting: parseAccountingResponse(campaign.accounting),
+        },
+      },
       meta: { readAt: (options.now?.() ?? new Date()).toISOString() },
     });
     return;
