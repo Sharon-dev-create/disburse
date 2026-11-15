@@ -1,0 +1,65 @@
+{
+  "network": "testnet",
+  "signer": "disburse-op-b966e36d.testnet",
+  "target": "usdc.tidepool-sandbox.testnet",
+  "method": "ft_transfer_call",
+  "args": {
+    "receiver_id": "disburse-test-contract.testnet",
+    "amount": "1000000",
+    "memo": null,
+    "msg": "{\"campaign_id\":0}"
+  },
+  "attached_deposit_yocto": "1",
+  "prepaid_gas": 100000000000000,
+  "approval_status": "NOT_APPROVED",
+  "transaction_constructed": false,
+  "signed": false,
+  "submitted": false,
+  "live_token_abi_function": {
+    "name": "ft_transfer_call",
+    "kind": "call",
+    "modifiers": [
+      "payable"
+    ],
+    "params": {
+      "serialization_type": "json",
+      "args": [
+        {
+          "name": "receiver_id",
+          "type_schema": {
+            "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+            "type": "string"
+          }
+        },
+        {
+          "name": "amount",
+          "type_schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "memo",
+          "type_schema": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "msg",
+          "type_schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "result": {
+      "serialization_type": "json",
+      "type_schema": {
+        "$ref": "#/definitions/PromiseOrValueString"
+      }
+    }
+  },
+  "abi_final_block": 277770634
+}

@@ -1,0 +1,1351 @@
+{
+  "schema_version": "0.4.0",
+  "metadata": {
+    "name": "disburse-contract",
+    "version": "0.1.0",
+    "build": {
+      "compiler": "rustc 1.100.0",
+      "builder": "cargo-near cargo-near-build 0.11.5"
+    }
+  },
+  "body": {
+    "functions": [
+      {
+        "name": "activate_campaign",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "campaign_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "add_accepted_token",
+        "doc": " Add a NEP-141 token contract to the funding allowlist. This is a trust decision about\n that contract's NEP-141 behavior. Duplicate additions are no-ops.",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "token_id",
+              "type_schema": {
+                "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+                "type": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "approve_campaign",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "campaign_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "cancel_campaign",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "campaign_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "confirm_manual_review_execution",
+        "doc": " Reconcile ManualReview as an executed payout and return it to the normal\n PendingVerification \u2192 Succeeded settlement path without moving accounting.",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "payout_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            {
+              "name": "evidence",
+              "type_schema": {
+                "$ref": "#/definitions/PayoutResolutionEvidence"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "contract_source_metadata",
+        "kind": "view"
+      },
+      {
+        "name": "create_campaign",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "title",
+              "type_schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "token_id",
+              "type_schema": {
+                "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+                "type": "string"
+              }
+            },
+            {
+              "name": "budget",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint128",
+                "minimum": 0.0
+              }
+            }
+          ]
+        },
+        "result": {
+          "serialization_type": "json",
+          "type_schema": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        }
+      },
+      {
+        "name": "create_payout",
+        "doc": " Authorize a payout and reserve its campaign input amount. This does not execute it.",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "campaign_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            {
+              "name": "idempotency_key",
+              "type_schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "recipient_near_account_id",
+              "type_schema": {
+                "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            {
+              "name": "destination",
+              "type_schema": {
+                "$ref": "#/definitions/PayoutDestination"
+              }
+            },
+            {
+              "name": "input_amount",
+              "type_schema": {
+                "$ref": "#/definitions/TokenAmount"
+              }
+            },
+            {
+              "name": "expected_output_amount",
+              "type_schema": {
+                "$ref": "#/definitions/TokenAmount"
+              }
+            }
+          ]
+        },
+        "result": {
+          "serialization_type": "json",
+          "type_schema": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        }
+      },
+      {
+        "name": "ft_on_transfer",
+        "doc": " Accept funding only from the allowlisted predecessor FT, for a matching campaign token.\n Campaigns deliberately fund only while Approved; activation remains a separate action.",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "sender_id",
+              "type_schema": {
+                "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+                "type": "string"
+              }
+            },
+            {
+              "name": "amount",
+              "type_schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "msg",
+              "type_schema": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "result": {
+          "serialization_type": "json",
+          "type_schema": {
+            "$ref": "#/definitions/PromiseOrValueString"
+          }
+        }
+      },
+      {
+        "name": "get_campaign",
+        "kind": "view",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "campaign_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            }
+          ]
+        },
+        "result": {
+          "serialization_type": "json",
+          "type_schema": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Campaign"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "get_campaign_count",
+        "kind": "view",
+        "result": {
+          "serialization_type": "json",
+          "type_schema": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        }
+      },
+      {
+        "name": "get_campaign_funding",
+        "doc": " Returns atomic amounts as JSON decimal strings via NEAR's `U128` wrapper.",
+        "kind": "view",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "campaign_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            }
+          ]
+        },
+        "result": {
+          "serialization_type": "json",
+          "type_schema": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/CampaignFundingInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "get_campaign_payout",
+        "kind": "view",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "campaign_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            {
+              "name": "payout_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            }
+          ]
+        },
+        "result": {
+          "serialization_type": "json",
+          "type_schema": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/PayoutView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "get_campaign_payout_accounting",
+        "kind": "view",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "campaign_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            }
+          ]
+        },
+        "result": {
+          "serialization_type": "json",
+          "type_schema": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/CampaignPayoutAccounting"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "get_owner",
+        "kind": "view",
+        "result": {
+          "serialization_type": "json",
+          "type_schema": {
+            "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+            "type": "string"
+          }
+        }
+      },
+      {
+        "name": "get_payout",
+        "kind": "view",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "payout_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            }
+          ]
+        },
+        "result": {
+          "serialization_type": "json",
+          "type_schema": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/PayoutView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "get_payout_by_idempotency",
+        "kind": "view",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "campaign_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            {
+              "name": "idempotency_key",
+              "type_schema": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "result": {
+          "serialization_type": "json",
+          "type_schema": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/PayoutView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "grant_role",
+        "doc": " Grant a non-owner role. The owner is the only grant authority and cannot self-grant.",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "account_id",
+              "type_schema": {
+                "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+                "type": "string"
+              }
+            },
+            {
+              "name": "role",
+              "type_schema": {
+                "$ref": "#/definitions/UserRole"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "has_role",
+        "doc": " The owner has implicit Owner and Administrator roles; other roles are explicit.",
+        "kind": "view",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "account_id",
+              "type_schema": {
+                "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+                "type": "string"
+              }
+            },
+            {
+              "name": "role",
+              "type_schema": {
+                "$ref": "#/definitions/UserRole"
+              }
+            }
+          ]
+        },
+        "result": {
+          "serialization_type": "json",
+          "type_schema": {
+            "type": "boolean"
+          }
+        }
+      },
+      {
+        "name": "is_accepted_token",
+        "kind": "view",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "token_id",
+              "type_schema": {
+                "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "result": {
+          "serialization_type": "json",
+          "type_schema": {
+            "type": "boolean"
+          }
+        }
+      },
+      {
+        "name": "is_paused",
+        "kind": "view",
+        "result": {
+          "serialization_type": "json",
+          "type_schema": {
+            "type": "boolean"
+          }
+        }
+      },
+      {
+        "name": "mark_payout_failed",
+        "doc": " Records a terminal execution failure. The privileged caller attests the supplied evidence;\n the contract does not independently query a source chain or verify the evidence reference.",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "payout_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            {
+              "name": "evidence",
+              "type_schema": {
+                "$ref": "#/definitions/ExecutionFailureEvidence"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "mark_payout_pending_verification",
+        "doc": " Records that execution was submitted or acknowledged; it is not settlement evidence.",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "payout_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "move_payout_to_manual_review",
+        "doc": " Paused contracts still allow an authorized operator to quarantine uncertain execution.",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "payout_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            {
+              "name": "reason",
+              "type_schema": {
+                "type": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "new",
+        "kind": "call",
+        "modifiers": [
+          "init"
+        ]
+      },
+      {
+        "name": "pause",
+        "kind": "call"
+      },
+      {
+        "name": "pause_campaign",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "campaign_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "release_failed_payout_reservation",
+        "doc": " Release a Failed payout's reservation after explicit verifier attestation of\n non-settlement. Existing failure evidence is required as the basis for review.",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "payout_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            {
+              "name": "evidence",
+              "type_schema": {
+                "$ref": "#/definitions/PayoutResolutionEvidence"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "release_manual_review_reservation",
+        "doc": " Release a ManualReview payout only after structured verifier attestation that it\n definitely did not settle. Uncertain outcomes must remain reserved for review.",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "payout_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            {
+              "name": "evidence",
+              "type_schema": {
+                "$ref": "#/definitions/PayoutResolutionEvidence"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "remove_accepted_token",
+        "doc": " Remove a token from future funding acceptance; campaign funding history is retained.",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "token_id",
+              "type_schema": {
+                "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+                "type": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "resume_campaign",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "campaign_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "revoke_role",
+        "doc": " Revoke a role; revoking an absent assignment fails clearly.",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "account_id",
+              "type_schema": {
+                "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+                "type": "string"
+              }
+            },
+            {
+              "name": "role",
+              "type_schema": {
+                "$ref": "#/definitions/UserRole"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "settle_payout",
+        "doc": " Settle only a pending payout based on an explicit trusted-verifier attestation.\n Settlement remains available while globally paused so already-submitted external\n executions can be reconciled. The contract matches normalized claims and updates\n reservation accounting, but does not independently verify the destination-chain\n transaction or content hash. Token decimals are not authoritative; equality uses token\n identity and atomic amount.",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "payout_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            {
+              "name": "evidence",
+              "type_schema": {
+                "$ref": "#/definitions/SettlementEvidence"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "start_payout_execution",
+        "doc": " Begin the off-chain execution phase. No transaction is submitted by this contract.",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "payout_id",
+              "type_schema": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            {
+              "name": "execution_reference",
+              "type_schema": {
+                "type": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "unpause",
+        "kind": "call"
+      }
+    ],
+    "root_schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "String",
+      "type": "string",
+      "definitions": {
+        "Campaign": {
+          "description": "Campaign accounting invariant for funded campaigns: reserved + spent <= funded <= budget. Approved budget is an authorization ceiling, not evidence of funds received.",
+          "type": "object",
+          "required": [
+            "budget",
+            "created_at_ns",
+            "creator_id",
+            "funded",
+            "id",
+            "reserved",
+            "spent",
+            "status",
+            "title",
+            "token_id"
+          ],
+          "properties": {
+            "budget": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "created_at_ns": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "creator_id": {
+              "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+              "type": "string"
+            },
+            "funded": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "reserved": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "spent": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "status": {
+              "$ref": "#/definitions/CampaignStatus"
+            },
+            "title": {
+              "type": "string"
+            },
+            "token_id": {
+              "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+              "type": "string"
+            }
+          }
+        },
+        "CampaignFundingInfo": {
+          "type": "object",
+          "required": [
+            "budget",
+            "campaign_id",
+            "funded",
+            "remaining_budget",
+            "token_id"
+          ],
+          "properties": {
+            "budget": {
+              "type": "string"
+            },
+            "campaign_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "funded": {
+              "type": "string"
+            },
+            "remaining_budget": {
+              "type": "string"
+            },
+            "token_id": {
+              "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+              "type": "string"
+            }
+          }
+        },
+        "CampaignPayoutAccounting": {
+          "type": "object",
+          "required": [
+            "available",
+            "budget",
+            "campaign_id",
+            "funded",
+            "reserved",
+            "spent"
+          ],
+          "properties": {
+            "available": {
+              "type": "string"
+            },
+            "budget": {
+              "type": "string"
+            },
+            "campaign_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "funded": {
+              "type": "string"
+            },
+            "reserved": {
+              "type": "string"
+            },
+            "spent": {
+              "type": "string"
+            }
+          }
+        },
+        "CampaignStatus": {
+          "type": "string",
+          "enum": [
+            "Draft",
+            "Active",
+            "Paused",
+            "Completed",
+            "Cancelled",
+            "Approved"
+          ]
+        },
+        "ChainId": {
+          "type": "string"
+        },
+        "ExecutionFailureEvidence": {
+          "type": "object",
+          "required": [
+            "evidence_reference",
+            "kind",
+            "reason"
+          ],
+          "properties": {
+            "evidence_reference": {
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/definitions/ExecutionFailureKind"
+            },
+            "reason": {
+              "type": "string"
+            }
+          }
+        },
+        "ExecutionFailureKind": {
+          "oneOf": [
+            {
+              "description": "The transaction was conclusively rejected before any broadcast occurred.",
+              "type": "string",
+              "enum": [
+                "RejectedBeforeSubmission"
+              ]
+            },
+            {
+              "description": "The source-chain transaction has a terminal reverted/failed result.",
+              "type": "string",
+              "enum": [
+                "TransactionReverted"
+              ]
+            }
+          ]
+        },
+        "ExternalExecutionIdentity": {
+          "description": "Provider-scoped external execution identity used by settlement and recovery replay checks.",
+          "type": "object",
+          "required": [
+            "destination_chain_id",
+            "execution_reference",
+            "provider_id"
+          ],
+          "properties": {
+            "destination_chain_id": {
+              "$ref": "#/definitions/ChainId"
+            },
+            "execution_reference": {
+              "type": "string"
+            },
+            "provider_id": {
+              "type": "string"
+            },
+            "transaction_event_identifier": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "PayoutDestination": {
+          "type": "object",
+          "required": [
+            "chain_id",
+            "recipient_address"
+          ],
+          "properties": {
+            "chain_id": {
+              "$ref": "#/definitions/ChainId"
+            },
+            "recipient_address": {
+              "$ref": "#/definitions/RecipientAddress"
+            }
+          }
+        },
+        "PayoutResolutionEvidence": {
+          "description": "A verifier's bounded attestation resolving a failed or manually reviewed payout. This is an audit record, not a trustless proof of external-chain state.",
+          "type": "object",
+          "required": [
+            "content_hash",
+            "evidence_reference",
+            "outcome",
+            "payout_id",
+            "reason",
+            "verification_method",
+            "verified_at_ns",
+            "verifier_id"
+          ],
+          "properties": {
+            "content_hash": {
+              "description": "SHA-256 digest of the off-chain evidence payload as 64 lowercase hex characters.",
+              "type": "string"
+            },
+            "evidence_reference": {
+              "type": "string"
+            },
+            "external_execution": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ExternalExecutionIdentity"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "outcome": {
+              "$ref": "#/definitions/PayoutResolutionOutcome"
+            },
+            "payout_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "reason": {
+              "type": "string"
+            },
+            "verification_method": {
+              "type": "string"
+            },
+            "verified_at_ns": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "verifier_id": {
+              "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+              "type": "string"
+            }
+          }
+        },
+        "PayoutResolutionOutcome": {
+          "type": "string",
+          "enum": [
+            "ExecutionConfirmed",
+            "NonSettlementConfirmed"
+          ]
+        },
+        "PayoutStatus": {
+          "type": "string",
+          "enum": [
+            "Created",
+            "Authorized",
+            "Reserved",
+            "Executing",
+            "PendingVerification",
+            "Succeeded",
+            "Failed",
+            "RefundPending",
+            "Refunded",
+            "ManualReview",
+            "ReservationReleased"
+          ]
+        },
+        "PayoutView": {
+          "type": "object",
+          "required": [
+            "campaign_id",
+            "created_at_ns",
+            "destination",
+            "expected_output_amount",
+            "id",
+            "input_amount",
+            "resolution_evidence",
+            "status"
+          ],
+          "properties": {
+            "campaign_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "created_at_ns": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "destination": {
+              "$ref": "#/definitions/PayoutDestination"
+            },
+            "execution_reference": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "expected_output_amount": {
+              "$ref": "#/definitions/TokenAmountView"
+            },
+            "failure_evidence": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ExecutionFailureEvidence"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "input_amount": {
+              "$ref": "#/definitions/TokenAmountView"
+            },
+            "lifecycle_reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "recipient_near_account_id": {
+              "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "resolution_evidence": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/PayoutResolutionEvidence"
+              }
+            },
+            "settlement_evidence": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/SettlementEvidence"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "settlement_evidence_reference": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "$ref": "#/definitions/PayoutStatus"
+            }
+          }
+        },
+        "PromiseOrValueString": {
+          "type": "string"
+        },
+        "RecipientAddress": {
+          "type": "string"
+        },
+        "SettlementEvidence": {
+          "description": "Evidence is a claim supplied by an authorized verifier. The contract cannot itself prove arbitrary destination-chain execution from this representation alone.",
+          "type": "object",
+          "required": [
+            "content_hash",
+            "destination_chain_id",
+            "destination_transaction_reference",
+            "output_amount",
+            "payout_id",
+            "provider_id",
+            "recipient_address",
+            "verification_method",
+            "verified_at_ns",
+            "verifier_id"
+          ],
+          "properties": {
+            "content_hash": {
+              "description": "SHA-256 digest of the off-chain evidence payload, encoded as 64 lowercase hex characters.",
+              "type": "string"
+            },
+            "destination_chain_id": {
+              "$ref": "#/definitions/ChainId"
+            },
+            "destination_transaction_reference": {
+              "description": "Transaction or execution identifier assigned by the destination chain/provider.",
+              "type": "string"
+            },
+            "evidence_reference": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "output_amount": {
+              "$ref": "#/definitions/TokenAmount"
+            },
+            "payout_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "provider_id": {
+              "description": "Stable source or settlement provider namespace, such as `near-intents` or `evm`.",
+              "type": "string"
+            },
+            "recipient_address": {
+              "$ref": "#/definitions/RecipientAddress"
+            },
+            "transaction_event_identifier": {
+              "description": "Optional event/log identifier; for EVM this can be the transfer log index.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "verification_method": {
+              "type": "string"
+            },
+            "verified_at_ns": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "verifier_id": {
+              "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+              "type": "string"
+            }
+          }
+        },
+        "TokenAmount": {
+          "description": "An integer quantity in a token's smallest units, tied to its identity and decimals. No cross-token arithmetic or ordering is provided.",
+          "type": "object",
+          "required": [
+            "atomic_amount",
+            "decimals",
+            "token_id"
+          ],
+          "properties": {
+            "atomic_amount": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "decimals": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            },
+            "token_id": {
+              "$ref": "#/definitions/TokenId"
+            }
+          }
+        },
+        "TokenAmountView": {
+          "type": "object",
+          "required": [
+            "atomic_amount",
+            "decimals",
+            "token_id"
+          ],
+          "properties": {
+            "atomic_amount": {
+              "type": "string"
+            },
+            "decimals": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            },
+            "token_id": {
+              "$ref": "#/definitions/TokenId"
+            }
+          }
+        },
+        "TokenId": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "Near"
+              ],
+              "properties": {
+                "Near": {
+                  "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "External"
+              ],
+              "properties": {
+                "External": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "UserRole": {
+          "type": "string",
+          "enum": [
+            "Owner",
+            "Administrator",
+            "Operator",
+            "Verifier"
+          ]
+        }
+      }
+    }
+  }
+}
