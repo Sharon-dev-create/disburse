@@ -1,0 +1,119 @@
+[
+  {
+    "path": "/healthz",
+    "method": "GET",
+    "status": 200,
+    "body": {
+      "status": "ok"
+    }
+  },
+  {
+    "path": "/v1/contract",
+    "method": "GET",
+    "status": 401,
+    "body": {
+      "error": {
+        "code": "unauthorized",
+        "message": "Authentication is required."
+      }
+    }
+  },
+  {
+    "path": "/v1/contract",
+    "method": "GET",
+    "status": 200,
+    "body": {
+      "data": {
+        "networkId": "testnet",
+        "contractId": "disburse-test-contract.testnet",
+        "codeHash": "CJUcu5UqBYA4ZV47TJMABQJWc7MdvdaYYMNdDeB1mxcf",
+        "ownerId": "disburse-topg.testnet",
+        "paused": false,
+        "campaignCount": "0",
+        "payoutCount": "0",
+        "payoutCountSource": "inferred_from_zero_campaigns",
+        "readOnly": true
+      },
+      "meta": {
+        "readAt": "2026-11-15T05:24:49.916Z"
+      }
+    }
+  },
+  {
+    "path": "/v1/campaigns/0/accounting",
+    "method": "GET",
+    "status": 404,
+    "body": {
+      "error": {
+        "code": "campaign_not_found",
+        "message": "The campaign does not exist on the configured contract."
+      }
+    }
+  },
+  {
+    "path": "/v1/campaigns/0/payouts",
+    "method": "GET",
+    "status": 404,
+    "body": {
+      "error": {
+        "code": "campaign_not_found",
+        "message": "The campaign does not exist on the configured contract."
+      }
+    }
+  },
+  {
+    "path": "/v1/payouts/0",
+    "method": "GET",
+    "status": 404,
+    "body": {
+      "error": {
+        "code": "payout_not_found",
+        "message": "The payout does not exist on the configured contract."
+      }
+    }
+  },
+  {
+    "path": "/v1/campaigns",
+    "method": "POST",
+    "status": 403,
+    "body": {
+      "error": {
+        "code": "read_only_mode",
+        "message": "This operation is unavailable in active Testnet read-only mode."
+      }
+    }
+  },
+  {
+    "path": "/v1/payouts/0/execute",
+    "method": "POST",
+    "status": 403,
+    "body": {
+      "error": {
+        "code": "read_only_mode",
+        "message": "This operation is unavailable in active Testnet read-only mode."
+      }
+    }
+  },
+  {
+    "path": "/v1/payouts/0/retry",
+    "method": "GET",
+    "status": 403,
+    "body": {
+      "error": {
+        "code": "read_only_mode",
+        "message": "This operation is unavailable in active Testnet read-only mode."
+      }
+    }
+  },
+  {
+    "path": "/v1/refunds",
+    "method": "POST",
+    "status": 403,
+    "body": {
+      "error": {
+        "code": "read_only_mode",
+        "message": "This operation is unavailable in active Testnet read-only mode."
+      }
+    }
+  }
+]

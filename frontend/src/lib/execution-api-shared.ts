@@ -200,3 +200,15 @@ export function getExecutionStateLabel(state: ExecutionJobState): string {
 function groupInteger(value: string): string {
   return value.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
+
+export interface ContractStatus {
+  readonly networkId: "testnet" | "mainnet";
+  readonly contractId: string;
+  readonly codeHash: string;
+  readonly ownerId: string;
+  readonly paused: boolean;
+  readonly campaignCount: string;
+  readonly payoutCount: string | null;
+  readonly payoutCountSource: "inferred_from_zero_campaigns";
+  readonly readOnly: true;
+}

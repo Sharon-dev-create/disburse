@@ -2,6 +2,11 @@
 
 Audit date: 2026-11-14, Africa/Douala. Scope: Phases 1–7 only.
 
+**Latest status (2026-11-15): PASS for isolated read-only setup/integration.**
+See the [active read-only integration report](milestone-2-active-read-only-integration.md)
+for final verification, browser evidence and the remaining Turbopack environment
+limitation. Earlier audit verdicts below are historical. Milestone 3 is not authorized.
+
 ## 1. Milestone verdict
 
 **PARTIAL PASS — audit and staged plan completed; setup awaits approval.**

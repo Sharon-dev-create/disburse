@@ -4,6 +4,7 @@ import {
   ExecutionApiError,
 } from "./execution-api-shared";
 import type {
+  ContractStatus,
   CampaignAccounting,
   CampaignPayoutList,
   ContractPayoutStatus,
@@ -75,6 +76,32 @@ export class ExecutionApiClient {
         "The execution service timeout configuration is invalid.",
       );
     }
+  }
+
+  getContractStatus(): Promise<ContractStatus> {
+    return this.get(
+      "/v1/contract",
+      (body) => {
+        if (!isRecord(body) || !isRecord(body.data)) return null;
+        const v = body.data;
+        if (
+          !["testnet", "mainnet"].includes(String(v.networkId)) ||
+          !isSafeText(v.contractId, 64) ||
+          !isSafeText(v.ownerId, 64) ||
+          typeof v.codeHash !== "string" ||
+          !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(v.codeHash) ||
+          typeof v.paused !== "boolean" ||
+          !isU64(v.campaignCount) ||
+          !(v.payoutCount === null || v.payoutCount === "0") ||
+          (v.payoutCount === "0" && v.campaignCount !== "0") ||
+          v.payoutCountSource !== "inferred_from_zero_campaigns" ||
+          v.readOnly !== true
+        )
+          return null;
+        return v as unknown as ContractStatus;
+      },
+      30_000,
+    );
   }
 
   getCampaignAccounting(campaignId: string): Promise<CampaignAccounting> {
@@ -171,9 +198,10 @@ export class ExecutionApiClient {
   private async get<T>(
     path: string,
     validate: (value: unknown) => T | null,
+    timeoutMs = this.timeoutMs,
   ): Promise<T> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
       let response: Response;
       try {

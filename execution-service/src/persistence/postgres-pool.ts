@@ -5,9 +5,20 @@ import type {
 } from "./postgres-security-repositories.ts";
 import type { PostgresRuntimeConfig } from "./postgres-config.ts";
 
-export function createPostgresPool(config: PostgresRuntimeConfig): Pool {
+export function createPostgresPool(
+  config: PostgresRuntimeConfig,
+  options: { readOnly?: boolean } = {},
+): Pool {
+  const url = new URL(config.connectionString);
+  if (options.readOnly)
+    url.searchParams.set("options", "-c default_transaction_read_only=on");
   return new Pool({
-    connectionString: config.connectionString,
+    ...(options.readOnly
+      ? { options: "-c default_transaction_read_only=on" }
+      : {}),
+    connectionString: options.readOnly
+      ? url.toString()
+      : config.connectionString,
     max: config.maxConnections,
     connectionTimeoutMillis: config.connectionTimeoutMs,
     query_timeout: config.queryTimeoutMs,

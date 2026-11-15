@@ -6,7 +6,10 @@ import {
   NearContractReader,
   type NearRpcTransport,
 } from "../near/rpc.ts";
-import { applyPostgresMigrations } from "../persistence/postgres-migrations.ts";
+import {
+  assertPostgresMigrationsCurrent,
+  applyPostgresMigrations,
+} from "../persistence/postgres-migrations.ts";
 import { PostgresJobRepository } from "../persistence/postgres-job-repository.ts";
 import {
   createPostgresPool,
@@ -30,6 +33,7 @@ export interface ExecutionHostLogger {
 export interface ExecutionHostDependencies {
   createPool(config: ExecutionHostConfig): Pool;
   applyMigrations(pool: Pool): Promise<unknown>;
+  assertMigrations(pool: Pool): Promise<void>;
   createJobsRepository(pool: Pool): PostgresJobRepository;
   createTransport(config: ExecutionHostConfig): NearRpcTransport;
   createReader(
@@ -45,8 +49,11 @@ const silentLogger: ExecutionHostLogger = {
 
 const defaultDependencies: ExecutionHostDependencies = {
   createPool(config) {
-    return createPostgresPool(config.postgres);
+    return createPostgresPool(config.postgres, {
+      readOnly: config.activeTestnetReadOnly === true,
+    });
   },
+  assertMigrations: assertPostgresMigrationsCurrent,
   applyMigrations(pool) {
     return applyPostgresMigrations(pool);
   },
@@ -105,8 +112,11 @@ export async function startExecutionHost(
 
   try {
     await pool.query("SELECT 1");
-    const migration = (await deps.applyMigrations(pool)) as
-      { applied?: readonly string[] } | undefined;
+    const migration = (
+      config.activeTestnetReadOnly
+        ? await deps.assertMigrations(pool)
+        : await deps.applyMigrations(pool)
+    ) as { applied?: readonly string[] } | undefined;
     logger.info(
       migration?.applied && migration.applied.length > 0
         ? `Applied PostgreSQL migrations: ${migration.applied.join(", ")}`
@@ -120,12 +130,22 @@ export async function startExecutionHost(
     server = await startExecutionApiServer(
       {
         reader,
-        jobs,
+        // Pass only read capabilities; the host never composes a worker or signer.
+        jobs: {
+          getByPayout: (key) => jobs.getByPayout(key),
+          listByCampaign: (scope, id, limit) =>
+            jobs.listByCampaign(scope, id, limit),
+        },
+        activeTestnetReadOnly: config.activeTestnetReadOnly === true,
         authorize: createDemoBearerAuthorizer(config.demoApiToken),
       },
       { host: config.httpHost, port: config.httpPort },
     );
 
+    if (config.activeTestnetReadOnly)
+      logger.info(
+        "Active Testnet read-only mode enabled: disburse-test-contract.testnet; execution/signing/workers disabled.",
+      );
     logger.info(
       `Execution service listening on http://${config.httpHost}:${boundPort(server)}`,
     );

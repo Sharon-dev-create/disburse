@@ -9,7 +9,7 @@ export default function DashboardHeader({ showTitle = true }: { showTitle?: bool
         {showTitle ? <h1 className="mt-2 text-2xl font-medium tracking-[-0.04em] text-ink sm:text-3xl">Financial overview</h1> : null}
       </div>
       <p className="rounded-full border border-hairline bg-white px-3 py-2 text-xs text-ink/60">
-        Illustrative workspace
+        Read-only workspace
       </p>
     </header>
   );

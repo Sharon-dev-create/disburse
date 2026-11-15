@@ -168,3 +168,99 @@ DISBURSE_TEST_DATABASE_URL=postgresql://disburse_test:...@127.0.0.1:5432/disburs
 - Real-money/mainnet payout execution is explicitly out of scope.
 
 See also: `docs/execution-service-api.md`, `docs/execution-service-development.md`, and related docs in `../docs/`.
+
+## Active Testnet read-only integration
+
+The default host still requires a paused contract. That is the existing demo
+startup safety gate, not a requirement imposed by NEAR read-only views.
+`DISBURSE_ACTIVE_TESTNET_READ_ONLY=true` explicitly enables a narrower local mode
+for the unpaused `disburse-test-contract.testnet` deployment only. It rejects
+Mainnet, other contracts, production database/Node targets and non-loopback
+binding. The expected code hash is pinned in source:
+`CJUcu5UqBYA4ZV47TJMABQJWc7MdvdaYYMNdDeB1mxcf`.
+
+Startup independently checks RPC network, deployed code, owner
+`disburse-topg.testnet`, pause response, accepted token
+`usdc.tidepool-sandbox.testnet` and explicit Operator
+`disburse-op-b966e36d.testnet`. It fails closed on mismatches or RPC failure.
+The authenticated status route rereads code/owner/pause/campaign count; it does
+not repeat startup role/token queries on every render. No original-contract or
+network fallback exists.
+
+In this mode PostgreSQL connections default to read-only (including when a URL
+tries to override it). Startup **checks existing migration checksums only**; it
+never applies migrations. Provision development/test migrations separately using
+the existing documented process. No production database is supported by this mode.
+
+The host composes only HTTP reads, a read-only NEAR transport, and a projection
+of the repository's `getByPayout` / `listByCampaign` capabilities. It does not
+import or start provider execution, signing, authorization creation, discovery
+writes, workers, queues, scheduled jobs, lease recovery, retries or refunds.
+Library provider/discovery interfaces elsewhere in the repository are not wired
+into this process. Enabling the mode does not authorize a separate script to use
+those libraries or to write the chain/database.
+
+Allowed routes are explicit, and only GET is accepted:
+
+| Route | Authentication | Effect |
+| --- | --- | --- |
+| `/healthz` | Public | Liveness only |
+| `/v1/contract` | Bearer | Verified identity, code, owner, pause and campaign count |
+| `/v1/payouts/:payoutId` | Bearer | Contract payout view |
+| `/v1/campaigns/:campaignId/accounting` | Bearer | Contract accounting and token metadata |
+| `/v1/campaigns/:campaignId/payouts` | Bearer | Persisted job list for an existing campaign |
+| `/v1/campaigns/:campaignId/payouts/:payoutId` | Bearer | Scoped contract payout view |
+| `/v1/campaigns/:campaignId/payouts/:payoutId/execution` | Bearer | Persisted job/attempt reads |
+
+All other routes/methods are denied in restricted mode with HTTP 403 and
+`error.code=read_only_mode`, after authentication. Requests with query strings or
+bodies on read routes remain invalid. No database write, enqueue, execution,
+signing or administrative endpoint is available. Existing bearer authorization
+and input/response validation remain in force. Status responses are no-store.
+There is no payout-count ABI: zero payouts is explicitly inferred only when the
+reviewed code and zero campaign count establish it; otherwise the count is null.
+Do not treat persisted jobs or provider claims as settlement evidence.
+
+### Reversible local startup (no environment file edits)
+
+From `execution-service/`, with the existing private `.env` and migrated local DB:
+
+```sh
+env DISBURSE_API_PORT=4100 DISBURSE_ACTIVE_TESTNET_READ_ONLY=true \
+  DISBURSE_CONTRACT_ID=disburse-test-contract.testnet NEAR_NETWORK=testnet \
+  NEAR_RPC_ENDPOINT=https://rpc.testnet.fastnear.com DISBURSE_NEAR_RPC_TIMEOUT_MS=25000 \
+  node --dns-result-order=ipv4first --network-family-autoselection-attempt-timeout=2000 \
+  --env-file=.env --experimental-strip-types src/host.ts
+```
+
+This explicitly selects the isolated contract for this process only. Existing
+`.env`, credentials, PostgreSQL settings and any original-contract service remain
+unchanged. The runtime IPv4 settings address the local network restriction noted
+in Milestone 1. No automatic RPC retries or provider switch was added.
+
+From `frontend/`, after `pnpm exec next build --webpack`:
+
+```sh
+env DISBURSE_EXECUTION_API_BASE_URL=http://127.0.0.1:4100 \
+  node --env-file=.env.local node_modules/next/dist/bin/next start \
+  --hostname 127.0.0.1 --port 3100
+```
+
+The existing matching demo token stays in the server environment; it is forwarded
+only from the Next server to the API. Never use a NEXT_PUBLIC secret. The dashboard,
+campaign and payout pages read `/v1/contract`; unauthorized/unavailable responses
+produce errors instead of fabricated zero counts. Status reads have a bounded
+30-second frontend timeout; existing record reads retain their 8-second default.
+Creation route layouts withhold the old illustrative forms, and mutation controls
+are disabled. Numeric-ID detail reads remain available. Existing explicitly
+illustrative detail/recipient pages are not authoritative chain data.
+
+Visit `/`, `/dashboard`, `/dashboard/campaigns`, `/dashboard/payouts`, and a
+numeric missing record. Verify network/contract/pause/counts, disabled controls,
+empty/error states and bearer rejection. The browser must not call port 4100
+directly or contain the server token in requests, HTML or client bundles.
+
+Disable by stopping these local processes and omitting the flag (or setting it
+false) on the next startup. The normal paused requirement resumes. No chain
+pause/unpause is needed to stop this mode. This mode is **not** a production
+execution configuration and adds no signing or settlement support.

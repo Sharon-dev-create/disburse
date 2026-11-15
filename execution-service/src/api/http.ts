@@ -1,4 +1,8 @@
 import {
+  readContractStatus,
+  verifyActiveTestnet,
+} from "../near/active-testnet.ts";
+import {
   createServer,
   type IncomingMessage,
   type Server,
@@ -6,6 +10,15 @@ import {
 } from "node:http";
 import { NearRpcError, type NearContractReader } from "../near/rpc.ts";
 import type { PersistedExecutionJob } from "../persistence/repository.ts";
+
+const READ_ONLY_ROUTES = [
+  /^\/v1\/contract$/,
+  /^\/v1\/payouts\/[^/]+$/,
+  /^\/v1\/campaigns\/[^/]+\/accounting$/,
+  /^\/v1\/campaigns\/[^/]+\/payouts$/,
+  /^\/v1\/campaigns\/[^/]+\/payouts\/[^/]+$/,
+  /^\/v1\/campaigns\/[^/]+\/payouts\/[^/]+\/execution$/,
+];
 
 const U64_MAX = (1n << 64n) - 1n;
 const MAX_CAMPAIGN_JOBS = 100;
@@ -60,6 +73,7 @@ const ATTEMPT_OUTCOMES = [
 
 export interface ExecutionApiOptions {
   readonly reader: NearContractReader;
+  readonly activeTestnetReadOnly?: boolean;
   readonly authorize: (request: IncomingMessage) => boolean | Promise<boolean>;
   readonly jobs?: {
     getByPayout(key: {
@@ -86,14 +100,17 @@ export async function startExecutionApiServer(
   listen: ExecutionApiListenOptions,
 ): Promise<Server> {
   validateOptions(options, listen);
-  await options.reader.verifyNetwork();
-  const paused = await options.reader.isPaused();
-  if (paused !== true) {
-    throw new Error(
-      "Configured contract must be paused for read-only host startup.",
-    );
+  if (options.activeTestnetReadOnly) {
+    await verifyActiveTestnet(options.reader);
+  } else {
+    await options.reader.verifyNetwork();
+    const paused = await options.reader.isPaused();
+    if (paused !== true) {
+      throw new Error(
+        "Configured contract must be paused for read-only host startup.",
+      );
+    }
   }
-
   const server = createExecutionApiServer(options);
   await new Promise<void>((resolve, reject) => {
     const onError = (error: Error) => {
@@ -141,6 +158,22 @@ async function handleRequest(
     return;
   }
 
+  // Route-level capability boundary: unknown and future routes are denied too.
+  if (
+    options.activeTestnetReadOnly &&
+    (request.method !== "GET" ||
+      !READ_ONLY_ROUTES.some((route) => route.test(pathname)))
+  ) {
+    request.resume();
+    sendError(
+      response,
+      403,
+      "read_only_mode",
+      "This operation is unavailable in active Testnet read-only mode.",
+    );
+    return;
+  }
+
   if (request.method !== "GET") {
     response.setHeader("allow", "GET");
     sendError(
@@ -159,6 +192,17 @@ async function handleRequest(
       "invalid_request",
       "This endpoint does not accept a body or query parameters.",
     );
+    return;
+  }
+
+  if (pathname === "/v1/contract") {
+    const status = options.activeTestnetReadOnly
+      ? await verifyActiveTestnet(options.reader, false)
+      : await readContractStatus(options.reader);
+    sendJson(response, 200, {
+      data: status,
+      meta: { readAt: (options.now?.() ?? new Date()).toISOString() },
+    });
     return;
   }
 

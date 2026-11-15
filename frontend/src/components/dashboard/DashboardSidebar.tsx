@@ -58,7 +58,7 @@ export default function DashboardSidebar() {
         <div className="mt-auto rounded-xl border border-hairline bg-white p-4">
           <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-mist">Workspace</p>
           <p className="mt-1 text-sm font-medium text-ink">Cedar Collective</p>
-          <p className="mt-2 text-xs leading-5 text-ink/60">Demo workspace with illustrative financial data.</p>
+          <p className="mt-2 text-xs leading-5 text-ink/60">Read-only workspace. Verified contract data appears on the dashboard.</p>
         </div>
       </aside>
 

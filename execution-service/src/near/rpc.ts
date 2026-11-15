@@ -13,6 +13,7 @@ export interface NearRpcTransport {
     args: Readonly<Record<string, unknown>>,
   ): Promise<unknown>;
   getNetworkId?(): Promise<string>;
+  getCodeHash?(contractId: string): Promise<string>;
 }
 
 export class NearRpcError extends Error {
@@ -64,6 +65,57 @@ export class HttpNearRpcTransport implements NearRpcTransport {
     }
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) {
       throw new Error("RPC timeout must be a positive safe integer");
+    }
+  }
+
+  async getCodeHash(contractId: string): Promise<string> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const response = await this.fetchImpl(this.endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: ++this.requestId,
+          method: "query",
+          params: {
+            request_type: "view_account",
+            finality: "final",
+            account_id: contractId,
+          },
+        }),
+      });
+      if (response.status === 429)
+        throw new NearRpcError(
+          "rate-limited",
+          "NEAR RPC rate limit was reached",
+        );
+      if (!response.ok)
+        throw new NearRpcError("unavailable", "NEAR account query failed");
+      const body: unknown = await response.json();
+      if (
+        !isRecord(body) ||
+        "error" in body ||
+        !isRecord(body.result) ||
+        typeof body.result.code_hash !== "string" ||
+        !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(body.result.code_hash)
+      ) {
+        throw new NearRpcError(
+          "malformed",
+          "NEAR account query has no valid code hash",
+        );
+      }
+      return body.result.code_hash;
+    } catch (error) {
+      if (error instanceof NearRpcError) throw error;
+      throw new NearRpcError(
+        controller.signal.aborted ? "timeout" : "unavailable",
+        "NEAR account query failed",
+      );
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
@@ -236,6 +288,35 @@ export class NearContractReader implements ContractReader {
     if (!config.networkId.trim() || !config.contractId.trim()) {
       throw new Error("NEAR network and contract identifiers are required");
     }
+  }
+
+  async getCodeHash(): Promise<string> {
+    if (!this.rpc.getCodeHash)
+      throw new NearRpcError(
+        "malformed",
+        "RPC transport cannot verify contract code",
+      );
+    return this.rpc.getCodeHash(this.config.contractId);
+  }
+
+  async getOwner(): Promise<string> {
+    const value = await this.call("get_owner", {});
+    if (typeof value !== "string") throw malformed("Invalid contract owner");
+    return value;
+  }
+
+  async getCampaignCount(): Promise<string> {
+    return asU64String(
+      await this.call("get_campaign_count", {}),
+      "campaign count",
+    );
+  }
+
+  async isAcceptedToken(tokenId: string): Promise<boolean> {
+    const value = await this.call("is_accepted_token", { token_id: tokenId });
+    if (typeof value !== "boolean")
+      throw malformed("Invalid token allowlist response");
+    return value;
   }
 
   async getPayout(payoutId: PayoutId): Promise<NearPayoutView | null> {

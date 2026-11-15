@@ -1,3 +1,4 @@
+import { assertActiveTestnetIdentity } from "../near/active-testnet.ts";
 import {
   loadPostgresRuntimeConfig,
   type PostgresRuntimeConfig,
@@ -14,6 +15,7 @@ export interface ExecutionHostConfig {
   readonly contractAccountId: string;
   readonly demoApiToken: string;
   readonly nearRpcTimeoutMs: number;
+  readonly activeTestnetReadOnly?: boolean;
 }
 
 export class HostConfigError extends Error {
@@ -50,6 +52,30 @@ export function loadExecutionHostConfig(
   const contractAccountId = readRequired(environment, "DISBURSE_CONTRACT_ID");
   validateContractAccountId(nearNetworkId, contractAccountId);
 
+  const mode = environment.DISBURSE_ACTIVE_TESTNET_READ_ONLY;
+  if (mode !== undefined && mode !== "true" && mode !== "false") {
+    throw new HostConfigError(
+      "DISBURSE_ACTIVE_TESTNET_READ_ONLY must be true or false.",
+    );
+  }
+  const activeTestnetReadOnly = mode === "true";
+  if (activeTestnetReadOnly) {
+    assertActiveTestnetIdentity(nearNetworkId, contractAccountId);
+    if (
+      postgresTarget === "production" ||
+      environment.NODE_ENV === "production"
+    ) {
+      throw new HostConfigError(
+        "Active Testnet read-only mode is local/demo only.",
+      );
+    }
+    if (!["127.0.0.1", "::1", "localhost"].includes(httpHost)) {
+      throw new HostConfigError(
+        "Active Testnet read-only mode requires loopback binding.",
+      );
+    }
+  }
+
   const demoApiToken = readRequired(
     environment,
     "DISBURSE_EXECUTION_API_DEMO_TOKEN",
@@ -75,6 +101,7 @@ export function loadExecutionHostConfig(
     contractAccountId,
     demoApiToken,
     nearRpcTimeoutMs,
+    activeTestnetReadOnly,
   });
 }
 
