@@ -1,0 +1,90 @@
+{
+  "gate": "M4-A",
+  "verdict": "READY FOR APPROVAL",
+  "approval_status": "NOT_APPROVED",
+  "proposal_only": true,
+  "created_at_utc": "2026-11-15T13:45:10.135428+00:00",
+  "repository_revision": "4361b82cf66834021516c1d22347bf0c79e2e4e0",
+  "network": "testnet",
+  "signer_id": "disburse-op-b966e36d.testnet",
+  "expected_public_key": "ed25519:AWTKGeMdxfne1dnx9PoRK8ABVBegkQpisyXoyYQQu5X8",
+  "receiver_id": "disburse-test-contract.testnet",
+  "actions": [
+    {
+      "FunctionCall": {
+        "method_name": "activate_campaign",
+        "args": {
+          "campaign_id": 0
+        },
+        "args_json": "{\"campaign_id\":0}",
+        "args_base64": "eyJjYW1wYWlnbl9pZCI6MH0=",
+        "gas": "30000000000000",
+        "deposit": "0"
+      }
+    }
+  ],
+  "expected_code_hash": "CJUcu5UqBYA4ZV47TJMABQJWc7MdvdaYYMNdDeB1mxcf",
+  "precondition": {
+    "campaign_id": 0,
+    "status": "Approved",
+    "owner": "disburse-topg.testnet",
+    "paused": false,
+    "operator_role": true,
+    "campaign_count": 1,
+    "payout_count": 0,
+    "token_id": "usdc.tidepool-sandbox.testnet",
+    "accepted_token": true,
+    "accounting": {
+      "campaign_id": 0,
+      "budget": "1000000",
+      "funded": "1000000",
+      "reserved": "0",
+      "spent": "0",
+      "available": "1000000"
+    },
+    "operator_token_balance": "99000000",
+    "contract_token_balance": "1000000"
+  },
+  "expected_next_status": "Active",
+  "expected_accounting": {
+    "campaign_id": 0,
+    "budget": "1000000",
+    "funded": "1000000",
+    "reserved": "0",
+    "spent": "0",
+    "available": "1000000"
+  },
+  "expected_event": {
+    "standard": "disburse",
+    "version": "1.0.0",
+    "event": "campaign_activated",
+    "data": [
+      {
+        "campaign_id": 0,
+        "actor_id": "disburse-op-b966e36d.testnet"
+      }
+    ]
+  },
+  "expected_token_balances_unchanged": true,
+  "expected_configuration_unchanged": true,
+  "required_caller": "predecessor_account_id must have explicit Operator role; direct Operator transaction proposed",
+  "gas_justification": "30 Tgas conservative cap for existing same-size campaign record update and event, no promises or token transfers; not an exact simulation-derived estimate",
+  "storage": "Existing campaign record same Borsh size; no new record or storage deposit",
+  "nonce_and_block_hash": "Deliberately unset; obtain fresh only after separate execution approval",
+  "simulation": "98 local tests passed; no live activation view probe or signing performed",
+  "provenance_validation": "preflight-validation.json",
+  "fresh_preflight_required_before_any_future_signature": true,
+  "post_execution_verification": [
+    "Independent tx FINAL and all receipt outcomes successful",
+    "Exact signer,receiver,method,args,deposit,gas; one campaign_activated event, no token transfer event",
+    "Campaign 0 status Active; every other Campaign field unchanged",
+    "Accounting and token balances equal precondition",
+    "Campaign count1,payout counter0, no payout records",
+    "Code hash,owner,pause,roles,allowlist unchanged",
+    "Global STATE unchanged and exactly campaign0 status Borsh discriminant5->1; no other storage differences",
+    "Protected original contract state/code unchanged; Operator key nonce/NEAR changes only expected fee effects"
+  ],
+  "cli_command_documentation_only": "near contract call-function as-transaction disburse-test-contract.testnet activate_campaign json-args '{\"campaign_id\":0}' prepaid-gas '30 Tgas' attached-deposit '0 NEAR' sign-as disburse-op-b966e36d.testnet network-config testnet sign-with-legacy-keychain send",
+  "signed": false,
+  "submitted": false
+}

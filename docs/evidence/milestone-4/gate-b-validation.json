@@ -1,0 +1,60 @@
+{
+  "verdict": "BLOCKED",
+  "inspected_at_utc": "2026-11-15T16:30:45.506326+00:00",
+  "repository_revision": "4361b82cf66834021516c1d22347bf0c79e2e4e0",
+  "initial_worktree": "Existing untracked M4-A documentation/evidence; no tracked modifications",
+  "blockers": [
+    "Campaign0 is Approved, not Active; M4-A activation not evidenced on chain",
+    "No approved controlled recipient, destination/output token or compatible Testnet Intents route established"
+  ],
+  "instruction_limit": "Attachment ends mid-sentence in Phase F; remainder requested from user",
+  "code_hash": "CJUcu5UqBYA4ZV47TJMABQJWc7MdvdaYYMNdDeB1mxcf",
+  "wasm_matches_live_byte_for_byte": true,
+  "wasm_sha256": "a7eaa8a4f035ac34a75271a9dda3fabc9074c47e4908c8e315a432c6472ad530",
+  "live_abi_body_matches_local": true,
+  "provenance_limit": "Recorded M2 host build plus unchanged tracked source/lockfile and exact artifact match; no new independent hermetic rebuild",
+  "campaign": {
+    "id": 0,
+    "creator_id": "disburse-topg.testnet",
+    "title": "Disburse Milestone 3 funding verification",
+    "token_id": "usdc.tidepool-sandbox.testnet",
+    "budget": 1000000,
+    "funded": 1000000,
+    "reserved": 0,
+    "spent": 0,
+    "status": "Approved",
+    "created_at_ns": 1794722173685400100
+  },
+  "accounting": {
+    "campaign_id": 0,
+    "budget": "1000000",
+    "funded": "1000000",
+    "reserved": "0",
+    "spent": "0",
+    "available": "1000000"
+  },
+  "campaign_count": 1,
+  "payout_count": 0,
+  "payout_counter_source": "Borsh global STATE next_payout_id; get_payout0 null corroborates",
+  "operator_token_balance": "99000000",
+  "contract_token_balance": "1000000",
+  "protected_original_application_state_and_code_unchanged": true,
+  "idempotency_key": "m4b-campaign-0-first-payout-v1",
+  "idempotency_lookup": {
+    "jsonrpc": "2.0",
+    "result": {
+      "block_hash": "5Gtq9Q7xqHHicsjAVGR5EYPshXXqypanhpgiSt6AFNyJ",
+      "block_height": 277829455,
+      "logs": []
+    },
+    "id": "recovery-read-only",
+    "decoded": null
+  },
+  "conditional_amount_atomic": "100000",
+  "conditional_available_after_atomic": "900000",
+  "conditional_reserved_after_atomic": "100000",
+  "expected_first_payout_id_if_counter_unchanged": 0,
+  "expected_initial_persisted_status": "Reserved",
+  "rust_tests_passed": 98,
+  "no_transactions_signed_or_submitted": true
+}

@@ -1,0 +1,90 @@
+{
+  "verdict": "READY FOR APPROVAL",
+  "inspected_at_utc": "2026-11-15T13:45:10.135428+00:00",
+  "revision": "4361b82cf66834021516c1d22347bf0c79e2e4e0",
+  "initial_worktree": "clean main tracking origin/main",
+  "network": "testnet",
+  "campaign": {
+    "id": 0,
+    "creator_id": "disburse-topg.testnet",
+    "title": "Disburse Milestone 3 funding verification",
+    "token_id": "usdc.tidepool-sandbox.testnet",
+    "budget": 1000000,
+    "funded": 1000000,
+    "reserved": 0,
+    "spent": 0,
+    "status": "Approved",
+    "created_at_ns": 1794722173685400100
+  },
+  "accounting": {
+    "campaign_id": 0,
+    "budget": "1000000",
+    "funded": "1000000",
+    "reserved": "0",
+    "spent": "0",
+    "available": "1000000"
+  },
+  "funding": {
+    "campaign_id": 0,
+    "token_id": "usdc.tidepool-sandbox.testnet",
+    "budget": "1000000",
+    "funded": "1000000",
+    "remaining_budget": "0"
+  },
+  "campaign_count": 1,
+  "payout_count": 0,
+  "payout_counter_source": "Borsh STATE next_payout_id, with source-matching layout; get_payout(0) null is additional corroboration, not proof of total",
+  "operator_balance_atomic": "99000000",
+  "contract_balance_atomic": "1000000",
+  "original_state_code_storage_near_keys_unchanged_from_m3": true,
+  "isolated_state_unchanged_from_m3": true,
+  "live_code_hash": "CJUcu5UqBYA4ZV47TJMABQJWc7MdvdaYYMNdDeB1mxcf",
+  "wasm_sha256_hex": "a7eaa8a4f035ac34a75271a9dda3fabc9074c47e4908c8e315a432c6472ad530",
+  "wasm_bytes": 299058,
+  "live_wasm_equals_local": true,
+  "live_abi_body_equals_local": true,
+  "live_activation_abi": {
+    "name": "activate_campaign",
+    "kind": "call",
+    "params": {
+      "serialization_type": "json",
+      "args": [
+        {
+          "name": "campaign_id",
+          "type_schema": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        }
+      ]
+    }
+  },
+  "operator_public_key": "ed25519:AWTKGeMdxfne1dnx9PoRK8ABVBegkQpisyXoyYQQu5X8",
+  "keychain_mapping": "NEAR CLI from-legacy-keychain; existing topg-owned mode-600 file",
+  "new_signing_proofs": 0,
+  "operator_liquid_after_storage_yocto": "9995902911129295899999999",
+  "rust_tests": {
+    "command": "cargo test --locked --offline",
+    "passed": 98,
+    "failed": 0
+  },
+  "source_unchanged_since_recorded_m2_build_revision": "5587363",
+  "source_file_sha256": {
+    "Cargo.lock": "ef714da6bef72ea3d4beecdbeab973ff6d5869d42b3b1101d1ba7c4f045d908c",
+    "Cargo.toml": "eb19d2188cec81c38bf8156ea1cc72ebeb92e8f2e61bc8b0b891824e3d28d31c",
+    "src/lib.rs": "c2a5bb44030796cbc4fcfd245d27c0363deb13cdba2f843d08bbfbb1a35e96da",
+    "src/state/campaign.rs": "350d4651a0bf12d284c79f71305f28f8eeeda7365da997c2ee47c7a0d5fffbaf",
+    "src/state/mod.rs": "bc98391c4aa08bef910767d113e4a92ceaf82902aaa00696949970748a13f15b",
+    "src/state/payout.rs": "5274bb22ef8f848d64ce3369ab8b5f80613fb90e963cb12f5d9a5c7ab7bdb1e1",
+    "src/state/recipient.rs": "9098d565c3eab0fe3af06a3fb777425d8e1128fe5fa98e9283289307cf46080e",
+    "src/types/amount.rs": "fce2c3608c786f5956a12fe32075a7ae567af818c33cedab35817c06dfa64265",
+    "src/types/destination.rs": "26de2a07ffd5074f90a6869921c57609f2cc53d4152becb0d2a1d2749e7d3678",
+    "src/types/evidence.rs": "03c55248c629e9b77061fb807a164b13b0a6f5ea28f3460604c16ed84f99f801",
+    "src/types/identifier.rs": "8115191f156deec70fec63ae76b66e460365e9485900805945761e135762aa31",
+    "src/types/mod.rs": "8eccee70082fb96e3a8154ed8ad9f0353b92b2c63b675c94a25165abdcef9107",
+    "src/types/role.rs": "15cda0d310a4d05df824eccd2b794bbdf76dc18e07d51ffc80fb371f1037d014",
+    "src/types/status.rs": "af306c73bf630159de4e0cc177a5abee4d83b723f955e8357b3ddd133142de03"
+  },
+  "provenance_limit": "Recorded M2 host build, unchanged tracked source/lockfile, matching local artifact and live bytes/ABI; no independent hermetic rebuild or external attestation in this gate."
+}

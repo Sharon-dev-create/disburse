@@ -1,0 +1,111 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.14s
+     Running unittests src/lib.rs (target/debug/build/disburse-contract/cc42c154f6e1dbb1/out/disburse_contract-cc42c154f6e1dbb1)
+
+running 98 tests
+test tests::cannot_create_campaign_while_contract_is_paused - should panic ... ok
+test tests::campaign_ids_are_unique_and_incrementing ... ok
+test tests::campaign_creator_does_not_receive_privileged_roles_automatically ... ok
+test tests::approved_campaign_accepts_multiple_deposits_and_reports_atomic_balances ... ok
+test tests::creates_campaign_with_zero_initial_funding ... ok
+test tests::administrator_approves_draft_and_owner_is_implicit_administrator ... ok
+test tests::creator_can_cancel_draft_and_approved_campaigns ... ok
+test tests::deposits_exceeding_budget_or_overflowing_funded_are_rejected_unchanged ... ok
+test tests::definitive_failure_from_executing_and_pending_retains_reservation_and_reason ... ok
+test tests::administrator_and_owner_can_create_payouts ... ok
+test tests::duplicate_role_grants_are_idempotent_and_absent_revocations_fail ... ok
+test tests::accounting_underflow_and_overflow_reject_settlement_without_partial_writes ... ok
+test tests::completed_and_cancelled_campaigns_cannot_transition ... ok
+test tests::administrator_can_cancel_active_and_paused_campaigns ... ok
+test tests::duplicate_evidence_reference_is_rejected_and_does_not_consume_execution_key ... ok
+test tests::creator_cannot_cancel_active_or_paused_campaigns ... ok
+test tests::execution_reference_validation_is_strictly_unique_even_for_same_payout ... ok
+test tests::exact_available_balance_can_be_reserved_and_spent_is_counted ... ok
+test tests::failure_and_manual_review_are_available_during_pause_but_submission_is_blocked ... ok
+test tests::global_pause_blocks_lifecycle_and_unpause_preserves_campaign_status ... ok
+test tests::every_non_active_campaign_status_rejects_payout_creation ... ok
+test tests::failure_evidence_persists_all_fields_and_is_scoped_to_its_payout ... ok
+test tests::global_pause_returns_funding_without_changing_campaign_accounting ... ok
+test tests::global_pause_blocks_starting_execution_and_nonexistent_payouts_fail ... ok
+test tests::initializes_with_caller_as_owner ... ok
+test tests::failed_payout_release_requires_verifier_and_failure_evidence ... ok
+test tests::identical_idempotent_retry_does_not_reserve_or_emit_again ... ok
+test tests::idempotency_rejects_each_changed_request_field_and_blank_keys ... ok
+test tests::global_pause_blocks_reservations_without_mutation ... ok
+test tests::idempotency_key_payload_mismatch_and_campaign_scope ... ok
+test tests::invalid_lifecycle_reasons_and_terminal_restarts_are_rejected_without_events ... ok
+test tests::malformed_zero_and_nonexistent_campaign_deposits_return_all_tokens ... ok
+test tests::malformed_recovery_evidence_and_accounting_leave_state_unchanged ... ok
+test tests::invalid_campaign_amount_token_and_balance_are_rejected ... ok
+test tests::non_operator_cannot_activate_campaign ... ok
+test tests::manual_review_from_execution_states_keeps_reservation_and_reference ... ok
+test tests::funding_message_rejects_ambiguous_invalid_and_trailing_json_without_side_effects ... ok
+test tests::multiple_recoveries_preserve_aggregate_accounting_and_view_history ... ok
+test tests::manual_review_execution_confirmation_preserves_reservation_then_settles_normally ... ok
+test tests::non_administrator_cannot_approve_and_campaign_remains_draft ... ok
+test tests::non_owner_cannot_change_token_allowlist ... ok
+test tests::non_owner_cannot_pause - should panic ... ok
+test tests::non_owner_cannot_unpause_contract ... ok
+test tests::manual_review_non_settlement_releases_only_reserved_funds ... ok
+test tests::non_owner_cannot_grant_or_revoke_roles ... ok
+test tests::nonexistent_campaign_and_invalid_transition_fail_without_state_changes ... ok
+test tests::nonexistent_campaign_and_available_balance_underflow_are_rejected ... ok
+test tests::only_executing_payout_can_be_marked_pending_verification ... ok
+test tests::only_approved_campaigns_accept_funding ... ok
+test tests::owner_administrative_authority_cannot_be_revoked ... ok
+test tests::operator_activates_approved_campaign_but_not_draft ... ok
+test tests::operator_or_administrator_can_pause_and_resume_active_campaign ... ok
+test tests::owner_manages_persistent_token_allowlist_and_duplicate_add_is_idempotent ... ok
+test tests::only_pending_verification_can_settle_and_failed_manual_review_keep_reservations ... ok
+test tests::owner_can_pause_and_unpause ... ok
+test tests::owner_role_cannot_be_granted_and_owner_cannot_self_grant ... ok
+test tests::owner_can_grant_administrator_operator_and_verifier_roles ... ok
+test tests::operator_admin_and_owner_can_transition_but_verifier_cannot ... ok
+test tests::rejects_empty_campaign_title - should panic ... ok
+test tests::operator_reserves_exact_input_and_views_use_u128_strings ... ok
+test tests::only_explicit_verifiers_can_settle ... ok
+test tests::rejects_zero_campaign_budget - should panic ... ok
+test tests::payout_id_overflow_fails_before_any_persistent_write ... ok
+test tests::prior_execution_confirmation_cannot_later_be_released_as_non_settlement ... ok
+test tests::payout_rejections_preserve_campaign_ids_records_and_events ... ok
+test tests::role_and_campaign_events_follow_nep297_envelope ... ok
+test tests::rejected_non_active_campaign_and_malformed_accounting_do_not_create_payout ... ok
+test tests::reserved_payout_starts_execution_with_unique_reference_and_event ... ok
+test tests::removing_token_preserves_historical_funding_and_blocks_future_deposits ... ok
+test tests::recovery_evidence_and_nonsettlement_execution_identity_share_settlement_replay_indexes ... ok
+test tests::unsupported_predecessor_cannot_spoof_allowlisted_token_in_message ... ok
+test types::tests::campaign_round_trips_borsh_and_json ... ok
+test types::tests::campaign_status_round_trips_borsh_and_json ... ok
+test types::tests::chain_id_deserialization_rejects_empty_identifiers ... ok
+test types::tests::chain_identifiers_reject_empty_and_whitespace ... ok
+test types::tests::destination_represents_an_evm_recipient_without_assuming_support ... ok
+test types::tests::external_token_identifiers_reject_empty_and_whitespace ... ok
+test types::tests::near_token_identity_uses_validated_account_id ... ok
+test types::tests::payout_destination_rejects_blank_recipient_during_json_deserialization ... ok
+test types::tests::payout_round_trips_borsh_and_json ... ok
+test types::tests::payout_status_round_trips_borsh_and_json ... ok
+test types::tests::recipient_address_constructor_preserves_nonblank_opaque_value ... ok
+test types::tests::recipient_address_rejects_empty_values_during_json_and_borsh_deserialization ... ok
+test types::tests::recipient_address_round_trips_json_and_borsh ... ok
+test types::tests::recipient_round_trips_borsh_and_json ... ok
+test types::tests::reservation_released_status_appends_without_reordering_borsh_variants ... ok
+test types::tests::settlement_evidence_records_verifier_assertion ... ok
+test types::tests::token_amount_deserialization_rejects_invalid_nested_token_id ... ok
+test types::tests::token_amount_keeps_atomic_value_decimals_and_token_identity ... ok
+test types::tests::token_id_deserialization_rejects_empty_external_identifiers ... ok
+test types::tests::user_role_round_trips_borsh_and_json ... ok
+test tests::verifier_cannot_self_grant_verifier_role ... ok
+test tests::wrong_campaign_token_contract_is_rejected ... ok
+test tests::settlement_replay_is_global_and_event_index_distinguishes_logs ... ok
+test tests::settlement_accepts_any_matching_execution_confirmed_record_in_payout_history ... ok
+test tests::settlement_reference_cannot_be_reused_for_recovery_and_recovery_identity_is_not_consumed_on_failure ... ok
+test tests::verifier_settlement_matches_payout_and_moves_reserved_input_to_spent ... ok
+test tests::settlement_rejects_mismatched_or_malformed_evidence_without_consuming_it ... ok
+
+test result: ok. 98 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.44s
+
+   Doc-tests disburse_contract
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
