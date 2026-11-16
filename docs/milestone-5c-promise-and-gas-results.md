@@ -1,7 +1,7 @@
 # M5-C — Promise, gas and storage results
 
 Base revision `fdd8b48acaa1ad60417ad628b08a7783ede9aba6`; initially clean `main...origin/main`.
-Implementation/validation: 2026-11-16, Africa/Douala. Local changes are uncommitted.
+Implementation/validation: 2026-11-16, Africa/Douala. Work began as uncommitted local changes; see the revision note below.
 
 **Actual local receipts executed under nearcore2.14.0/protocol88.**
 Configured gas is distinct from observed burn. These measurements use the local
@@ -95,3 +95,7 @@ includes actual receipt IDs, method arguments/deposits/gas, outcomes, balance de
 and storage snapshots. [Local protocol configuration](evidence/milestone-5/m5c-implementation/local-protocol-config.json)
 records the observed limits. These RPC receipt IDs are off-chain evidence, not
 fabricated contract callback fields.
+
+## Repository revision note
+
+During this session HEAD advanced externally to `d6f444ae5f6d1843206421f138908db7fca4db30`, capturing in-progress files. No commit/push commands were issued by this session; that commit was preserved. Subsequent report/evidence edits remain local.

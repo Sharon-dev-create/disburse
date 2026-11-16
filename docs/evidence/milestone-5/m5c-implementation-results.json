@@ -1,0 +1,1207 @@
+{
+  "schema_version": 1,
+  "milestone": "M5-C native transfer implementation",
+  "verdict": "PASS",
+  "scope": "LOCAL_IMPLEMENTATION_AND_REAL_SANDBOX_TESTS_ONLY",
+  "date_local": "2026-11-16",
+  "timezone": "Africa/Douala",
+  "base_revision": "fdd8b48acaa1ad60417ad628b08a7783ede9aba6",
+  "observed_final_HEAD": "d6f444ae5f6d1843206421f138908db7fca4db30",
+  "revision_observation": {
+    "advanced_externally": true,
+    "new_commit": "d6f444ae5f6d1843206421f138908db7fca4db30",
+    "commit_or_push_commands_issued_by_this_session": false,
+    "action": "Preserved external commit; report file inventory against original baseline."
+  },
+  "source_files_changed": [
+    "src/native.rs",
+    "src/native/execution.rs",
+    "src/native/execution_tests.rs",
+    "src/native/tests.rs",
+    "src/state/mod.rs",
+    "src/state/native.rs",
+    "src/state/native_execution.rs"
+  ],
+  "implementation": {
+    "public_entry": "begin_native_preflight(payout_id, authorization_id, attempt_id) -> Promise",
+    "storage_callback": "private on_native_storage_checked -> PromiseOrValue<()>",
+    "transfer_callback": "private on_native_transfer_result",
+    "outcome_view": "get_native_execution_outcome",
+    "new_namespace": "native-execution-outcomes-v1",
+    "legacy_serialized_fields_changed": false,
+    "existing_native_V1_fields_changed": false,
+    "new_public_send_reset_retry_release_success_methods": false,
+    "production_fault_hooks": false
+  },
+  "authorization": {
+    "reserve": "Existing Operator/Admin; owner implicit Admin only",
+    "approve": "Explicit native Approver distinct from original reserver",
+    "execute": "Explicit native Executor distinct from approver; existing unused unexpired bound approval",
+    "preflight_rechecks": [
+      "Active campaign",
+      "global pause",
+      "accepted token",
+      "immutable recipient/evidence hash",
+      "original executor/approver permissions",
+      "expiry",
+      "reservation/parent binding",
+      "one current attempt/consumed authorization"
+    ],
+    "completion_policy": "Private runtime result; completion allowed after pause/expiry/role/token changes once dispatched.",
+    "live_roles_granted": 0,
+    "live_recipient_status": "RECIPIENT_UNVERIFIED"
+  },
+  "state_machine": {
+    "happy_path": [
+      "Reserved",
+      "Approved",
+      "PreflightPending",
+      "TransferPending",
+      "Succeeded"
+    ],
+    "known_failure": "AttemptFailed (existing V1 name for DefinitiveFailure), reserve retained",
+    "unknown": "ManualReview, reserve retained",
+    "failed_callback": "Previous PreflightPending/TransferPending lock persists; cannot detect own failed receipt",
+    "terminal_retry_or_release_available": false,
+    "legacy_projection": {
+      "Reserved": "Reserved",
+      "Approved": "Reserved",
+      "PreflightPending": "Reserved",
+      "TransferPending": "Executing",
+      "Succeeded": "Succeeded",
+      "AttemptFailed": "Failed",
+      "ManualReview": "ManualReview",
+      "Released": "ReservationReleased (no C release path)"
+    }
+  },
+  "promise_chain": {
+    "token": "usdc.tidepool-sandbox.testnet",
+    "network_binding": "near:testnet",
+    "execution_network_tested": "disburse-m5c-local private chain only",
+    "sequence": [
+      "Consume approval+preallocate lock/outcome and storage query atomically",
+      "Private storage callback validates result and rechecks dispatch policy",
+      "TransferPending write+fixed ft_transfer+private callback scheduled atomically",
+      "Private result handler settles once or retains failed/unknown reservation"
+    ],
+    "ft_transfer": {
+      "receiver": "Immutable bound recipient",
+      "amount": "Immutable U128 input as decimal string",
+      "memo": "disburse:native:v1:<payout>:<attempt>",
+      "deposit_yocto": "1",
+      "source": "Disburse token balance, no Operator custody"
+    },
+    "gas_tgas": {
+      "entry_minimum": 220,
+      "storage_query": 10,
+      "storage_callback_including_descendants": 170,
+      "token_transfer": 30,
+      "final_callback": 50,
+      "remaining_gas_margin": 10
+    },
+    "bounded_results": {
+      "storage_max_bytes": 4096,
+      "token_max_bytes": 64,
+      "expected_result_count": 1,
+      "accepted_token_success": "empty or JSON null unit bytes; unexpected success data ManualReview"
+    }
+  },
+  "callback_evidence": {
+    "new_type": "NativeExecutionOutcome",
+    "preallocated": true,
+    "fields": [
+      "version",
+      "campaign_id",
+      "payout_id",
+      "attempt_id",
+      "authorization_id",
+      "binding_hash",
+      "memo",
+      "kind",
+      "observed_at_ns",
+      "observed_at_block",
+      "promise_result_count",
+      "returned_bytes",
+      "result_hash"
+    ],
+    "zero_hash": "No captured result sentinel, not receipt proof; storage result cleared on transfer dispatch.",
+    "fabricated_receipt_or_transaction_ids": false,
+    "independent_finalized_receipt_verification": "Future M5-D; local harness records actual off-chain RPC outcomes now."
+  },
+  "accounting": {
+    "invariants": [
+      "funded <= budget",
+      "reserved + spent <= funded",
+      "available + reserved + spent == funded",
+      "spent <= funded"
+    ],
+    "reference_after_reserve": {
+      "available": "900000",
+      "reserved": "100000",
+      "spent": "0"
+    },
+    "reference_success": {
+      "available": "900000",
+      "reserved": "0",
+      "spent": "100000"
+    },
+    "failed_or_unknown": {
+      "available": "900000",
+      "reserved": "100000",
+      "spent": "0"
+    },
+    "new_categories": false,
+    "current_campaign_reload": true,
+    "delivered_unbooked": "Remains reserved after failed callback; no automatic refund/retry/release."
+  },
+  "failure_classifications": [
+    "RecipientUnregistered",
+    "StorageQueryFailed",
+    "InvalidStorageResult",
+    "PreflightPolicyRejected",
+    "TransferReceiptFailed",
+    "UnexpectedPromiseCount",
+    "UnexpectedTransferResult"
+  ],
+  "replay_protection": [
+    "Globally permanent authorization IDs",
+    "Payout-scoped monotonic attempts",
+    "One Consumed active attempt with phase/evidence identity",
+    "No repeated storage callback dispatch after TransferPending",
+    "No repeat settlement after terminal phase",
+    "No NativeMode bypass through legacy mutation",
+    "No old-B orphan automatic reset"
+  ],
+  "legacy_compatibility": {
+    "unchanged_legacy_function_ABI_entries": 35,
+    "unchanged_legacy_guards": [
+      "start_payout_execution",
+      "mark_payout_pending_verification",
+      "mark_payout_failed",
+      "move_payout_to_manual_review",
+      "release_failed_payout_reservation",
+      "confirm_manual_review_execution",
+      "release_manual_review_reservation",
+      "settle_payout"
+    ],
+    "private_release_guard_retained": true,
+    "legacy_records_types_and_enums_unchanged": true,
+    "root_Cargo_lock_manifest_unchanged": true,
+    "fixture_lock_only_package_name_diff": true
+  },
+  "validation": {
+    "commands": [
+      {
+        "name": "fmt",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "exit_code": 0,
+        "log": "fmt.log"
+      },
+      {
+        "name": "clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "--locked",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0,
+        "log": "clippy.log"
+      },
+      {
+        "name": "unit-tests",
+        "command": [
+          "cargo",
+          "test",
+          "--locked"
+        ],
+        "exit_code": 0,
+        "log": "unit-tests.log"
+      },
+      {
+        "name": "build",
+        "command": [
+          "cargo",
+          "near",
+          "build",
+          "non-reproducible-wasm",
+          "--locked"
+        ],
+        "exit_code": 0,
+        "log": "build.log"
+      },
+      {
+        "name": "fixture-fmt",
+        "command": [
+          "cargo",
+          "fmt",
+          "--manifest-path",
+          "tests/sandbox/token/Cargo.toml",
+          "--",
+          "--check"
+        ],
+        "exit_code": 0,
+        "log": "fixture-fmt.log"
+      },
+      {
+        "name": "diff-check",
+        "command": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "exit_code": 0,
+        "log": "diff-check.log"
+      }
+    ],
+    "Rust_tests": {
+      "total": 146,
+      "passed": 146,
+      "failed": 0,
+      "ignored": 0,
+      "doc_tests": 0,
+      "prior_baseline": 126,
+      "new_C_tests": 20,
+      "new_test_names": [
+        "exact_storage_and_token_promises_bind_deposit_gas_recipient_amount",
+        "private_storage_and_transfer_callbacks_reject_all_foreign_predecessors",
+        "successful_callback_settles_once_and_keeps_actual_runtime_evidence",
+        "definite_transfer_failure_retains_reservation_and_cannot_retry_or_release",
+        "unregistered_storage_and_failed_query_never_schedule_transfer",
+        "malformed_or_oversized_storage_result_goes_to_locked_manual_review",
+        "unexpected_transfer_return_or_result_count_is_uncertain_never_spent",
+        "stale_callback_identities_and_binding_corruption_preserve_lock",
+        "pause_expiry_or_role_revocation_blocks_dispatch_but_not_committed_transfer_completion",
+        "low_prepaid_gas_or_native_balance_fails_before_consumption",
+        "legacy_guards_hold_after_transfer_and_all_native_outcomes",
+        "missing_or_multiple_storage_results_and_invalid_balance_keep_review_locked",
+        "expired_authorization_is_rechecked_after_storage_query",
+        "two_callbacks_reload_same_campaign_accounting_instead_of_overwriting",
+        "duplicate_storage_callback_cannot_schedule_a_second_token_call",
+        "callback_after_failed_attempt_cannot_later_settle",
+        "cancelling_campaign_does_not_block_a_dispatched_success_or_release_other_reservations",
+        "large_payout_id_is_preserved_in_binding_memo_and_callback",
+        "insufficient_storage_callback_gas_does_not_persist_transfer_pending",
+        "successful_unit_result_has_no_fabricated_receipt_hash_and_failure_clears_storage_hash"
+      ]
+    },
+    "sandbox_suite_phases": {
+      "result": "PASS",
+      "phases": [
+        "main",
+        "faults",
+        "b-migration"
+      ],
+      "actual_local_receipts_executed": true,
+      "no_public_chain_transactions": true
+    },
+    "scenario_groups": 20,
+    "scenarios": [
+      {
+        "id": "S01",
+        "name": "Successful exact native transfer",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/successful-transfer.json",
+        "scope_and_limits": "Production candidate, standard SDK token; actual balances, exact receipt args/deposit and settled ledger.",
+        "candidate_kind": "production candidate / authenticated migration fixture"
+      },
+      {
+        "id": "S02",
+        "name": "Missing recipient registration",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/missing-recipient-storage.json",
+        "scope_and_limits": "Actual storage query returns None; no outgoing ft_transfer, reserve retained.",
+        "candidate_kind": "production candidate / authenticated migration fixture"
+      },
+      {
+        "id": "S03",
+        "name": "Concurrent duplicate requests",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/concurrent-duplicate-execution.json",
+        "scope_and_limits": "Two async requests, one transfer, one rejected request; no duplicate payment.",
+        "candidate_kind": "production candidate / authenticated migration fixture"
+      },
+      {
+        "id": "S04",
+        "name": "Callback panic after settlement writes",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/panic-callback.json",
+        "scope_and_limits": "Separate panic artifact; actual successful token receipt, failed callback rollback; no resend, including after production restoration.",
+        "candidate_kind": "separate fault artifact"
+      },
+      {
+        "id": "S05",
+        "name": "Callback gas exhaustion",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/oog-callback.json",
+        "scope_and_limits": "Separate1-gas callback artifact; real OOG error, delivered tokens, TransferPending reserve intact; no resend.",
+        "candidate_kind": "separate fault artifact"
+      },
+      {
+        "id": "S06",
+        "name": "Definitive token rejection",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/definitive-token-failure.json",
+        "scope_and_limits": "Normal token mode owner-controlled rejection; failed token receipt, no delivery/spent, reserve retained.",
+        "candidate_kind": "production candidate / authenticated migration fixture"
+      },
+      {
+        "id": "S07",
+        "name": "Stale/duplicate callback self-calls",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/stale-duplicate-self-callbacks.json",
+        "scope_and_limits": "Synthetic contract FullAccess self-calls pass private predecessor boundary then reject stale identity/terminal state; not a live key.",
+        "candidate_kind": "production candidate / authenticated migration fixture"
+      },
+      {
+        "id": "S08",
+        "name": "Concurrent payouts sharing a campaign",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/same-campaign-concurrent-payouts.json",
+        "scope_and_limits": "Two real overlapping graphs; reserved0/spent200000/available800000 after both succeed.",
+        "candidate_kind": "production candidate / authenticated migration fixture"
+      },
+      {
+        "id": "S09",
+        "name": "Concurrent payouts across campaigns",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/concurrent-payout-one.json",
+        "scope_and_limits": "Paired with concurrent-payout-two; pooled token, separate campaign accounting and recipients.",
+        "candidate_kind": "production candidate / authenticated migration fixture"
+      },
+      {
+        "id": "S10",
+        "name": "Pause between transfer and callback",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/pause-after-dispatch.json",
+        "scope_and_limits": "Test-token owner-proxy hook; actual owner pause receipt879 precedes settlement880. Hook-only promise indirection is not production token semantics.",
+        "candidate_kind": "production candidate and explicitly documented token fixture hooks"
+      },
+      {
+        "id": "S11",
+        "name": "Uncertain response / restart model",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/restart-uncertain-response-model.json",
+        "scope_and_limits": "Discarded response and fresh RPC client; resubmission rejected. No actual execution-service/DB restart or network timeout injection.",
+        "candidate_kind": "production candidate / authenticated migration fixture"
+      },
+      {
+        "id": "S12",
+        "name": "Atomic scheduling rollback",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/schedule-panic.json",
+        "scope_and_limits": "Separate artifact panics after TransferPending writes/events before promise; real rollback leaves PreflightPending and no token movement.",
+        "candidate_kind": "separate fault artifact"
+      },
+      {
+        "id": "S13",
+        "name": "Foreign callback wrapper rejection",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/external-callbacks-rejected.json",
+        "scope_and_limits": "Owner/Operator/Executor/other account calls both callbacks; runtime private checks reject.",
+        "candidate_kind": "production candidate / authenticated migration fixture"
+      },
+      {
+        "id": "S14",
+        "name": "Minimum / insufficient entry gas",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/minimum-gas-and-low-gas-rejection.json",
+        "scope_and_limits": "100 Tgas rejected before consent consumption;220 Tgas completes successfully.",
+        "candidate_kind": "production candidate / authenticated migration fixture"
+      },
+      {
+        "id": "S15",
+        "name": "Insufficient contract NEAR headroom",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/native-near-headroom.json",
+        "scope_and_limits": "Synthetic local native-NEAR drain/restore only; low balance rejects before consuming approval, execution succeeds after restore.",
+        "candidate_kind": "production candidate / authenticated migration fixture"
+      },
+      {
+        "id": "S16",
+        "name": "Incompatible code upgrade during execution",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/upgrade-between-transfer-and-callback.json",
+        "scope_and_limits": "Separate renamed-callback artifact; transfer block1153, upgrade1154, missing callback1156; delivery persists, lock preserved through compatible restoration.",
+        "candidate_kind": "separate fault artifact"
+      },
+      {
+        "id": "S17",
+        "name": "Delivered funds with unexpected result",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/delivered-but-unexpected-result.json",
+        "scope_and_limits": "Test-token bad-return hook; delivery occurs but nonstandard bytes yield ManualReview/reserved, no resend.",
+        "candidate_kind": "production candidate and explicitly documented token fixture hooks"
+      },
+      {
+        "id": "S18",
+        "name": "Insufficient actual token balance",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/insufficient-token-balance.json",
+        "scope_and_limits": "Fixture burn models out-of-band custody loss; actual FT failure, no false spent/retry.",
+        "candidate_kind": "production candidate / authenticated migration fixture"
+      },
+      {
+        "id": "S19",
+        "name": "Authenticated old deployed WASM upgrade",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/historical-wasm-migration.json",
+        "scope_and_limits": "Authentic code with locally populated nonempty legacy settlement/failure/resolution/index data; full raw-state and custody preservation.",
+        "candidate_kind": "production candidate / authenticated migration fixture"
+      },
+      {
+        "id": "S20",
+        "name": "M5-B native sidecar WASM upgrade",
+        "status": "PASS",
+        "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+        "actual_receipts_executed": true,
+        "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/b-to-c-wasm-migration.json",
+        "scope_and_limits": "Authenticated M5-B bytecode; approved payout executes under C; old consumed orphan remains frozen with all prior bytes preserved.",
+        "candidate_kind": "production candidate / authenticated migration fixture"
+      }
+    ],
+    "candidate": {
+      "path": "target/near/disburse_contract.wasm",
+      "bytes": 410611,
+      "sha256": "37e432600c43d5fc7d44b2d81bc9a852d5e120a7dc043c7f06f83d1e62a24ea9",
+      "NEAR_code_hash": "4mBF2J6mE22XrTrSNo8x7xSLhzUSfNS9HkzHJeaxqwk4",
+      "exact_byte_match_to_real_tested_artifact": true,
+      "build": "Host non-reproducible-wasm; not hermetic certification"
+    },
+    "ABI": {
+      "function_count": 52,
+      "new_functions": [
+        "on_native_storage_checked",
+        "on_native_transfer_result",
+        "get_native_execution_outcome"
+      ],
+      "changed_entry": "begin_native_preflight now returns chained Promise; arguments unchanged",
+      "private_callbacks_verified": true,
+      "mutation_methods_nonpayable": true,
+      "evidence": "m5c-implementation/candidate-abi.json"
+    }
+  },
+  "gas_and_storage": {
+    "protocol_version": 88,
+    "local_max_total_prepaid_gas": 1000000000000000,
+    "canonical_total_burnt_gas": 19203146461608,
+    "canonical_total_burnt_tgas": 19.203146461608,
+    "canonical_execution_storage_bytes": 340,
+    "observed_execution_storage_range_bytes": [
+      340,
+      343
+    ],
+    "storage_price_yocto_per_byte": "10000000000000000000",
+    "headroom_bytes": 16384,
+    "headroom_yocto_above_existing_backing": "163840000000000000000001",
+    "gas_payer": "Initiating signer prepays gas graph; contract provides storage backing+1yocto outgoing deposit.",
+    "not_verified": "Actual Tidepool gas/restrictions, live target protocol or resource availability, adversarial distributed load.",
+    "measurements": "m5c-implementation/gas-and-storage-measurements.json"
+  },
+  "migration": {
+    "authentic_raw_fixture": "tests/fixtures/m5b-deployed-state.json unchanged; mock tests still pass",
+    "authenticated_deployed_old_WASM": {
+      "bytes": 299058,
+      "sha256": "a7eaa8a4f035ac34a75271a9dda3fabc9074c47e4908c8e315a432c6472ad530",
+      "code_hash": "CJUcu5UqBYA4ZV47TJMABQJWc7MdvdaYYMNdDeB1mxcf",
+      "public_read_only_block": 277901631
+    },
+    "real_old_to_C": "PASS; nonempty locally populated settlement/failure/resolution/index history, raw-key/owner/roles/accounting/custody preserved; bootstrap unauthorized/repeat rejected",
+    "real_B_to_C": "PASS; authentic B artifact hashad51f8bc061138013ff33620d33adff8dffacb4eaf1c06b09853c79b92c58e94; Approved payout executes, consumed orphan remains locked",
+    "in_flight_upgrade": "Transfer1153\u2192incompatible upgrade1154\u2192missing callback1156; no duplicate after production restoration",
+    "top_level_migration_required": false,
+    "C_new_namespace_only": true,
+    "live_migration_performed": false,
+    "not_claimed": [
+      "Authentic nonempty historical payout snapshot",
+      "Future live fresh-state upgrade safety",
+      "Safe arbitrary root-code rollback"
+    ]
+  },
+  "fault_injection": {
+    "production_has_hooks": false,
+    "artifacts": [
+      {
+        "name": "panic-callback",
+        "source_copy": "/tmp/disburse-m5c-panic-callback",
+        "artifact": "/tmp/disburse-m5c-artifacts/panic-callback/disburse_contract.wasm",
+        "sha256": "30a40b563a27aa920636ea377784f435909c7470168375776a0eb49c6bebc222",
+        "patch": "Panic after successful settlement writes/events, testing receipt rollback",
+        "production_has_fault_hooks": false
+      },
+      {
+        "name": "oog-callback",
+        "source_copy": "/tmp/disburse-m5c-oog-callback",
+        "artifact": "/tmp/disburse-m5c-artifacts/oog-callback/disburse_contract.wasm",
+        "sha256": "440a5860409ab9bf67e4840c5a1683a523d6660c84ca14b749e09b2a06fd9ca5",
+        "patch": "Final callback gas1",
+        "production_has_fault_hooks": false
+      },
+      {
+        "name": "schedule-panic",
+        "source_copy": "/tmp/disburse-m5c-schedule-panic",
+        "artifact": "/tmp/disburse-m5c-artifacts/schedule-panic/disburse_contract.wasm",
+        "sha256": "5c9fea9fb3a007a7f3d77023d60260413bedd13f41e19a637e9d2d4597422270",
+        "patch": "Panic after TransferPending writes but before promise scheduling",
+        "production_has_fault_hooks": false
+      },
+      {
+        "name": "missing-callback",
+        "source_copy": "/tmp/disburse-m5c-missing-callback",
+        "artifact": "/tmp/disburse-m5c-artifacts/missing-callback/disburse_contract.wasm",
+        "sha256": "0b41a05e0e9b10b455a0e1e6c7aa9ebf858debef959ca22afbb97cd677eb2d2a",
+        "patch": "Renamed final callback for local incompatible-upgrade simulation",
+        "production_has_fault_hooks": false
+      },
+      {
+        "name": "old-b",
+        "source_copy": "/tmp/disburse-m5c-old-b",
+        "artifact": "/tmp/disburse-m5c-artifacts/old-b/disburse_contract.wasm",
+        "sha256": "ad51f8bc061138013ff33620d33adff8dffacb4eaf1c06b09853c79b92c58e94",
+        "patch": "Unmodified git fdd8b48 M5-B source",
+        "production_has_fault_hooks": false
+      }
+    ],
+    "token_fixture_limits": "Pause hook deliberately returns owner-proxy promise after token debit to enforce ordering; normal failure atomicity tested only with normal mode. Bad-return mode intentionally nonstandard.",
+    "models_not_real_service_integration": "Fresh client after discarded response, not actual worker/PostgreSQL restart or network outage."
+  },
+  "previous_review_followup": {
+    "M5C-01": "Implemented and locally validated, pending independent re-review",
+    "M5C-02": "New begin atomically schedules query; old consumed B orphan deliberately frozen for M5-D",
+    "M5C-03": "20 real receipt scenario groups plus gas measurements; not a distributed load proof",
+    "M5C-04": "Two real-WASM local upgrades added; live M5-E procedures still mandatory",
+    "M5C-05": "Live recipient/token/root trust remains unresolved deployment prerequisite; no live permission changes"
+  },
+  "acceptance_criteria": [
+    {
+      "id": 1,
+      "criterion": "native_transfer_scheduling",
+      "status": "PASS",
+      "evidence": "Actual immutable ft_transfer promise and private callbacks, real balance/receipt checks."
+    },
+    {
+      "id": 2,
+      "criterion": "independent_authorization",
+      "status": "PASS",
+      "evidence": "Existing explicit separate Approver/Executor and immutable complete binding retained; no inherited root/admin bypass."
+    },
+    {
+      "id": 3,
+      "criterion": "at_most_one_unresolved_transfer",
+      "status": "PASS",
+      "evidence": "Consumed authorization/current attempt+phase/outcome guards, async duplicate calls and post-failure resubmission rejected."
+    },
+    {
+      "id": 4,
+      "criterion": "private_callback_authentication",
+      "status": "PASS",
+      "evidence": "SDK private modifier and explicit immediate self-predecessor, count/IDs/binding; actual foreign/self adversarial receipts."
+    },
+    {
+      "id": 5,
+      "criterion": "exactly_once_success_accounting",
+      "status": "PASS",
+      "evidence": "Private trusted unit success uses checked current campaign reserved\u2192spent once; duplicate cannot consume another payout reservation."
+    },
+    {
+      "id": 6,
+      "criterion": "safe_definitive_failure",
+      "status": "PASS",
+      "evidence": "Failed token receipt records AttemptFailed; no spent/release/retry; real reject/insufficient balance tests."
+    },
+    {
+      "id": 7,
+      "criterion": "unknown_remains_locked",
+      "status": "PASS",
+      "evidence": "Invalid/oversized/count/nonunit results \u2192ManualReview; real delivered-nonstandard response preserves reserve/no resend."
+    },
+    {
+      "id": 8,
+      "criterion": "callback_failure_no_duplicate",
+      "status": "PASS",
+      "evidence": "Real after-write panic/OOG/missing callback after delivery preserve TransferPending lock even after compatible code restoration."
+    },
+    {
+      "id": 9,
+      "criterion": "legacy_guards",
+      "status": "PASS",
+      "evidence": "All eight unchanged mode guards plus release helper, direct tests across all C outcome phases;35 legacy ABI entries unchanged."
+    },
+    {
+      "id": 10,
+      "criterion": "campaign_invariants",
+      "status": "PASS",
+      "evidence": "Checked arithmetic, fresh campaign reads, concurrent same/different campaigns, boundaries and exact reference ledger states."
+    },
+    {
+      "id": 11,
+      "criterion": "serialized_state_compatible",
+      "status": "PASS",
+      "evidence": "No old struct/discriminant/layout changes; new outcome namespace only;20 prefix checks and raw-byte old/B WASM preservation."
+    },
+    {
+      "id": 12,
+      "criterion": "real_async_execution",
+      "status": "PASS",
+      "evidence": "20 documented local scenario groups; all10 requested classes, real action/data receipts, not mocks alone."
+    },
+    {
+      "id": 13,
+      "criterion": "measured_gas",
+      "status": "PASS",
+      "evidence": "Explicit220/10/170/30/50 nested budgets and10 margin; real220 success/100 reject; protocol88 limit1000 and measured canonical19.203146461608 Tgas."
+    },
+    {
+      "id": 14,
+      "criterion": "local_migration",
+      "status": "PASS",
+      "evidence": "Authenticated299058-byte deployed old WASM and385351-byte B WASM upgraded locally with records/roles/indexes/accounting/custody preserved."
+    },
+    {
+      "id": 15,
+      "criterion": "all_Rust_tests",
+      "status": "PASS",
+      "evidence": "146 passed,0 failed,0 ignored; prior126 adapted appropriately plus20 new C tests."
+    },
+    {
+      "id": 16,
+      "criterion": "no_live_state_change",
+      "status": "PASS",
+      "evidence": "One public view_code read only; all signing/deployments/transfers limited to loopback synthetic chain; no live service/database/config changes."
+    }
+  ],
+  "remaining_risks": [
+    "Independent C security review not yet performed",
+    "Root arbitrary code replacement and token governance remain high-impact trust assumptions",
+    "Actual Tidepool implementation and gas/restrictions require review before live execution",
+    "Recipient remains unverified; no real signing principals chosen or live grants made",
+    "Unknown/callback-failed delivery and old-B orphan locks require separately reviewed M5-D reconciliation",
+    "No retry/release/manual success override; liveness may remain frozen on uncertainty",
+    "Storage subsidy/resource exhaustion can stop liveness;16KiB margin is not global rent protection",
+    "Private one-validator sandbox and test-only fault artifacts do not prove every future protocol/upgrade/load condition",
+    "M5-E exact live deployment/migration/maintenance procedure and M5-F native service integration remain gated"
+  ],
+  "actions": {
+    "public_RPC_read_only_queries": 1,
+    "public_RPC_query_kind": "view_code only",
+    "live_blockchain_signatures": 0,
+    "live_transactions_submitted": 0,
+    "live_deployments_or_upgrades": 0,
+    "live_Campaign0_changes": 0,
+    "live_roles_changed": 0,
+    "existing_funds_moved": 0,
+    "live_PostgreSQL_writes": 0,
+    "service_workers_enabled": 0,
+    "read_only_mode_changed": false,
+    "existing_keychains_accessed": false,
+    "local_synthetic_transactions_and_transfers_performed": true,
+    "local_sandbox_nodes_stopped": true,
+    "commit_or_push_commands_issued": false
+  },
+  "integrity_checks": {
+    "previous_evidence_unchanged": true,
+    "root_Cargo_manifest_lock_unchanged": true,
+    "legacy_lib_state_types_and_enums_unchanged": true,
+    "typescript_frontend_configuration_unchanged": true,
+    "production_has_no_fault_hooks": true,
+    "final_wasm_equals_real_receipt_tested_candidate": true,
+    "legacy35_ABI_entries_unchanged": true,
+    "old_native_Borsh_preserved_by_real_WASM_upgrade": true
+  },
+  "files_changed": [
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation-results.json",
+      "purpose": "Structured acceptance, hashes, validation, scope, residual risks and approval gate."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/all-sandbox-suites.json",
+      "purpose": "Structured provenance, runtime measurements, validation or case/tooling metadata for all-sandbox-suites."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/baseline-tests.log",
+      "purpose": "Recorded local command/test/build output for baseline-tests."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/baseline.json",
+      "purpose": "Structured provenance, runtime measurements, validation or case/tooling metadata for baseline."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/build.log",
+      "purpose": "Recorded local command/test/build output for build."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/candidate-abi.json",
+      "purpose": "Structured provenance, runtime measurements, validation or case/tooling metadata for candidate-abi."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/clippy.log",
+      "purpose": "Recorded local command/test/build output for clippy."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/diff-check.log",
+      "purpose": "Recorded local command/test/build output for diff-check."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/fault-artifact-manifest.json",
+      "purpose": "Structured provenance, runtime measurements, validation or case/tooling metadata for fault-artifact-manifest."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/fixture-fmt.log",
+      "purpose": "Recorded local command/test/build output for fixture-fmt."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/fmt.log",
+      "purpose": "Recorded local command/test/build output for fmt."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/gas-and-storage-measurements.json",
+      "purpose": "Structured provenance, runtime measurements, validation or case/tooling metadata for gas-and-storage-measurements."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/historical-wasm-provenance.json",
+      "purpose": "Structured provenance, runtime measurements, validation or case/tooling metadata for historical-wasm-provenance."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/integrity-checks.json",
+      "purpose": "Structured provenance, runtime measurements, validation or case/tooling metadata for integrity-checks."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/local-protocol-config.json",
+      "purpose": "Structured provenance, runtime measurements, validation or case/tooling metadata for local-protocol-config."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/missing-callback-build.log",
+      "purpose": "Recorded local command/test/build output for missing-callback-build."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/node-b-migration.json",
+      "purpose": "Structured provenance, runtime measurements, validation or case/tooling metadata for node-b-migration."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/node-faults.json",
+      "purpose": "Structured provenance, runtime measurements, validation or case/tooling metadata for node-faults."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/node-inspect.json",
+      "purpose": "Structured provenance, runtime measurements, validation or case/tooling metadata for node-inspect."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/node-main.json",
+      "purpose": "Structured provenance, runtime measurements, validation or case/tooling metadata for node-main."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/old-b-build.log",
+      "purpose": "Recorded local command/test/build output for old-b-build."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/oog-callback-build.log",
+      "purpose": "Recorded local command/test/build output for oog-callback-build."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/panic-callback-build.log",
+      "purpose": "Recorded local command/test/build output for panic-callback-build."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/runtime-inspection.log",
+      "purpose": "Recorded local command/test/build output for runtime-inspection."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox-b-migration.log",
+      "purpose": "Recorded local command/test/build output for sandbox-b-migration."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox-faults.log",
+      "purpose": "Recorded local command/test/build output for sandbox-faults."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox-main.log",
+      "purpose": "Recorded local command/test/build output for sandbox-main."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox-suite.log",
+      "purpose": "Recorded local command/test/build output for sandbox-suite."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/b-to-c-wasm-migration.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for b-to-c-wasm-migration."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/concurrent-duplicate-execution.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for concurrent-duplicate-execution."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/concurrent-payout-one.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for concurrent-payout-one."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/concurrent-payout-two.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for concurrent-payout-two."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/definitive-token-failure.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for definitive-token-failure."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/delivered-but-unexpected-result.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for delivered-but-unexpected-result."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/external-callback-payout-success.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for external-callback-payout-success."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/external-callbacks-rejected.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for external-callbacks-rejected."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/fault-suite-summary.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for fault-suite-summary."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/historical-wasm-migration.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for historical-wasm-migration."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/index.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for index."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/insufficient-token-balance.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for insufficient-token-balance."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/minimum-gas-and-low-gas-rejection.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for minimum-gas-and-low-gas-rejection."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/missing-recipient-storage.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for missing-recipient-storage."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/native-near-headroom.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for native-near-headroom."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/oog-callback-duplicate-rejected.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for oog-callback-duplicate-rejected."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/oog-callback.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for oog-callback."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/panic-callback-duplicate-rejected.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for panic-callback-duplicate-rejected."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/panic-callback.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for panic-callback."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/pause-after-dispatch.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for pause-after-dispatch."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/restart-uncertain-response-model.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for restart-uncertain-response-model."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/same-campaign-concurrent-payouts.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for same-campaign-concurrent-payouts."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/schedule-panic-duplicate-rejected.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for schedule-panic-duplicate-rejected."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/schedule-panic.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for schedule-panic."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/stale-duplicate-self-callbacks.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for stale-duplicate-self-callbacks."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/successful-transfer-duplicate-rejected.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for successful-transfer-duplicate-rejected."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/successful-transfer.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for successful-transfer."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/suite-summary.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for suite-summary."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/sandbox/upgrade-between-transfer-and-callback.json",
+      "purpose": "Public synthetic-chain receipt/transaction outcomes, pre/post balances/accounting, rejection or migration proof for upgrade-between-transfer-and-callback."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/scenario-matrix.json",
+      "purpose": "Structured provenance, runtime measurements, validation or case/tooling metadata for scenario-matrix."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/schedule-panic-build.log",
+      "purpose": "Recorded local command/test/build output for schedule-panic-build."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/token-build.log",
+      "purpose": "Recorded local command/test/build output for token-build."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/tooling.json",
+      "purpose": "Structured provenance, runtime measurements, validation or case/tooling metadata for tooling."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/unit-tests.log",
+      "purpose": "Recorded local command/test/build output for unit-tests."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-implementation/validation.json",
+      "purpose": "Structured provenance, runtime measurements, validation or case/tooling metadata for validation."
+    },
+    {
+      "path": "docs/milestone-5c-asynchronous-test-results.md",
+      "purpose": "Actual receipt scenario matrix, tooling and mock/injection limitations."
+    },
+    {
+      "path": "docs/milestone-5c-callback-failure-safety.md",
+      "purpose": "Failure outcomes, lock/rollback evidence, token/root trust and recovery boundary."
+    },
+    {
+      "path": "docs/milestone-5c-migration-validation-results.md",
+      "purpose": "Historical/raw and real old/B-WASM migration results and remaining live gates."
+    },
+    {
+      "path": "docs/milestone-5c-native-transfer-implementation.md",
+      "purpose": "Implementation/authorization/state/accounting summary and complete file inventory."
+    },
+    {
+      "path": "docs/milestone-5c-promise-and-gas-results.md",
+      "purpose": "Configured versus measured gas/storage and protocol limits."
+    },
+    {
+      "path": "src/native.rs",
+      "purpose": "Reuse authorization/binding helpers; move preflight to executor module; validate legacy status projection across native phases."
+    },
+    {
+      "path": "src/native/execution.rs",
+      "purpose": "Atomic storage/transfer promises, private bounded callbacks, exactly-once accounting, retained failure locks and native outcome view."
+    },
+    {
+      "path": "src/native/execution_tests.rs",
+      "purpose": "20 new adversarial unit/promise-result tests, including double settlement against another live reservation."
+    },
+    {
+      "path": "src/native/tests.rs",
+      "purpose": "Adapt B receipt assertions/return types; retain authority/replay cases and test20 prefix namespaces."
+    },
+    {
+      "path": "src/state/mod.rs",
+      "purpose": "Register new execution-evidence schema module."
+    },
+    {
+      "path": "src/state/native.rs",
+      "purpose": "Document active C phases; no V1 field/discriminant changes."
+    },
+    {
+      "path": "src/state/native_execution.rs",
+      "purpose": "New bounded versioned evidence type/outcome kinds; no legacy fields appended."
+    },
+    {
+      "path": "tests/sandbox/.gitignore",
+      "purpose": "Ignore Python caches/local target outputs."
+    },
+    {
+      "path": "tests/sandbox/README.md",
+      "purpose": "Pinned, loopback-only reproduction steps and explicit fixture/trust limits."
+    },
+    {
+      "path": "tests/sandbox/build_artifacts.py",
+      "purpose": "Build production/token/variant artifacts with existing locked dependencies."
+    },
+    {
+      "path": "tests/sandbox/build_variants.py",
+      "purpose": "Auditable isolated panic/OOG/scheduling/incompatible-callback artifacts and authenticated old-B build."
+    },
+    {
+      "path": "tests/sandbox/collect_runtime_evidence.py",
+      "purpose": "Read-only protocol/gas/storage/block-order collection."
+    },
+    {
+      "path": "tests/sandbox/fetch_historical_wasm.py",
+      "purpose": "Hash-authenticated public read-only old-WASM fetch; no signer."
+    },
+    {
+      "path": "tests/sandbox/local_rpc.py",
+      "purpose": "Synthetic loopback-chain guarded signer/Borsh/RPC client; no user keychain."
+    },
+    {
+      "path": "tests/sandbox/run_b_migration.py",
+      "purpose": "Actual old-B sidecar upgrade/approved execution/orphan-lock test."
+    },
+    {
+      "path": "tests/sandbox/run_native_payout.py",
+      "purpose": "Actual receipt, balance, failure, concurrency and migration assertions."
+    },
+    {
+      "path": "tests/sandbox/run_suite.py",
+      "purpose": "Sequential three-phase integration suite with nonzero failure propagation."
+    },
+    {
+      "path": "tests/sandbox/token/Cargo.lock",
+      "purpose": "Isolated local SDK5.30.1 standard-token fixture or its manifest/unchanged-version lock graph; owner-only fault controls never deployed publicly."
+    },
+    {
+      "path": "tests/sandbox/token/Cargo.toml",
+      "purpose": "Isolated local SDK5.30.1 standard-token fixture or its manifest/unchanged-version lock graph; owner-only fault controls never deployed publicly."
+    },
+    {
+      "path": "tests/sandbox/token/src/lib.rs",
+      "purpose": "Isolated local SDK5.30.1 standard-token fixture or its manifest/unchanged-version lock graph; owner-only fault controls never deployed publicly."
+    },
+    {
+      "path": "tests/sandbox/with_node.py",
+      "purpose": "Fresh synthetic genesis, loopback-only node lifecycle and cleanup."
+    }
+  ],
+  "file_sha256": {
+    "docs/evidence/milestone-5/m5c-implementation/all-sandbox-suites.json": "2d5ab262483c5bdb723c5bf3916c1508385354bdb9ec9c749d5a49860471a122",
+    "docs/evidence/milestone-5/m5c-implementation/baseline-tests.log": "0eedc653906e16e6497177d10ac83b8a151b96588f4d1ab3a990dcbcd06dc553",
+    "docs/evidence/milestone-5/m5c-implementation/baseline.json": "af2c82b95665dcac320feb1addaeb54337bb68b6dec5b391320b728f6905c108",
+    "docs/evidence/milestone-5/m5c-implementation/build.log": "97cb0fde5245a488648c3e100c67c55bd2400cc5295d557e887d1ce89be80376",
+    "docs/evidence/milestone-5/m5c-implementation/candidate-abi.json": "77175fffdbe31678d13caa1638aa803181d62f2fbef85e8919d621db824b54b7",
+    "docs/evidence/milestone-5/m5c-implementation/clippy.log": "352f943e8502913972f0ac3ddd8b4b6a3ec3fcb52645da76d7c0ef570bdee9ba",
+    "docs/evidence/milestone-5/m5c-implementation/diff-check.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "docs/evidence/milestone-5/m5c-implementation/fault-artifact-manifest.json": "9c7d7f15b39574a25f8021351c4147a1e97e5527671655b748ce4d75f0c4b76c",
+    "docs/evidence/milestone-5/m5c-implementation/fixture-fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "docs/evidence/milestone-5/m5c-implementation/fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "docs/evidence/milestone-5/m5c-implementation/gas-and-storage-measurements.json": "875a41543c9bff5b1fe03690d8123108cc53523050b1888297d251d9fefe4907",
+    "docs/evidence/milestone-5/m5c-implementation/historical-wasm-provenance.json": "afdaf5b046e5ac3d8a52ad535da01fa3a0cf774cca0d58a0ec7cfc6fb0b4b317",
+    "docs/evidence/milestone-5/m5c-implementation/integrity-checks.json": "5853290da396b39fb2c8aa9122949536f1721055d88d449b173d57f81f0ed216",
+    "docs/evidence/milestone-5/m5c-implementation/local-protocol-config.json": "67b6099fd66e4b80994a227ea5538ca3105b656af6963b513d3fcf9053d2e488",
+    "docs/evidence/milestone-5/m5c-implementation/missing-callback-build.log": "04ed12b6230d29a2a03581e711df7d3fe94555ec5a8f9332a9ab5e68982de3d7",
+    "docs/evidence/milestone-5/m5c-implementation/node-b-migration.json": "f087d8be3216cd1ab449653dab668c799cb34c90ebf45ac88823b9792bf0bd80",
+    "docs/evidence/milestone-5/m5c-implementation/node-faults.json": "fa1ba76e516078668b75c3141dbec71cfc6bbc708b79060c0c82aeb2176e3cba",
+    "docs/evidence/milestone-5/m5c-implementation/node-inspect.json": "0613a29d8b69cc711f8f5a8e18900905187f85da0e08b09213cb9b632d5385aa",
+    "docs/evidence/milestone-5/m5c-implementation/node-main.json": "beb0f0a718a45cecaeb117bd434c5b124d61aa537d9d78a2ddf6b910f9db0b90",
+    "docs/evidence/milestone-5/m5c-implementation/old-b-build.log": "847e3b613b885732eefd4e8e88bdf852cd1b46f593426458b5450950572f06c2",
+    "docs/evidence/milestone-5/m5c-implementation/oog-callback-build.log": "87d13bbdbb7d3a0a8b4c987121a15e599c959a447422c9fa01dbebc3533935de",
+    "docs/evidence/milestone-5/m5c-implementation/panic-callback-build.log": "461f6655d588dccbb0a1c7edc7bb7a98fd40d11a98638f1bd331ac6cf37d1c7d",
+    "docs/evidence/milestone-5/m5c-implementation/runtime-inspection.log": "34610ca9d58777f3bcf1fd8dadb5a803c1fa290da3c3a5ea2dc76c8f6b99b570",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox-b-migration.log": "ce47e18b3f84101ea216b56cb77c89fadfeb016bea60c5da7af7d9138f9d1d5e",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox-faults.log": "26601c8cfa494bb27c67788c0b8d95703c270b5da14e5e25884d5a4f5fbaba4f",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox-main.log": "80c0f6e4dc6a36e926436bacb949272973e5770168e323e6b1f5dc445af07288",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox-suite.log": "47ba3ed67b63d40e648a43501379acead4ea8c02dc9e543cd779821e18268df5",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/b-to-c-wasm-migration.json": "3fd3ea7f92e71a20076158be07a7cd3d7ec2c0be3c95ae8f352a8f87d191fbec",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/concurrent-duplicate-execution.json": "3082496faeb1f910e390f7d594811df364add62a0238039038aeb4998769c9ef",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/concurrent-payout-one.json": "dd4c9eddb9b95270ca1f538560cd3acdd31c76cb193af29b6e9e9a3d0b6068c7",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/concurrent-payout-two.json": "f7d703036e4cc8931906a67c067670725b1634bb62c7ae03f203a721b3bf7e4f",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/definitive-token-failure.json": "fe829ed164158462f173fe5ac144dce2d114e82a6ede0363da538c81aba1f351",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/delivered-but-unexpected-result.json": "6faedb860743342ef1735ed98d97180c4833d6a87b34a2c2412d618bacda4b10",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/external-callback-payout-success.json": "bc33f3140115806008cd230d7ac30a5838c70578073e6198d1d1fa771f45ddf4",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/external-callbacks-rejected.json": "987b948aa5cb4f11322719c371ac6f16cf2f10d4b6a129bce653e2983be67735",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/fault-suite-summary.json": "be31f014d22a0716b4c85a97276b00991b828f6eff0d0165f6b4bf3806f09876",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/historical-wasm-migration.json": "294a29741a5de63daf7abb265dae6df0e9cce68988ffd0a8ad454b3f8269a4f9",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/index.json": "18b2c426f50f1962a89b7cfb4d7a856a4768670dd2c5383f1b947b3b4fd881d1",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/insufficient-token-balance.json": "3f3fca2005e637b41669156232a1c7d45404d14b769f59e74d89478674ff4d15",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/minimum-gas-and-low-gas-rejection.json": "5a8990d0066590fde55ff022be2e7c2e133523b0e8c876cb51310a4ed80d55c7",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/missing-recipient-storage.json": "4063ec2ce8615d2296a911179d3d6c9c1445dec7a7d6b268222bfd81b46949b9",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/native-near-headroom.json": "1fea17e07ffa6fadcd445fbbc9929db51150cc84f2e6d97447881daa0facfc4e",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/oog-callback-duplicate-rejected.json": "8a9bda4c02b1c6d3be8d6d82b88429013c434c36bd714bba2899ecfec1e64778",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/oog-callback.json": "051aef72814eb8451dc98f63c780ef30b972795204cdbbcfde804bbc78b80ae1",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/panic-callback-duplicate-rejected.json": "0e1b45ba79581f01b4a3c1931521d9d832005537752afc6413d9238aa0d1884a",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/panic-callback.json": "da59141c07920daa9665b25f1d07624557e90103fc73bc7ad2fc21aeb00906bf",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/pause-after-dispatch.json": "63b777023f3e039648ef59010d2be5f4a1158f25d952fdaeac195748777be8b8",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/restart-uncertain-response-model.json": "aec63b43278a0694452335787f8d43a64153726dc5bd335f03d74a9d7e63eaf3",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/same-campaign-concurrent-payouts.json": "b42e982ec8fbf3ab570063fb0b1cc1d4eb5d9de029a94e60642099f9f994b18c",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/schedule-panic-duplicate-rejected.json": "609987b7d12a14666617c5f9aa5b984c2c5ea42d6b74a5fe9f72a9130099f932",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/schedule-panic.json": "92f4d7e56b195b59ba5bdb337512f3d3107fa257dae95e3deeec993152185bc1",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/stale-duplicate-self-callbacks.json": "d018f7e316b1245e5c531b3d3dfe4f136bc2ed64fc3783e8cc44b5a8091f5b88",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/successful-transfer-duplicate-rejected.json": "ce0d987a89be1e1041e1adf57e385de2be8edba02f65cf2c56edda5e1b8fa2e3",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/successful-transfer.json": "38b1558cf1afc8d78243a009c1b88e4dde7fbfc48271b60b580af4438998ef5d",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/suite-summary.json": "06b3af4326561dab35958a33f2ba4be637ead9feb88181e3ed5adb7cc9175a75",
+    "docs/evidence/milestone-5/m5c-implementation/sandbox/upgrade-between-transfer-and-callback.json": "241ebefed99f1967ecf9562b81dd954349b85626fea622a62c9dde1b1f7d0e79",
+    "docs/evidence/milestone-5/m5c-implementation/scenario-matrix.json": "1e067506c78515abfaca7123eb5b5e53241dbdc23392ed2a14c377a06d1d2768",
+    "docs/evidence/milestone-5/m5c-implementation/schedule-panic-build.log": "7b1bca53bd5c7632f9dcfe95c8fcd4b2ce74598daeca7803120e9a4aea3924ce",
+    "docs/evidence/milestone-5/m5c-implementation/token-build.log": "4a3f26df60e987bd3c0ad9cd76039feb09edf644a67930347d7c07d643bbd453",
+    "docs/evidence/milestone-5/m5c-implementation/tooling.json": "3b9d38f542ce00d48857aab3e81aaecdce0baff79102ef9cb2c5b535480bb823",
+    "docs/evidence/milestone-5/m5c-implementation/unit-tests.log": "dde8eb311dcdae80747f588593f6b7fef474699b98dff4b1e3849adb10fdde35",
+    "docs/evidence/milestone-5/m5c-implementation/validation.json": "dbf4c21d9bc6207d036a4b2e601639ef1c1d48d83bce027e6e60439d1e0808be",
+    "docs/milestone-5c-asynchronous-test-results.md": "2fdeeafea9b06cab64d31399f328cf75573280c40e8213398bc4dc5edbf19b59",
+    "docs/milestone-5c-callback-failure-safety.md": "6ea3910a350fddd5e050f41d95fbd258682ebfbf5799a3955724d82c30523d61",
+    "docs/milestone-5c-migration-validation-results.md": "7ba6546066040b0661550b140cbde2afd0d3dc5f2ca9fe3562ad8265ad31e80c",
+    "docs/milestone-5c-native-transfer-implementation.md": "7dacdbd65c04b99caeacb686a3128189b8ec2384a0803171f65518b7db1bc86f",
+    "docs/milestone-5c-promise-and-gas-results.md": "0723469c2a6ebdcd17c44d4141f8e3436988a09835aa7b090c3b7d1a2675c630",
+    "src/native.rs": "e1a0b937f97a60d6d5dd397c1c030ace150daa7fa610029eee2d8c2769ce8633",
+    "src/native/execution.rs": "0a665cd72c334c630dad7e6f5d4d48f1cdf5e684a1f9492b85b238d9d50b8bc2",
+    "src/native/execution_tests.rs": "7a7e55fb7f5054828ca3b15f1c6a152dc64203d252586677dac2a56659fa5486",
+    "src/native/tests.rs": "e25b7897f169517150bb5921201800e4eadd73fadff148838865db0c37f48f83",
+    "src/state/mod.rs": "b5705d2071e26c232010b8412e26acbb6cf1fabde62e0f0ffe6abc8e27d8f939",
+    "src/state/native.rs": "dc8c7ec4c02e677993f680d9bd92cdae5429f0185b7508b631afd424f4ca5190",
+    "src/state/native_execution.rs": "5bdddce38b8722fd1718a76c2ee2ff162605b44f702b01d661b75c958ec1fd9a",
+    "tests/sandbox/.gitignore": "16dc2ecd1d62e57662b982e8741c8a5c81fed2660ab82660ff1d04d6ae845814",
+    "tests/sandbox/README.md": "40eb2e898e676ea4654b7c52ca3b8892f0bbb7fd46c29a050ff6ecc9dd5b86ed",
+    "tests/sandbox/build_artifacts.py": "88392a2e53a76932bd15c7922f8a7b6c4f8c92844a250299676dddea5bfeb89a",
+    "tests/sandbox/build_variants.py": "9e74f515cd5b0a3f9ec194637818e3e4186670ff4091af5b1e9e10b43571a846",
+    "tests/sandbox/collect_runtime_evidence.py": "f4232dd61bf00963a942029fc3a38fe9a49272b56236e39f5606f9f25bdd94c7",
+    "tests/sandbox/fetch_historical_wasm.py": "52ccfcffb4e5a049fbf7bf45f96d061772e7782b3e445897e3754faa057154a5",
+    "tests/sandbox/local_rpc.py": "2c05d2b2c737aabefa7f9b88e97212659568a7c0371116b2c6b371b0d6dd8d42",
+    "tests/sandbox/run_b_migration.py": "7af82d1130d2955222bbee85c91e66653bc9e06c7d61adaaf21b7c77e2485038",
+    "tests/sandbox/run_native_payout.py": "de773296f537e05f14fb4b41bd5f33e6e29851c315ab5abdbe849f8748501021",
+    "tests/sandbox/run_suite.py": "99b77b666909178118510f759ce7d2045a16136b1632f57f942ab3d7b5759c0b",
+    "tests/sandbox/token/Cargo.lock": "22f78140673538c71c8378b4be6f811c1a9c459b2fb43ffa291bbece8568f81f",
+    "tests/sandbox/token/Cargo.toml": "dc8976745abdb461c55efcde741042bf1c01647f9a46299d174ee0eca602c534",
+    "tests/sandbox/token/src/lib.rs": "7249d08188a07fb0e43168ceb87db6d050ffe00826e598bf749fed1b4d6d9e25",
+    "tests/sandbox/with_node.py": "3ba8eb344c0b2207868622be6714f07d68a7c5f40b5ad1679893e2c77cf2bd20"
+  },
+  "next_approval_gate": "Separate independent M5-C security review before M5-D; no deployment approval requested."
+}

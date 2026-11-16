@@ -109,3 +109,7 @@ A distinct rent/disk failure was not injected. Callback writes are preallocated
 and bounded; generic VM rollback is demonstrated after writes and under OOG.
 Resource exhaustion or incompatible root upgrades can still stop liveness. The
 safety response is persistent reservation/attempt locks, not promised self-repair.
+
+## Repository revision note
+
+During this session HEAD advanced externally to `d6f444ae5f6d1843206421f138908db7fca4db30`, capturing in-progress files. No commit/push commands were issued by this session; that commit was preserved. Subsequent report/evidence edits remain local.

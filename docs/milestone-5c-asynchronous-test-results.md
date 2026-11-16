@@ -89,3 +89,7 @@ production Tidepool conformance/gas proof, real recipient verification or live
 migration/deployment approval. M5-D reconciliation, M5-E operational upgrade
 validation and M5-F service integration remain separate. All existing review
 findings/evidence are preserved as historical artifacts.
+
+## Repository revision note
+
+During this session HEAD advanced externally to `d6f444ae5f6d1843206421f138908db7fca4db30`, capturing in-progress files. No commit/push commands were issued by this session; that commit was preserved. Subsequent report/evidence edits remain local.

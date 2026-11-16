@@ -101,3 +101,7 @@ fresh code/state/token/key checks and explicit approvals remain mandatory.
 Actual historical on-chain nonempty payout data was not fabricated or claimed.
 The authentic saved raw fixture remains unmodified. No live Campaign0, contract,
 account role, token balance or permissions changed.
+
+## Repository revision note
+
+During this session HEAD advanced externally to `d6f444ae5f6d1843206421f138908db7fca4db30`, capturing in-progress files. No commit/push commands were issued by this session; that commit was preserved. Subsequent report/evidence edits remain local.
