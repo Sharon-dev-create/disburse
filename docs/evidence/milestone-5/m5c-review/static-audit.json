@@ -1,0 +1,795 @@
+{
+  "revision": "f37893e7a318e948e5e31b0634ee968247559c92",
+  "native_source_matches_recorded_M5B": {
+    "src/lib.rs": true,
+    "src/native.rs": true,
+    "src/native/tests.rs": true,
+    "src/state/mod.rs": true,
+    "src/state/native.rs": true,
+    "tests/fixtures/m5b-deployed-state.json": true
+  },
+  "native_functions": [
+    {
+      "name": "approve_native_execution",
+      "kind": "call",
+      "params": {
+        "serialization_type": "json",
+        "args": [
+          {
+            "name": "payout_id",
+            "type_schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          {
+            "name": "authorization_id",
+            "type_schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attempt_id",
+            "type_schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          {
+            "name": "expires_at_ns",
+            "type_schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "approve_native_recipient",
+      "doc": " Governance records independently reviewed recipient evidence; this is not NEP-413 verification.",
+      "kind": "call",
+      "params": {
+        "serialization_type": "json",
+        "args": [
+          {
+            "name": "recipient_id",
+            "type_schema": {
+              "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+              "type": "string"
+            }
+          },
+          {
+            "name": "evidence_hash",
+            "type_schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "begin_native_preflight",
+      "doc": " M5-B only locks a preflight attempt. NO token call or storage query is scheduled.\n M5-C must attach its storage promise atomically to this transition before deployment.\n There is intentionally no M5-B method to unlock, submit, fail, settle or retry this lock.",
+      "kind": "call",
+      "params": {
+        "serialization_type": "json",
+        "args": [
+          {
+            "name": "payout_id",
+            "type_schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          {
+            "name": "authorization_id",
+            "type_schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attempt_id",
+            "type_schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "create_native_payout",
+      "kind": "call",
+      "params": {
+        "serialization_type": "json",
+        "args": [
+          {
+            "name": "campaign_id",
+            "type_schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          {
+            "name": "idempotency_key",
+            "type_schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "recipient_id",
+            "type_schema": {
+              "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+              "type": "string"
+            }
+          },
+          {
+            "name": "amount",
+            "type_schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "result": {
+        "serialization_type": "json",
+        "type_schema": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    },
+    {
+      "name": "get_native_attempt",
+      "kind": "view",
+      "params": {
+        "serialization_type": "json",
+        "args": [
+          {
+            "name": "payout_id",
+            "type_schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          {
+            "name": "attempt_id",
+            "type_schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        ]
+      },
+      "result": {
+        "serialization_type": "json",
+        "type_schema": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/NativeAttempt"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "get_native_authorization",
+      "kind": "view",
+      "params": {
+        "serialization_type": "json",
+        "args": [
+          {
+            "name": "authorization_id",
+            "type_schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "result": {
+        "serialization_type": "json",
+        "type_schema": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/NativeAuthorization"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "get_native_config",
+      "kind": "view",
+      "result": {
+        "serialization_type": "json",
+        "type_schema": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/NativeConfig"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "get_native_mode",
+      "kind": "view",
+      "params": {
+        "serialization_type": "json",
+        "args": [
+          {
+            "name": "payout_id",
+            "type_schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        ]
+      },
+      "result": {
+        "serialization_type": "json",
+        "type_schema": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/NativeMode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "get_native_payout",
+      "kind": "view",
+      "params": {
+        "serialization_type": "json",
+        "args": [
+          {
+            "name": "payout_id",
+            "type_schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        ]
+      },
+      "result": {
+        "serialization_type": "json",
+        "type_schema": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/NativePayout"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "get_native_recipient",
+      "kind": "view",
+      "params": {
+        "serialization_type": "json",
+        "args": [
+          {
+            "name": "recipient_id",
+            "type_schema": {
+              "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "result": {
+        "serialization_type": "json",
+        "type_schema": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/NativeRecipientApproval"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "has_native_role",
+      "kind": "view",
+      "params": {
+        "serialization_type": "json",
+        "args": [
+          {
+            "name": "account_id",
+            "type_schema": {
+              "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "type_schema": {
+              "$ref": "#/definitions/NativeRole"
+            }
+          }
+        ]
+      },
+      "result": {
+        "serialization_type": "json",
+        "type_schema": {
+          "type": "boolean"
+        }
+      }
+    },
+    {
+      "name": "initialize_native_execution",
+      "doc": " Sidecar bootstrap only: legacy STATE is read/validated, never rewritten here.\n No live initialization, deployment or migration is authorized by M5-B.",
+      "kind": "call",
+      "params": {
+        "serialization_type": "json",
+        "args": [
+          {
+            "name": "expected_legacy_state_hash",
+            "type_schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "max_payout_amount",
+            "type_schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "max_authorization_ttl_ns",
+            "type_schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "revoke_native_authorization",
+      "doc": " Revocation never resets an execution attempt or frees campaign reservation.",
+      "kind": "call",
+      "params": {
+        "serialization_type": "json",
+        "args": [
+          {
+            "name": "payout_id",
+            "type_schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          {
+            "name": "authorization_id",
+            "type_schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attempt_id",
+            "type_schema": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "set_native_role",
+      "doc": " Explicit, deny-by-default sidecar roles, separate from the legacy enum hierarchy.",
+      "kind": "call",
+      "params": {
+        "serialization_type": "json",
+        "args": [
+          {
+            "name": "account_id",
+            "type_schema": {
+              "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "type_schema": {
+              "$ref": "#/definitions/NativeRole"
+            }
+          },
+          {
+            "name": "enabled",
+            "type_schema": {
+              "type": "boolean"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "all_function_names": [
+    "activate_campaign",
+    "add_accepted_token",
+    "approve_campaign",
+    "approve_native_execution",
+    "approve_native_recipient",
+    "begin_native_preflight",
+    "cancel_campaign",
+    "confirm_manual_review_execution",
+    "contract_source_metadata",
+    "create_campaign",
+    "create_native_payout",
+    "create_payout",
+    "ft_on_transfer",
+    "get_campaign",
+    "get_campaign_count",
+    "get_campaign_funding",
+    "get_campaign_payout",
+    "get_campaign_payout_accounting",
+    "get_native_attempt",
+    "get_native_authorization",
+    "get_native_config",
+    "get_native_mode",
+    "get_native_payout",
+    "get_native_recipient",
+    "get_owner",
+    "get_payout",
+    "get_payout_by_idempotency",
+    "grant_role",
+    "has_native_role",
+    "has_role",
+    "initialize_native_execution",
+    "is_accepted_token",
+    "is_paused",
+    "mark_payout_failed",
+    "mark_payout_pending_verification",
+    "move_payout_to_manual_review",
+    "new",
+    "pause",
+    "pause_campaign",
+    "release_failed_payout_reservation",
+    "release_manual_review_reservation",
+    "remove_accepted_token",
+    "resume_campaign",
+    "revoke_native_authorization",
+    "revoke_role",
+    "set_native_role",
+    "settle_payout",
+    "start_payout_execution",
+    "unpause"
+  ],
+  "wasm": {
+    "bytes": 385351,
+    "sha256": "ad51f8bc061138013ff33620d33adff8dffacb4eaf1c06b09853c79b92c58e94",
+    "exports": [
+      {
+        "name": "memory",
+        "kind": 2,
+        "index": 0
+      },
+      {
+        "name": "__contract_abi",
+        "kind": 0,
+        "index": 553
+      },
+      {
+        "name": "activate_campaign",
+        "kind": 0,
+        "index": 554
+      },
+      {
+        "name": "add_accepted_token",
+        "kind": 0,
+        "index": 555
+      },
+      {
+        "name": "approve_campaign",
+        "kind": 0,
+        "index": 556
+      },
+      {
+        "name": "approve_native_execution",
+        "kind": 0,
+        "index": 557
+      },
+      {
+        "name": "approve_native_recipient",
+        "kind": 0,
+        "index": 558
+      },
+      {
+        "name": "begin_native_preflight",
+        "kind": 0,
+        "index": 559
+      },
+      {
+        "name": "cancel_campaign",
+        "kind": 0,
+        "index": 560
+      },
+      {
+        "name": "confirm_manual_review_execution",
+        "kind": 0,
+        "index": 561
+      },
+      {
+        "name": "contract_source_metadata",
+        "kind": 0,
+        "index": 562
+      },
+      {
+        "name": "create_campaign",
+        "kind": 0,
+        "index": 563
+      },
+      {
+        "name": "create_native_payout",
+        "kind": 0,
+        "index": 564
+      },
+      {
+        "name": "create_payout",
+        "kind": 0,
+        "index": 565
+      },
+      {
+        "name": "ft_on_transfer",
+        "kind": 0,
+        "index": 566
+      },
+      {
+        "name": "get_campaign",
+        "kind": 0,
+        "index": 567
+      },
+      {
+        "name": "get_campaign_count",
+        "kind": 0,
+        "index": 568
+      },
+      {
+        "name": "get_campaign_funding",
+        "kind": 0,
+        "index": 569
+      },
+      {
+        "name": "get_campaign_payout",
+        "kind": 0,
+        "index": 570
+      },
+      {
+        "name": "get_campaign_payout_accounting",
+        "kind": 0,
+        "index": 571
+      },
+      {
+        "name": "get_native_attempt",
+        "kind": 0,
+        "index": 572
+      },
+      {
+        "name": "get_native_authorization",
+        "kind": 0,
+        "index": 573
+      },
+      {
+        "name": "get_native_config",
+        "kind": 0,
+        "index": 574
+      },
+      {
+        "name": "get_native_mode",
+        "kind": 0,
+        "index": 575
+      },
+      {
+        "name": "get_native_payout",
+        "kind": 0,
+        "index": 576
+      },
+      {
+        "name": "get_native_recipient",
+        "kind": 0,
+        "index": 577
+      },
+      {
+        "name": "get_owner",
+        "kind": 0,
+        "index": 578
+      },
+      {
+        "name": "get_payout",
+        "kind": 0,
+        "index": 579
+      },
+      {
+        "name": "get_payout_by_idempotency",
+        "kind": 0,
+        "index": 580
+      },
+      {
+        "name": "grant_role",
+        "kind": 0,
+        "index": 581
+      },
+      {
+        "name": "has_native_role",
+        "kind": 0,
+        "index": 582
+      },
+      {
+        "name": "has_role",
+        "kind": 0,
+        "index": 583
+      },
+      {
+        "name": "initialize_native_execution",
+        "kind": 0,
+        "index": 584
+      },
+      {
+        "name": "is_accepted_token",
+        "kind": 0,
+        "index": 585
+      },
+      {
+        "name": "is_paused",
+        "kind": 0,
+        "index": 586
+      },
+      {
+        "name": "mark_payout_failed",
+        "kind": 0,
+        "index": 587
+      },
+      {
+        "name": "mark_payout_pending_verification",
+        "kind": 0,
+        "index": 588
+      },
+      {
+        "name": "move_payout_to_manual_review",
+        "kind": 0,
+        "index": 589
+      },
+      {
+        "name": "new",
+        "kind": 0,
+        "index": 590
+      },
+      {
+        "name": "pause",
+        "kind": 0,
+        "index": 591
+      },
+      {
+        "name": "pause_campaign",
+        "kind": 0,
+        "index": 592
+      },
+      {
+        "name": "release_failed_payout_reservation",
+        "kind": 0,
+        "index": 593
+      },
+      {
+        "name": "release_manual_review_reservation",
+        "kind": 0,
+        "index": 594
+      },
+      {
+        "name": "remove_accepted_token",
+        "kind": 0,
+        "index": 595
+      },
+      {
+        "name": "resume_campaign",
+        "kind": 0,
+        "index": 596
+      },
+      {
+        "name": "revoke_native_authorization",
+        "kind": 0,
+        "index": 597
+      },
+      {
+        "name": "revoke_role",
+        "kind": 0,
+        "index": 598
+      },
+      {
+        "name": "set_native_role",
+        "kind": 0,
+        "index": 599
+      },
+      {
+        "name": "settle_payout",
+        "kind": 0,
+        "index": 600
+      },
+      {
+        "name": "start_payout_execution",
+        "kind": 0,
+        "index": 601
+      },
+      {
+        "name": "unpause",
+        "kind": 0,
+        "index": 602
+      }
+    ]
+  },
+  "source_patterns": {
+    "Promise::": [
+      {
+        "path": "src/native/tests.rs",
+        "line": 959,
+        "text": "!module.contains(\"Promise::\")"
+      }
+    ],
+    "#[private]": [],
+    "promise_result": [],
+    "with_static_gas": [],
+    "prepaid_gas": [],
+    "used_gas": [],
+    "ft_transfer": []
+  },
+  "test_names": [
+    "independent_approval_preflight_consumption_and_no_accounting_or_promises",
+    "unauthorized_owner_admin_operator_and_self_approval_are_denied",
+    "explicit_executor_can_be_reserver_with_independent_approval_only",
+    "root_self_and_dual_native_role_grants_reject",
+    "expiry_and_invalid_ttl_reject_without_consumption",
+    "revocation_is_safe_and_new_approval_has_fresh_identity",
+    "role_revocation_blocks_approved_attempt_and_owner_can_revoke_while_paused",
+    "identical_approval_is_idempotent_conflicting_approval_is_rejected",
+    "duplicate_pending_attempts_unknown_payout_and_cross_payout_auth_reject",
+    "immutable_recipient_amount_network_token_decimals_and_campaign_are_validated",
+    "altered_binding_and_detached_sidecar_fail_closed",
+    "native_and_legacy_idempotency_cannot_convert_modes",
+    "pending_manual_review_and_terminal_states_cannot_approve_revoke_or_restart",
+    "accounting_boundary_overflow_counter_overflow_and_multiple_payouts",
+    "pause_campaign_cancel_and_token_removal_cannot_free_native_reservation",
+    "recipient_allowlist_exclusions_and_evidence_immutability",
+    "uninitialized_and_unknown_schema_fail_closed",
+    "all_legacy_native_mutation_bypasses_are_rejected",
+    "authentic_deployed_bytes_deserialize_and_bootstrap_preserves_every_legacy_entry",
+    "bootstrap_rejects_unauthorized_repeat_incompatible_hash_and_bounds",
+    "bootstrap_rejects_malformed_state_unpaused_and_wrong_deployment_identity",
+    "nonempty_legacy_payout_indexes_failure_settlement_and_resolution_survive_bootstrap",
+    "storage_prefixes_are_unique_and_legacy_borsh_layout_is_unchanged",
+    "json_binding_schema_uses_decimal_strings_and_no_transfer_or_success_abi",
+    "two_campaigns_share_token_but_not_reservation_or_authorization",
+    "explicit_native_binding_and_attempt_records_reject_corruption",
+    "unknown_config_version_and_new_id_collisions_fail_before_reservation",
+    "bootstrap_rejects_structurally_valid_but_changed_legacy_prefixes"
+  ]
+}

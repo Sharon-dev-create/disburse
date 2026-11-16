@@ -1,0 +1,46 @@
+{
+  "legacy_disburse_struct_text_unchanged_from_pre_B": true,
+  "legacy_type_files_unchanged_from_pre_B": {
+    "src/state/campaign.rs": true,
+    "src/state/payout.rs": true,
+    "src/types/amount.rs": true,
+    "src/types/destination.rs": true,
+    "src/types/status.rs": true,
+    "src/types/role.rs": true,
+    "src/types/evidence.rs": true
+  },
+  "authentic_fixture_matches_M5A_raw_values": true,
+  "authentic_fixture_block": {
+    "hash": "5ccVg6DsrNnk4VXWtKGRp8Z4QEjMvsu7HFSt7V526TNG",
+    "height": 277843166,
+    "timestamp_nanosec": "1794768250171387619"
+  },
+  "authentic_entry_sizes": [
+    {
+      "key": "STATE",
+      "value_bytes": 137
+    },
+    {
+      "key": "accepted-ft-tokens\u001d\u0000\u0000\u0000usdc.tidepool-sandbox.testnet",
+      "value_bytes": 0
+    },
+    {
+      "key": "campaigns\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000",
+      "value_bytes": 184
+    },
+    {
+      "key": "role-assignments\u001c\u0000\u0000\u0000disburse-op-b966e36d.testnet\u0002",
+      "value_bytes": 0
+    }
+  ],
+  "authentic_payout_count": 0,
+  "historical_mock_tests_pass": true,
+  "synthetic_nonempty_mock_tests_pass": true,
+  "full_wasm_migration_test_present": false,
+  "live_migration_performed": false,
+  "external_token_custody_test_performed": false,
+  "bootstrap_pause_before_byte_comparison": true,
+  "top_level_state_migration_needed_for_current_B": false,
+  "C_storage_extension_present": false,
+  "rollback_risk": "Older WASM can ignore sidecars and re-enable legacy mutation despite deserializable STATE; no safe automatic rollback assumed."
+}

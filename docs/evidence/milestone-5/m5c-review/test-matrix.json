@@ -1,0 +1,308 @@
+[
+  {
+    "scenario": "Successful NEP-141 transfer",
+    "status": "NOT_IMPLEMENTED",
+    "tests": [],
+    "real_receipt_executed": false,
+    "limitation": "No transfer/callback exists; no delivery or once-only settlement proven."
+  },
+  {
+    "scenario": "Token transfer failure",
+    "status": "NOT_IMPLEMENTED",
+    "tests": [],
+    "real_receipt_executed": false,
+    "limitation": "Legacy failure attestation tests are not native token-failure receipts."
+  },
+  {
+    "scenario": "Missing recipient storage",
+    "status": "NOT_IMPLEMENTED",
+    "tests": [
+      {
+        "name": "native::tests::recipient_allowlist_exclusions_and_evidence_immutability",
+        "file": "src/native/tests.rs",
+        "line": 533,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      }
+    ],
+    "real_receipt_executed": false,
+    "limitation": "This test validates allowlist/exclusions/hash only; no storage_balance_of or token failure."
+  },
+  {
+    "scenario": "Duplicate execution request",
+    "status": "PARTIAL_MOCK",
+    "tests": [
+      {
+        "name": "native::tests::duplicate_pending_attempts_unknown_payout_and_cross_payout_auth_reject",
+        "file": "src/native/tests.rs",
+        "line": 305,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      },
+      {
+        "name": "native::tests::identical_approval_is_idempotent_conflicting_approval_is_rejected",
+        "file": "src/native/tests.rs",
+        "line": 282,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      }
+    ],
+    "real_receipt_executed": false,
+    "limitation": "Proves a B preflight lock/approval cannot be repeated, not one-transfer scheduling under concurrent receipts."
+  },
+  {
+    "scenario": "Duplicate callback",
+    "status": "NOT_IMPLEMENTED",
+    "tests": [],
+    "real_receipt_executed": false,
+    "limitation": "No callback; no callback duplicate accounting test."
+  },
+  {
+    "scenario": "Stale attempt callback",
+    "status": "NOT_IMPLEMENTED",
+    "tests": [
+      {
+        "name": "native::tests::explicit_native_binding_and_attempt_records_reject_corruption",
+        "file": "src/native/tests.rs",
+        "line": 1001,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      }
+    ],
+    "real_receipt_executed": false,
+    "limitation": "Existing tests reject wrong attempt metadata/preflight identity, not stale callback execution."
+  },
+  {
+    "scenario": "External/Operator/owner callback invocation",
+    "status": "NOT_IMPLEMENTED",
+    "tests": [
+      {
+        "name": "native::tests::unauthorized_owner_admin_operator_and_self_approval_are_denied",
+        "file": "src/native/tests.rs",
+        "line": 157,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      }
+    ],
+    "real_receipt_executed": false,
+    "limitation": "Existing test covers approval authority only. No private callback or wrapper authentication exercised."
+  },
+  {
+    "scenario": "Callback panic after committed token transfer",
+    "status": "NOT_IMPLEMENTED",
+    "tests": [],
+    "real_receipt_executed": false,
+    "limitation": "No callback or real token receipt; token-success/callback-failure split untested."
+  },
+  {
+    "scenario": "Callback gas exhaustion",
+    "status": "NOT_IMPLEMENTED",
+    "tests": [],
+    "real_receipt_executed": false,
+    "limitation": "No allocated callback gas, measured gas or real OOG receipt."
+  },
+  {
+    "scenario": "RPC timeout",
+    "status": "NOT_TESTED_NATIVE",
+    "tests": [
+      {
+        "name": "native::tests::pending_manual_review_and_terminal_states_cannot_approve_revoke_or_restart",
+        "file": "src/native/tests.rs",
+        "line": 431,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      }
+    ],
+    "real_receipt_executed": false,
+    "limitation": "Test directly seeds future states; it never simulates RPC uncertainty or receipt discovery."
+  },
+  {
+    "scenario": "Service restart",
+    "status": "NOT_TESTED_NATIVE",
+    "tests": [],
+    "real_receipt_executed": false,
+    "limitation": "No native worker/reconciliation test; DB is not used or changed during review."
+  },
+  {
+    "scenario": "Pause mid-execution",
+    "status": "PARTIAL_MOCK",
+    "tests": [
+      {
+        "name": "native::tests::pause_campaign_cancel_and_token_removal_cannot_free_native_reservation",
+        "file": "src/native/tests.rs",
+        "line": 508,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      }
+    ],
+    "real_receipt_executed": false,
+    "limitation": "Proves pause/cancel/delist blocks B preflight and keeps reserve, not callback completion during interleaving."
+  },
+  {
+    "scenario": "Concurrent payouts / multiple campaigns",
+    "status": "PARTIAL_MOCK",
+    "tests": [
+      {
+        "name": "native::tests::two_campaigns_share_token_but_not_reservation_or_authorization",
+        "file": "src/native/tests.rs",
+        "line": 968,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      },
+      {
+        "name": "native::tests::accounting_boundary_overflow_counter_overflow_and_multiple_payouts",
+        "file": "src/native/tests.rs",
+        "line": 462,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      }
+    ],
+    "real_receipt_executed": false,
+    "limitation": "Sequential direct calls and invariants only; no concurrent asynchronous receipts."
+  },
+  {
+    "scenario": "Arithmetic boundaries",
+    "status": "PASS_UNIT",
+    "tests": [
+      {
+        "name": "native::tests::accounting_boundary_overflow_counter_overflow_and_multiple_payouts",
+        "file": "src/native/tests.rs",
+        "line": 462,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      }
+    ],
+    "real_receipt_executed": false,
+    "limitation": "Cap/u128 corrupted accounting/u64 attempt overflow cases reject without storage changes. No callback arithmetic exists."
+  },
+  {
+    "scenario": "Migration with existing payouts",
+    "status": "PASS_SYNTHETIC_ONLY",
+    "tests": [
+      {
+        "name": "native::tests::nonempty_legacy_payout_indexes_failure_settlement_and_resolution_survive_bootstrap",
+        "file": "src/native/tests.rs",
+        "line": 817,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      }
+    ],
+    "real_receipt_executed": false,
+    "limitation": "Synthetic nonempty old-layout state preserved in mock environment; no actual nonempty historical chain/WASM migration."
+  },
+  {
+    "scenario": "Authentic historical state preservation",
+    "status": "PASS_HISTORICAL_MOCK",
+    "tests": [
+      {
+        "name": "native::tests::authentic_deployed_bytes_deserialize_and_bootstrap_preserves_every_legacy_entry",
+        "file": "src/native/tests.rs",
+        "line": 714,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      },
+      {
+        "name": "native::tests::bootstrap_rejects_unauthorized_repeat_incompatible_hash_and_bounds",
+        "file": "src/native/tests.rs",
+        "line": 743,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      },
+      {
+        "name": "native::tests::bootstrap_rejects_malformed_state_unpaused_and_wrong_deployment_identity",
+        "file": "src/native/tests.rs",
+        "line": 769,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      },
+      {
+        "name": "native::tests::bootstrap_rejects_structurally_valid_but_changed_legacy_prefixes",
+        "file": "src/native/tests.rs",
+        "line": 1059,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      },
+      {
+        "name": "native::tests::storage_prefixes_are_unique_and_legacy_borsh_layout_is_unchanged",
+        "file": "src/native/tests.rs",
+        "line": 908,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      }
+    ],
+    "real_receipt_executed": false,
+    "limitation": "Actual old raw bytes, zero payouts, preserved around paused bootstrap. Mock storage only."
+  },
+  {
+    "scenario": "Legacy bypass rejection",
+    "status": "PASS_UNIT",
+    "tests": [
+      {
+        "name": "native::tests::all_legacy_native_mutation_bypasses_are_rejected",
+        "file": "src/native/tests.rs",
+        "line": 569,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      }
+    ],
+    "real_receipt_executed": false,
+    "limitation": "Exact native guard rejection across eight methods, paused and unpaused; does not test callbacks."
+  },
+  {
+    "scenario": "Immutable authorization / expiry / revocation",
+    "status": "PASS_UNIT",
+    "tests": [
+      {
+        "name": "native::tests::immutable_recipient_amount_network_token_decimals_and_campaign_are_validated",
+        "file": "src/native/tests.rs",
+        "line": 334,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      },
+      {
+        "name": "native::tests::expiry_and_invalid_ttl_reject_without_consumption",
+        "file": "src/native/tests.rs",
+        "line": 214,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      },
+      {
+        "name": "native::tests::revocation_is_safe_and_new_approval_has_fresh_identity",
+        "file": "src/native/tests.rs",
+        "line": 228,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      },
+      {
+        "name": "native::tests::role_revocation_blocks_approved_attempt_and_owner_can_revoke_while_paused",
+        "file": "src/native/tests.rs",
+        "line": 263,
+        "regression_result": "PASS",
+        "framework": "Rust #[test] + NEAR SDK mock VMContext/testing_env, direct calls",
+        "real_receipt_executed": false
+      }
+    ],
+    "real_receipt_executed": false,
+    "limitation": "B control checks valid; role metadata direct-calls, no asynchronous token action."
+  }
+]

@@ -1,0 +1,146 @@
+[
+  {
+    "id": "M5C-01",
+    "severity": "HIGH",
+    "category": "implementation_absent",
+    "file": "src/native.rs",
+    "line": 368,
+    "additional_locations": [
+      "src/native.rs:371",
+      "src/native.rs:405",
+      "src/state/native.rs:47",
+      "src/native/tests.rs:945"
+    ],
+    "title": "M5-C transfer, callback and settlement implementation is absent",
+    "behavior": "Current code is byte-identical to recorded M5-B. begin_native_preflight consumes consent and writes PreflightPending, but returns without any token/storage promise. No native dispatch, private callbacks, promise-result handling or reserved-to-spent completion exists. Enum variants alone do not implement transitions.",
+    "reproduction": [
+      "Compare current source hashes to m5b-implementation-results.json: all native implementation/test files match.",
+      "Inspect src/native.rs:368-416 and search executable source for Promise construction, ft_transfer call, private callbacks and promise-result inspection. None exists.",
+      "Build candidate and inspect generated ABI and actual WASM exports: 14 native foundation methods; no transfer/callback/success method.",
+      "Run native::tests::independent_approval_preflight_consumption_and_no_accounting_or_promises: it passes by asserting zero receipts and spent0."
+    ],
+    "impact": "Native payouts cannot execute or settle. The M5-C security conclusion cannot be established; advancing as though C were complete would rely on nonexistent controls.",
+    "evidence": [
+      "m5c-review/static-audit.json",
+      "m5c-review/tests.log",
+      "m5c-review/build.log"
+    ],
+    "remediation": "In a separately authorized local implementation stage, implement the approved storage-preflight\u2192fixed ft_transfer\u2192private callback graph, atomic locks, outcome handling and exactly-once settlement; then repeat adversarial review. Do not add a public manual-success override.",
+    "blocks_local_progression": true,
+    "blocks_deployment": true,
+    "exploit_demonstrated": false
+  },
+  {
+    "id": "M5C-02",
+    "severity": "MEDIUM",
+    "category": "known_staged_liveness_limit",
+    "file": "src/native.rs",
+    "line": 405,
+    "additional_locations": [
+      "src/native.rs:353",
+      "src/native/tests.rs:305"
+    ],
+    "title": "Public preflight consumes approval into a lock with no continuation",
+    "behavior": "An authorized B preflight writes Consumed/PreflightPending with no promise and no public continuation, failure, release or retry path. This is intentional B staging, not a hidden token-transfer bug.",
+    "reproduction": [
+      "Use local setup\u2192create_native_payout\u2192independent approve_native_execution\u2192authorized begin_native_preflight.",
+      "Observe Consumed auth, native PreflightPending, legacy Reserved and reserved100000/spent0.",
+      "Try repeated preflight, new authorization and revocation: all reject; no receipt exists to finish execution. Existing test native::tests::duplicate_pending_attempts_unknown_payout_and_cross_payout_auth_reject covers these rejections."
+    ],
+    "impact": "If this foundation were deployed/used as an executor, the reservation would remain locked without delivery. This demonstrates missing liveness, not duplicate transfer or accounting corruption.",
+    "evidence": [
+      "src/native.rs:368",
+      "src/native/tests.rs:119",
+      "src/native/tests.rs:305",
+      "m5c-review/tests.log"
+    ],
+    "remediation": "M5-C must join state consumption with storage-promise scheduling atomically. Keep uncertain attempts locked; do not solve liveness by enabling arbitrary reset/release or fake success.",
+    "blocks_local_progression": true,
+    "blocks_deployment": true,
+    "exploit_demonstrated": false
+  },
+  {
+    "id": "M5C-03",
+    "severity": "MEDIUM",
+    "category": "asynchronous_and_gas_evidence_gap",
+    "file": "src/native/tests.rs",
+    "line": 119,
+    "additional_locations": [
+      "src/native/tests.rs:431",
+      "src/native/tests.rs:945",
+      "Cargo.toml:27"
+    ],
+    "title": "No asynchronous receipt, callback-failure or gas validation exists",
+    "behavior": "126 passing tests are direct Rust/SDK environment tests. There are no native callbacks, promise-result injection tests, sandbox harness, transfer receipts, callback OOG measurements or gas constants/guards. Future terminal phases are inserted directly into test storage, not reached via token execution.",
+    "reproduction": [
+      "Inspect the tests and Cargo manifest; search for near-workspaces/sandbox/promise_result/PromiseResult/private callbacks/static gas.",
+      "Inspect native::tests::pending_manual_review_and_terminal_states_cannot_approve_revoke_or_restart: private test code seeds future states.",
+      "Inspect test-framework.json: no near-sandbox executable on PATH, no repository sandbox harness. No dependencies were installed or mocks substituted."
+    ],
+    "impact": "No evidence supports exactly-once delivery, callback authentication, failure atomicity, receipt interleaving, or sufficient nested gas budgets.",
+    "evidence": [
+      "m5c-review/test-framework.json",
+      "m5c-review/static-audit.json",
+      "m5c-review/tests.log"
+    ],
+    "remediation": "After implementing C, add real local receipt execution with a conforming mock token and controlled failures, measure each receipt, and test successful transfer with callback panic/OOG and blocked resend. Distinguish mock-result unit tests from sandbox receipts.",
+    "blocks_local_progression": true,
+    "blocks_deployment": true,
+    "exploit_demonstrated": false
+  },
+  {
+    "id": "M5C-04",
+    "severity": "MEDIUM",
+    "category": "deployment_validation_gap",
+    "file": "src/native/tests.rs",
+    "line": 714,
+    "additional_locations": [
+      "src/native/tests.rs:817",
+      "tests/fixtures/m5b-deployed-state.json:1"
+    ],
+    "title": "Historical mock-state compatibility does not prove full WASM upgrade safety",
+    "behavior": "Authentic fixture has zero payouts and is loaded into SDK mock storage. Nonempty settlement/failure/index state is locally generated with current legacy functions. No old-WASM\u2192candidate-WASM sandbox upgrade, token custody migration or live migration was executed.",
+    "reproduction": [
+      "Run authentic_deployed_bytes_deserialize_and_bootstrap_preserves_every_legacy_entry and inspect its explicit pause before byte-comparison baseline.",
+      "Inspect nonempty_legacy_payout_indexes_failure_settlement_and_resolution_survive_bootstrap: synthetic fixture strips new native namespaces, then bootstraps in Rust.",
+      "Verify no sandbox harness or live upgrade evidence exists in the current candidate."
+    ],
+    "impact": "Byte compatibility is supported, but protocol-level upgrade/receipt behavior and token preservation remain unproven. No demonstrated serialization corruption was found.",
+    "evidence": [
+      "m5c-review/test-framework.json",
+      "m5c-review/tests.log",
+      "tests/fixtures/m5b-deployed-state.json"
+    ],
+    "remediation": "Keep M5-E as a mandatory deployment blocker: old/final candidate WASM, fresh authentic raw snapshot plus representative nonempty states, interrupted/unauthorized/repeated bootstrap, token custody and callback compatibility. Never assume older-WASM rollback is safe.",
+    "blocks_local_progression": false,
+    "blocks_deployment": true,
+    "exploit_demonstrated": false
+  },
+  {
+    "id": "M5C-05",
+    "severity": "INFORMATIONAL",
+    "category": "recipient_token_root_trust",
+    "file": "src/native.rs",
+    "line": 119,
+    "additional_locations": [
+      "src/native.rs:535",
+      "src/state/native.rs:12"
+    ],
+    "title": "Recipient approval is a governance attestation and token/root trust is unresolved",
+    "behavior": "Recipient enrollment checks a 64-character digest and exclusions, not NEP413 control, account existence, token storage or balance. Token ID is fixed but its transfer implementation is not exercised. Role separation does not eliminate root/governance control.",
+    "reproduction": [
+      "Read approve_native_recipient and its tests: local evidence hash is synthetic, no token call.",
+      "Inspect fixed token/domain and role setters: on-chain address separation exists, human independence is operational."
+    ],
+    "impact": "No actual controlled recipient or trustworthy live-delivery route is established. A future successful promise from a malicious/no-op token would not by itself prove economic delivery.",
+    "evidence": [
+      "src/native.rs:119",
+      "src/native/tests.rs:533",
+      "src/state/native.rs:12"
+    ],
+    "remediation": "Before live gates, independently verify recipient control/key membership, storage and initial balance; review token code/governance/restrictions and root-key safeguards. Keep receipt/balance attribution independent. No changes authorized by this review.",
+    "blocks_local_progression": false,
+    "blocks_deployment": true,
+    "exploit_demonstrated": false
+  }
+]

@@ -1,0 +1,70 @@
+[
+  {
+    "name": "fmt",
+    "command": [
+      "cargo",
+      "fmt",
+      "--all",
+      "--",
+      "--check"
+    ],
+    "exit_code": 0,
+    "started_utc": "2026-11-16T03:22:57.699482+00:00",
+    "finished_utc": "2026-11-16T03:22:57.967003+00:00",
+    "log": "fmt.log"
+  },
+  {
+    "name": "clippy",
+    "command": [
+      "cargo",
+      "clippy",
+      "--locked",
+      "--all-targets",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "exit_code": 0,
+    "started_utc": "2026-11-16T03:22:57.967365+00:00",
+    "finished_utc": "2026-11-16T03:22:58.798809+00:00",
+    "log": "clippy.log"
+  },
+  {
+    "name": "tests",
+    "command": [
+      "cargo",
+      "test",
+      "--locked"
+    ],
+    "exit_code": 0,
+    "started_utc": "2026-11-16T03:22:58.799826+00:00",
+    "finished_utc": "2026-11-16T03:23:07.245802+00:00",
+    "log": "tests.log"
+  },
+  {
+    "name": "build",
+    "command": [
+      "cargo",
+      "near",
+      "build",
+      "non-reproducible-wasm",
+      "--locked"
+    ],
+    "exit_code": 0,
+    "started_utc": "2026-11-16T03:23:07.246187+00:00",
+    "finished_utc": "2026-11-16T03:23:09.438360+00:00",
+    "log": "build.log"
+  },
+  {
+    "name": "diff-check",
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit_code": 0,
+    "started_utc": "2026-11-16T03:23:09.439035+00:00",
+    "finished_utc": "2026-11-16T03:23:09.444976+00:00",
+    "log": "diff-check.log"
+  }
+]
