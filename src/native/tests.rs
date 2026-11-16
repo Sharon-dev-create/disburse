@@ -94,6 +94,7 @@ fn reject_expected<F: FnOnce(&mut Disburse)>(c: &mut Disburse, action: F, expect
     persist(c);
     let before = storage();
     let logs = get_logs();
+    let receipts = get_created_receipts();
     let result = catch_unwind(AssertUnwindSafe(|| action(c)));
     let error = result.expect_err("Expected rejection");
     if let Some(expected) = expected {
@@ -111,12 +112,12 @@ fn reject_expected<F: FnOnce(&mut Disburse)>(c: &mut Disburse, action: F, expect
     assert_eq!(before, storage(), "Rejected call changed storage");
     assert_eq!(logs, get_logs(), "Rejected call emitted events");
     assert!(
-        get_created_receipts().is_empty(),
-        "M5-B scheduled a promise"
+        get_created_receipts() == receipts,
+        "Rejected call scheduled a new promise"
     );
 }
 #[test]
-fn independent_approval_preflight_consumption_and_no_accounting_or_promises() {
+fn independent_approval_preflight_schedules_only_storage_without_accounting_change() {
     let mut c = setup();
     let p = reserve(&mut c, "first");
     let accounting = c.get_campaign_payout_accounting(0).unwrap();
@@ -131,7 +132,7 @@ fn independent_approval_preflight_consumption_and_no_accounting_or_promises() {
     );
     assert_eq!(c.get_campaign_payout_accounting(0).unwrap(), accounting);
     context(EXECUTOR, NOW);
-    c.begin_native_preflight(p, "auth-1".into(), 1);
+    c.begin_native_preflight(p, "auth-1".into(), 1).detach();
     assert_eq!(
         c.get_native_payout(p).unwrap().status,
         NativeStatus::PreflightPending
@@ -146,7 +147,7 @@ fn independent_approval_preflight_consumption_and_no_accounting_or_promises() {
     );
     assert_eq!(c.get_payout(p).unwrap().status, PayoutStatus::Reserved);
     assert_eq!(c.get_campaign_payout_accounting(0).unwrap(), accounting);
-    assert!(get_created_receipts().is_empty());
+    assert_eq!(get_created_receipts().len(), 2);
     assert!(
         get_logs()
             .iter()
@@ -180,13 +181,15 @@ fn explicit_executor_can_be_reserver_with_independent_approval_only() {
     let p = reserve(&mut c, "first");
     approve(&mut c, p, "auth", 1);
     context(OP, NOW);
-    reject(&mut c, |c| c.begin_native_preflight(p, "auth".into(), 1));
+    reject(&mut c, |c| {
+        c.begin_native_preflight(p, "auth".into(), 1).detach()
+    });
     context(OWNER, NOW);
     c.pause();
     c.set_native_role(id(OP), NativeRole::Executor, true);
     c.unpause();
     context(OP, NOW);
-    c.begin_native_preflight(p, "auth".into(), 1);
+    c.begin_native_preflight(p, "auth".into(), 1).detach();
     assert_eq!(
         c.get_native_payout(p).unwrap().status,
         NativeStatus::PreflightPending
@@ -222,7 +225,9 @@ fn expiry_and_invalid_ttl_reject_without_consumption() {
     }
     approve(&mut c, p, "auth", 1);
     context(EXECUTOR, NOW + 100);
-    reject(&mut c, |c| c.begin_native_preflight(p, "auth".into(), 1));
+    reject(&mut c, |c| {
+        c.begin_native_preflight(p, "auth".into(), 1).detach()
+    });
 }
 #[test]
 fn revocation_is_safe_and_new_approval_has_fresh_identity() {
@@ -244,7 +249,9 @@ fn revocation_is_safe_and_new_approval_has_fresh_identity() {
         NativeStatus::Reserved
     );
     context(EXECUTOR, NOW);
-    reject(&mut c, |c| c.begin_native_preflight(p, "auth".into(), 1));
+    reject(&mut c, |c| {
+        c.begin_native_preflight(p, "auth".into(), 1).detach()
+    });
     context(APPROVER, NOW);
     reject(&mut c, |c| {
         c.approve_native_execution(p, "auth".into(), 1, U64(NOW + 100))
@@ -269,7 +276,9 @@ fn role_revocation_blocks_approved_attempt_and_owner_can_revoke_while_paused() {
     c.set_native_role(id(APPROVER), NativeRole::Approver, false);
     c.unpause();
     context(EXECUTOR, NOW);
-    reject(&mut c, |c| c.begin_native_preflight(p, "auth".into(), 1));
+    reject(&mut c, |c| {
+        c.begin_native_preflight(p, "auth".into(), 1).detach()
+    });
     context(OWNER, NOW);
     c.pause();
     c.revoke_native_authorization(p, "auth".into(), 1);
@@ -317,11 +326,13 @@ fn duplicate_pending_attempts_unknown_payout_and_cross_payout_auth_reject() {
     context(EXECUTOR, NOW);
     for (pid, auth, attempt) in [(q, "auth", 1), (p, "other", 1), (p, "auth", 2)] {
         reject(&mut c, |c| {
-            c.begin_native_preflight(pid, auth.into(), attempt)
+            c.begin_native_preflight(pid, auth.into(), attempt).detach()
         });
     }
-    c.begin_native_preflight(p, "auth".into(), 1);
-    reject(&mut c, |c| c.begin_native_preflight(p, "auth".into(), 1));
+    c.begin_native_preflight(p, "auth".into(), 1).detach();
+    reject(&mut c, |c| {
+        c.begin_native_preflight(p, "auth".into(), 1).detach()
+    });
     context(APPROVER, NOW);
     reject(&mut c, |c| {
         c.approve_native_execution(p, "retry".into(), 2, U64(NOW + 100))
@@ -359,7 +370,9 @@ fn immutable_recipient_amount_network_token_decimals_and_campaign_are_validated(
         }
         c.payouts.insert(p, tampered);
         context(EXECUTOR, NOW);
-        reject(&mut c, |c| c.begin_native_preflight(p, "auth".into(), 1));
+        reject(&mut c, |c| {
+            c.begin_native_preflight(p, "auth".into(), 1).detach()
+        });
         c.payouts.insert(p, original.clone());
     }
 }
@@ -380,7 +393,9 @@ fn altered_binding_and_detached_sidecar_fail_closed() {
         }
         Disburse::native_payouts().insert(p, n);
         context(EXECUTOR, NOW);
-        reject(&mut c, |c| c.begin_native_preflight(p, "auth".into(), 1));
+        reject(&mut c, |c| {
+            c.begin_native_preflight(p, "auth".into(), 1).detach()
+        });
     }
     Disburse::native_payouts().insert(p, original);
     Disburse::native_payouts().remove(&p);
@@ -455,7 +470,9 @@ fn pending_manual_review_and_terminal_states_cannot_approve_revoke_or_restart() 
             c.revoke_native_authorization(p, "auth".into(), 1)
         });
         context(EXECUTOR, NOW);
-        reject(&mut c, |c| c.begin_native_preflight(p, "auth".into(), 1));
+        reject(&mut c, |c| {
+            c.begin_native_preflight(p, "auth".into(), 1).detach()
+        });
     }
 }
 #[test]
@@ -512,17 +529,23 @@ fn pause_campaign_cancel_and_token_removal_cannot_free_native_reservation() {
     context(OWNER, NOW);
     c.pause();
     context(EXECUTOR, NOW);
-    reject(&mut c, |c| c.begin_native_preflight(p, "auth".into(), 1));
+    reject(&mut c, |c| {
+        c.begin_native_preflight(p, "auth".into(), 1).detach()
+    });
     context(OWNER, NOW);
     c.unpause();
     c.remove_accepted_token(id(TOKEN));
     context(EXECUTOR, NOW);
-    reject(&mut c, |c| c.begin_native_preflight(p, "auth".into(), 1));
+    reject(&mut c, |c| {
+        c.begin_native_preflight(p, "auth".into(), 1).detach()
+    });
     context(OWNER, NOW);
     c.add_accepted_token(id(TOKEN));
     c.cancel_campaign(0);
     context(EXECUTOR, NOW);
-    reject(&mut c, |c| c.begin_native_preflight(p, "auth".into(), 1));
+    reject(&mut c, |c| {
+        c.begin_native_preflight(p, "auth".into(), 1).detach()
+    });
     let a = c.get_campaign_payout_accounting(0).unwrap();
     assert_eq!(
         (a.available, a.reserved, a.spent),
@@ -571,7 +594,7 @@ fn all_legacy_native_mutation_bypasses_are_rejected() {
     let p = reserve(&mut c, "first");
     approve(&mut c, p, "auth", 1);
     context(EXECUTOR, NOW);
-    c.begin_native_preflight(p, "auth".into(), 1);
+    c.begin_native_preflight(p, "auth".into(), 1).detach();
     for mode in 0..2 {
         if mode == 1 {
             context(OWNER, NOW);
@@ -906,7 +929,7 @@ fn nonempty_legacy_payout_indexes_failure_settlement_and_resolution_survive_boot
 }
 #[test]
 fn storage_prefixes_are_unique_and_legacy_borsh_layout_is_unchanged() {
-    let prefixes: [&[u8]; 19] = [
+    let prefixes: [&[u8]; 20] = [
         CONFIG_KEY,
         MODE_PREFIX,
         PAYOUT_PREFIX,
@@ -914,6 +937,7 @@ fn storage_prefixes_are_unique_and_legacy_borsh_layout_is_unchanged() {
         ATTEMPT_PREFIX,
         ROLE_PREFIX,
         RECIPIENT_PREFIX,
+        super::execution::OUTCOME_PREFIX,
         b"campaigns",
         b"role-assignments",
         b"accepted-ft-tokens",
@@ -942,7 +966,7 @@ fn storage_prefixes_are_unique_and_legacy_borsh_layout_is_unchanged() {
     assert_eq!(borsh::to_vec(&c).unwrap(), paused_raw);
 }
 #[test]
-fn json_binding_schema_uses_decimal_strings_and_no_transfer_or_success_abi() {
+fn json_binding_schema_uses_decimal_strings_and_no_public_success_override() {
     let mut c = setup();
     let p = reserve(&mut c, "first");
     approve(&mut c, p, "auth", 1);
@@ -955,12 +979,7 @@ fn json_binding_schema_uses_decimal_strings_and_no_transfer_or_success_abi() {
         record
     );
     let module = include_str!("../native.rs");
-    assert!(
-        !module.contains("Promise::")
-            && !module.contains(".function_call(")
-            && !module.contains("pub fn settle_native")
-            && !module.contains("pub fn execute_native")
-    );
+    assert!(!module.contains("pub fn settle_native") && !module.contains("pub fn execute_native"));
     assert!(get_created_receipts().is_empty());
 }
 
@@ -995,7 +1014,9 @@ fn two_campaigns_share_token_but_not_reservation_or_authorization() {
     );
     approve(&mut c, p, "auth", 1);
     context(EXECUTOR, NOW);
-    reject(&mut c, |c| c.begin_native_preflight(q, "auth".into(), 1));
+    reject(&mut c, |c| {
+        c.begin_native_preflight(q, "auth".into(), 1).detach()
+    });
 }
 #[test]
 fn explicit_native_binding_and_attempt_records_reject_corruption() {
@@ -1013,7 +1034,9 @@ fn explicit_native_binding_and_attempt_records_reject_corruption() {
         }
         Disburse::native_authorizations().insert("auth".into(), a);
         context(EXECUTOR, NOW);
-        reject(&mut c, |c| c.begin_native_preflight(p, "auth".into(), 1));
+        reject(&mut c, |c| {
+            c.begin_native_preflight(p, "auth".into(), 1).detach()
+        });
     }
     Disburse::native_authorizations().insert("auth".into(), original);
     let original = c.get_native_attempt(p, 1).unwrap();
@@ -1027,7 +1050,9 @@ fn explicit_native_binding_and_attempt_records_reject_corruption() {
         }
         Disburse::native_attempts().insert((p, 1), a);
         context(EXECUTOR, NOW);
-        reject(&mut c, |c| c.begin_native_preflight(p, "auth".into(), 1));
+        reject(&mut c, |c| {
+            c.begin_native_preflight(p, "auth".into(), 1).detach()
+        });
     }
 }
 #[test]
@@ -1067,3 +1092,6 @@ fn bootstrap_rejects_structurally_valid_but_changed_legacy_prefixes() {
         Some("Incompatible legacy storage prefixes"),
     );
 }
+
+#[path = "execution_tests.rs"]
+mod execution_tests;

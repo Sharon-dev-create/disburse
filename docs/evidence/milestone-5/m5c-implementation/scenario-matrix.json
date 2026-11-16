@@ -1,0 +1,202 @@
+[
+  {
+    "id": "S01",
+    "name": "Successful exact native transfer",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/successful-transfer.json",
+    "scope_and_limits": "Production candidate, standard SDK token; actual balances, exact receipt args/deposit and settled ledger.",
+    "candidate_kind": "production candidate / authenticated migration fixture"
+  },
+  {
+    "id": "S02",
+    "name": "Missing recipient registration",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/missing-recipient-storage.json",
+    "scope_and_limits": "Actual storage query returns None; no outgoing ft_transfer, reserve retained.",
+    "candidate_kind": "production candidate / authenticated migration fixture"
+  },
+  {
+    "id": "S03",
+    "name": "Concurrent duplicate requests",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/concurrent-duplicate-execution.json",
+    "scope_and_limits": "Two async requests, one transfer, one rejected request; no duplicate payment.",
+    "candidate_kind": "production candidate / authenticated migration fixture"
+  },
+  {
+    "id": "S04",
+    "name": "Callback panic after settlement writes",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/panic-callback.json",
+    "scope_and_limits": "Separate panic artifact; actual successful token receipt, failed callback rollback; no resend, including after production restoration.",
+    "candidate_kind": "separate fault artifact"
+  },
+  {
+    "id": "S05",
+    "name": "Callback gas exhaustion",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/oog-callback.json",
+    "scope_and_limits": "Separate1-gas callback artifact; real OOG error, delivered tokens, TransferPending reserve intact; no resend.",
+    "candidate_kind": "separate fault artifact"
+  },
+  {
+    "id": "S06",
+    "name": "Definitive token rejection",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/definitive-token-failure.json",
+    "scope_and_limits": "Normal token mode owner-controlled rejection; failed token receipt, no delivery/spent, reserve retained.",
+    "candidate_kind": "production candidate / authenticated migration fixture"
+  },
+  {
+    "id": "S07",
+    "name": "Stale/duplicate callback self-calls",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/stale-duplicate-self-callbacks.json",
+    "scope_and_limits": "Synthetic contract FullAccess self-calls pass private predecessor boundary then reject stale identity/terminal state; not a live key.",
+    "candidate_kind": "production candidate / authenticated migration fixture"
+  },
+  {
+    "id": "S08",
+    "name": "Concurrent payouts sharing a campaign",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/same-campaign-concurrent-payouts.json",
+    "scope_and_limits": "Two real overlapping graphs; reserved0/spent200000/available800000 after both succeed.",
+    "candidate_kind": "production candidate / authenticated migration fixture"
+  },
+  {
+    "id": "S09",
+    "name": "Concurrent payouts across campaigns",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/concurrent-payout-one.json",
+    "scope_and_limits": "Paired with concurrent-payout-two; pooled token, separate campaign accounting and recipients.",
+    "candidate_kind": "production candidate / authenticated migration fixture"
+  },
+  {
+    "id": "S10",
+    "name": "Pause between transfer and callback",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/pause-after-dispatch.json",
+    "scope_and_limits": "Test-token owner-proxy hook; actual owner pause receipt879 precedes settlement880. Hook-only promise indirection is not production token semantics.",
+    "candidate_kind": "production candidate and explicitly documented token fixture hooks"
+  },
+  {
+    "id": "S11",
+    "name": "Uncertain response / restart model",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/restart-uncertain-response-model.json",
+    "scope_and_limits": "Discarded response and fresh RPC client; resubmission rejected. No actual execution-service/DB restart or network timeout injection.",
+    "candidate_kind": "production candidate / authenticated migration fixture"
+  },
+  {
+    "id": "S12",
+    "name": "Atomic scheduling rollback",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/schedule-panic.json",
+    "scope_and_limits": "Separate artifact panics after TransferPending writes/events before promise; real rollback leaves PreflightPending and no token movement.",
+    "candidate_kind": "separate fault artifact"
+  },
+  {
+    "id": "S13",
+    "name": "Foreign callback wrapper rejection",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/external-callbacks-rejected.json",
+    "scope_and_limits": "Owner/Operator/Executor/other account calls both callbacks; runtime private checks reject.",
+    "candidate_kind": "production candidate / authenticated migration fixture"
+  },
+  {
+    "id": "S14",
+    "name": "Minimum / insufficient entry gas",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/minimum-gas-and-low-gas-rejection.json",
+    "scope_and_limits": "100 Tgas rejected before consent consumption;220 Tgas completes successfully.",
+    "candidate_kind": "production candidate / authenticated migration fixture"
+  },
+  {
+    "id": "S15",
+    "name": "Insufficient contract NEAR headroom",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/native-near-headroom.json",
+    "scope_and_limits": "Synthetic local native-NEAR drain/restore only; low balance rejects before consuming approval, execution succeeds after restore.",
+    "candidate_kind": "production candidate / authenticated migration fixture"
+  },
+  {
+    "id": "S16",
+    "name": "Incompatible code upgrade during execution",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/upgrade-between-transfer-and-callback.json",
+    "scope_and_limits": "Separate renamed-callback artifact; transfer block1153, upgrade1154, missing callback1156; delivery persists, lock preserved through compatible restoration.",
+    "candidate_kind": "separate fault artifact"
+  },
+  {
+    "id": "S17",
+    "name": "Delivered funds with unexpected result",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/delivered-but-unexpected-result.json",
+    "scope_and_limits": "Test-token bad-return hook; delivery occurs but nonstandard bytes yield ManualReview/reserved, no resend.",
+    "candidate_kind": "production candidate and explicitly documented token fixture hooks"
+  },
+  {
+    "id": "S18",
+    "name": "Insufficient actual token balance",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/insufficient-token-balance.json",
+    "scope_and_limits": "Fixture burn models out-of-band custody loss; actual FT failure, no false spent/retry.",
+    "candidate_kind": "production candidate / authenticated migration fixture"
+  },
+  {
+    "id": "S19",
+    "name": "Authenticated old deployed WASM upgrade",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/historical-wasm-migration.json",
+    "scope_and_limits": "Authentic code with locally populated nonempty legacy settlement/failure/resolution/index data; full raw-state and custody preservation.",
+    "candidate_kind": "production candidate / authenticated migration fixture"
+  },
+  {
+    "id": "S20",
+    "name": "M5-B native sidecar WASM upgrade",
+    "status": "PASS",
+    "framework": "NEAR Sandbox2.14.0 / actual WASM action and data receipts",
+    "actual_receipts_executed": true,
+    "evidence": "docs/evidence/milestone-5/m5c-implementation/sandbox/b-to-c-wasm-migration.json",
+    "scope_and_limits": "Authenticated M5-B bytecode; approved payout executes under C; old consumed orphan remains frozen with all prior bytes preserved.",
+    "candidate_kind": "production candidate / authenticated migration fixture"
+  }
+]

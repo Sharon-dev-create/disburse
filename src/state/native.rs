@@ -40,7 +40,7 @@ pub enum NativeMode {
     NativeNearV1,
 }
 
-/// Append-only ordering. Later phases are represented, never publicly reachable in M5-B.
+/// Append-only ordering. M5-C executes preflight/transfer/outcome phases; no retry or release.
 #[near(serializers = [borsh, json])]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NativeStatus {

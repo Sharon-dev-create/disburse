@@ -1,0 +1,43 @@
+• Collecting cargo project metadata...
+• done
+
+• Checking rustc version...
+INFO: contract's near-sdk targets protocol version 85; rustc 1.100.0 accepted (bulk-memory opcodes supported by nearcore VM)
+• done
+
+• Checking the host environment...
+• done
+
+• Generating ABI
+ │     Finished `dev` profile [unoptimized] target(s) in 0.19s
+• Extracting ABI...
+• done
+
+• Compressing ABI to be embedded..
+• done
+
+• Building contract
+ │    Compiling near-sdk-macros v5.30.1
+ │    Compiling near-sdk v5.30.1
+ │    Compiling near-contract-standards v5.30.1
+ │    Compiling disburse-contract v0.1.0 (/tmp/disburse-m5c-oog-callback)
+ │     Finished `release` profile [optimized] target(s) in 13.88s
+
+Modification timestamps of:
+ |    "/home/topg/disburse/target/m5c-variants/wasm32-unknown-unknown/release/disburse_contract.wasm" = SystemTime { tv_sec: 1794803668, tv_nsec: 961576744 }
+ |    "/tmp/disburse-m5c-artifacts/oog-callback/disburse_contract.wasm" = SystemTime { tv_sec: 1794802787, tv_nsec: 58283886 }
+
+• Running an optimize for size post-step with wasm-opt --enable-nontrapping-float-to-int --enable-bulk-memory...
+    Finished wasm-opt -O in 2s 73ms
+• done
+
+✓ Contract successfully built! (in CARGO_NEAR_BUILD_ENVIRONMENT=host)
+     -                Binary: /tmp/disburse-m5c-artifacts/oog-callback/disburse_contract.wasm
+     -                  Size: 410.4 KB (410365 bytes)
+     - SHA-256 checksum hex : 440a5860409ab9bf67e4840c5a1683a523d6660c84ca14b749e09b2a06fd9ca5
+     - SHA-256 checksum bs58: 5absd92EN7AwKUZGLDY7QgyGahPJmGzyj9djSq5DfXfa
+     -                   ABI: /tmp/disburse-m5c-artifacts/oog-callback/disburse_contract_abi.json
+     -          Embedded ABI: /tmp/disburse-m5c-artifacts/oog-callback/disburse_contract_abi.zst
+    Finished cargo near build in 17s
+Here is the console command if you ever need to re-run it again:
+cargo near build non-reproducible-wasm --locked --out-dir /tmp/disburse-m5c-artifacts/oog-callback --manifest-path /tmp/disburse-m5c-oog-callback/Cargo.toml

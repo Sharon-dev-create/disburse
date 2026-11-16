@@ -1,4 +1,4 @@
-//! Native execution foundations. Intentionally no promise scheduling or settlement entry point.
+//! Native authorization and immutable binding. Execution lives in the private execution module.
 use crate::{Disburse, DisburseExt, PayoutRequest, state::native::*, *};
 use near_sdk::{borsh, json_types::U64};
 use types::destination::{ChainId, RecipientAddress};
@@ -365,56 +365,6 @@ impl Disburse {
         self.emit_native_event("native_authorization_revoked", &record, Some(attempt_id));
     }
 
-    /// M5-B only locks a preflight attempt. NO token call or storage query is scheduled.
-    /// M5-C must attach its storage promise atomically to this transition before deployment.
-    /// There is intentionally no M5-B method to unlock, submit, fail, settle or retry this lock.
-    pub fn begin_native_preflight(
-        &mut self,
-        payout_id: u64,
-        authorization_id: String,
-        attempt_id: u64,
-    ) {
-        self.native_config();
-        self.assert_campaign_operations_enabled();
-        let actor = env::predecessor_account_id();
-        require!(
-            self.has_native_role(actor.clone(), NativeRole::Executor),
-            "Explicit native Executor required"
-        );
-        let mut record = self.validated_native_payout(payout_id);
-        self.assert_native_active(&record);
-        let (mut auth, mut attempt) =
-            self.validated_native_attempt(&record, &authorization_id, attempt_id);
-        require!(
-            record.status == NativeStatus::Approved
-                && auth.status == NativeAuthorizationStatus::Approved,
-            "Native attempt is not approved"
-        );
-        require!(
-            auth.expires_at_ns.0 > env::block_timestamp(),
-            "Authorization expired"
-        );
-        require!(
-            auth.approver_id != actor && auth.approver_id != record.binding.reservation_actor,
-            "Independent approval required"
-        );
-        require!(
-            self.has_native_role(auth.approver_id.clone(), NativeRole::Approver),
-            "Approver role revoked"
-        );
-        auth.status = NativeAuthorizationStatus::Consumed;
-        attempt.status = NativeStatus::PreflightPending;
-        attempt.executor_id = Some(actor);
-        attempt.updated_at_ns = U64(env::block_timestamp());
-        attempt.preflight_block_height = Some(U64(env::block_height()));
-        record.status = NativeStatus::PreflightPending;
-        record.updated_at_ns = U64(env::block_timestamp());
-        Self::native_authorizations().insert(authorization_id, auth);
-        Self::native_attempts().insert((payout_id, attempt_id), attempt);
-        Self::native_payouts().insert(payout_id, record.clone());
-        self.emit_native_event("native_preflight_locked", &record, None);
-    }
-
     pub fn get_native_payout(&self, payout_id: u64) -> Option<NativePayout> {
         Self::native_payouts().get(&payout_id).cloned()
     }
@@ -582,11 +532,19 @@ impl Disburse {
                 && record.binding_hash == Self::binding_hash(binding),
             "Native binding mismatch"
         );
-        // M5-B has no completion/release path. Every reachable native record still owns its full reservation.
         require!(
-            payout.status == PayoutStatus::Reserved && binding.amount.0 <= campaign.reserved,
+            payout.status == Self::native_projected_status(record.status),
             "Native reservation/status mismatch"
         );
+        if !matches!(
+            record.status,
+            NativeStatus::Succeeded | NativeStatus::Released
+        ) {
+            require!(
+                binding.amount.0 <= campaign.reserved,
+                "Native reservation is missing"
+            );
+        }
         record
     }
     fn assert_native_active(&self, record: &NativePayout) {
@@ -670,3 +628,5 @@ impl Disburse {
 
 #[cfg(test)]
 mod tests;
+
+mod execution;

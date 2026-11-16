@@ -1,0 +1,1960 @@
+{
+  "scope": "Synthetic local protocol88; no production Tidepool gas guarantee",
+  "protocol_version": 88,
+  "storage_price_yocto_per_byte": "10000000000000000000",
+  "wasm_limits": {
+    "account_id_validity_rules_version": 2,
+    "initial_memory_pages": 1024,
+    "max_actions_per_receipt": 100,
+    "max_arguments_length": 4194304,
+    "max_blocks_per_contract": 50000,
+    "max_blocks_per_function": 5000,
+    "max_contract_size": 4194304,
+    "max_deploy_actions_per_receipt": 10,
+    "max_elements_per_contract_table": 10000,
+    "max_function_body_size": 196608,
+    "max_functions_number_per_contract": 10000,
+    "max_gas_burnt": 1000000000000000,
+    "max_instrumented_code_size": 16777216,
+    "max_length_method_name": 256,
+    "max_length_returned_data": 4194304,
+    "max_length_storage_key": 2048,
+    "max_length_storage_value": 4194304,
+    "max_locals_per_contract": 1000000,
+    "max_memory_pages": 2048,
+    "max_number_bytes_method_names": 2000,
+    "max_number_input_data_dependencies": 128,
+    "max_number_logs": 100,
+    "max_number_registers": 100,
+    "max_operand_stack_bytes_per_function": 8192,
+    "max_params_per_contract": 50000,
+    "max_params_per_function": 64,
+    "max_promises_per_function_call_action": 1024,
+    "max_receipt_size": 4194304,
+    "max_receipt_total_input_size": 4294967295,
+    "max_register_size": 104857600,
+    "max_stack_height": 262144,
+    "max_state_init_entries": 1500,
+    "max_tables_per_contract": 1,
+    "max_total_log_length": 16384,
+    "max_total_prepaid_gas": 1000000000000000,
+    "max_transaction_size": 1572864,
+    "max_types_per_contract": 1024,
+    "max_universal_state_init_keys": 1024,
+    "max_yield_payload_size": 1024,
+    "min_contract_size_per_local": 2,
+    "per_receipt_storage_proof_size_limit": 4000000,
+    "registers_memory_limit": 1073741824,
+    "yield_timeout_length_in_blocks": 200
+  },
+  "cases": [
+    {
+      "test": "concurrent-duplicate-execution",
+      "source": "docs/evidence/milestone-5/m5c-implementation/sandbox/concurrent-duplicate-execution.json",
+      "receipts": [
+        {
+          "receipt_id": "Cpa7ckkcZ1F46EX22Y6kYsHAA262vBJap6cWNuoeP4Dt",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "executor.testnet",
+          "method": "begin_native_preflight",
+          "arguments": {
+            "payout_id": 5,
+            "authorization_id": "sandbox-auth:5",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 300000000000000,
+          "burnt_gas": 5205911303509,
+          "status": {
+            "SuccessReceiptId": "226P3sptsVap2YsEJfYm5jjNCt6u3rZs391Z6THGL8H7"
+          },
+          "block_hash": "EfeJDFPoMm62coBKBeuoean8tLJQdwEZk44EN8ACoyh1"
+        },
+        {
+          "receipt_id": "4M8CAr3DsNVtkPvuraBJUCFNLnjEgGn2N8rywnGkCdDi",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "storage_balance_of",
+          "arguments": {
+            "account_id": "recipient.testnet"
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 10000000000000,
+          "burnt_gas": 1214253974565,
+          "status": {
+            "SuccessValue": "eyJ0b3RhbCI6IjEyNjAwMDAwMDAwMDAwMDAwMDAwMDAiLCJhdmFpbGFibGUiOiIwIn0="
+          },
+          "block_hash": "2Acnh71Y4fHEQdszgm6ax7Z4wTjUmCJDGhnLf3x4FNKp"
+        },
+        {
+          "receipt_id": "226P3sptsVap2YsEJfYm5jjNCt6u3rZs391Z6THGL8H7",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_storage_checked",
+          "arguments": {
+            "payout_id": 5,
+            "authorization_id": "sandbox-auth:5",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 170000000000000,
+          "burnt_gas": 5346349909126,
+          "status": {
+            "SuccessReceiptId": "t4UnEg1XkqGrTzZrc57Zp2qmxAopj4cCZhkW9Sdf5HK"
+          },
+          "block_hash": "7Jp5pF71NdC1pu1ANfab3hEbBfVqepK5Ua28s99wzuxC"
+        },
+        {
+          "receipt_id": "5W8vQzHYAVMAip6vfE8ps5kiXysvG5G1C4cACpS1XxTJ",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "ft_transfer",
+          "arguments": {
+            "receiver_id": "recipient.testnet",
+            "amount": "100000",
+            "memo": "disburse:native:v1:5:1"
+          },
+          "deposit_yocto": "1",
+          "prepaid_gas": 30000000000000,
+          "burnt_gas": 1715502528387,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "J78i1bEHCanrZ5d9CgrUK84uoHX2nZZXyvR8qSkVucAS"
+        },
+        {
+          "receipt_id": "t4UnEg1XkqGrTzZrc57Zp2qmxAopj4cCZhkW9Sdf5HK",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_transfer_result",
+          "arguments": {
+            "payout_id": 5,
+            "authorization_id": "sandbox-auth:5",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 50000000000000,
+          "burnt_gas": 4340570807414,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "Cfg7X73NNihjNJxZXVYHavsVFqKWC9YYfRXyFXkt3htu"
+        }
+      ],
+      "total_unique_burnt_gas": 19250757002421,
+      "total_tokens_burnt_yocto": "1813484418992100000000",
+      "storage_delta_bytes": 340,
+      "recipient_delta_atomic": "100000",
+      "contract_delta_atomic": "-100000",
+      "native_status": "Succeeded",
+      "accounting": {
+        "campaign_id": 4,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "0",
+        "spent": "100000",
+        "available": "900000"
+      }
+    },
+    {
+      "test": "concurrent-payout-one",
+      "source": "docs/evidence/milestone-5/m5c-implementation/sandbox/concurrent-payout-one.json",
+      "receipts": [
+        {
+          "receipt_id": "EGj7LMGBA3fvG3omkZjQTrhrNcckDL75tfUQaWoxHu9h",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "executor.testnet",
+          "method": "begin_native_preflight",
+          "arguments": {
+            "payout_id": 6,
+            "authorization_id": "sandbox-auth:6",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 300000000000000,
+          "burnt_gas": 5205499741381,
+          "status": {
+            "SuccessReceiptId": "2j5Dp9X5QJjCYuSgJAZKpMjQ2qEufFFwa3PJyWN3z2A9"
+          },
+          "block_hash": "7MSpxj1EpmE7iFbH51Ke1wDaLby1w3p9j6nYtaKKQCqi"
+        },
+        {
+          "receipt_id": "EVRN6py7XoJpqBiFF5cwpc8ojvxTJp71mVtu9JbHRwXZ",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "storage_balance_of",
+          "arguments": {
+            "account_id": "recipient.testnet"
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 10000000000000,
+          "burnt_gas": 1214253974565,
+          "status": {
+            "SuccessValue": "eyJ0b3RhbCI6IjEyNjAwMDAwMDAwMDAwMDAwMDAwMDAiLCJhdmFpbGFibGUiOiIwIn0="
+          },
+          "block_hash": "5si6faw8qUDxCK4PEXvj13snEYVgA4PmCCzudQuMXpHT"
+        },
+        {
+          "receipt_id": "2j5Dp9X5QJjCYuSgJAZKpMjQ2qEufFFwa3PJyWN3z2A9",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_storage_checked",
+          "arguments": {
+            "payout_id": 6,
+            "authorization_id": "sandbox-auth:6",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 170000000000000,
+          "burnt_gas": 5346013217794,
+          "status": {
+            "SuccessReceiptId": "9Z1Gad39ZTwjj9VEmjxZCYJEhoSvjkz3kfB6oZ4YtDtP"
+          },
+          "block_hash": "2qZfTpYcpoYWyZW22F8EE7aPmRsmsLq4bbP7orGyDYFc"
+        },
+        {
+          "receipt_id": "2JRQLi2awuqkBhNaqoxFvsjgZKHXt9PJGaq44JQgSoSJ",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "ft_transfer",
+          "arguments": {
+            "receiver_id": "recipient.testnet",
+            "amount": "100000",
+            "memo": "disburse:native:v1:6:1"
+          },
+          "deposit_yocto": "1",
+          "prepaid_gas": 30000000000000,
+          "burnt_gas": 1715502528387,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "AbhhFs7P1sK3JvRuU8YyuMw7eGKKFLzwZLi5SisqYRru"
+        },
+        {
+          "receipt_id": "9Z1Gad39ZTwjj9VEmjxZCYJEhoSvjkz3kfB6oZ4YtDtP",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_transfer_result",
+          "arguments": {
+            "payout_id": 6,
+            "authorization_id": "sandbox-auth:6",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 50000000000000,
+          "burnt_gas": 4340117394368,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "ALucdMVFttUmCWNJyAWdd8KaFcy645BGKfxKuveWYBNk"
+        }
+      ],
+      "total_unique_burnt_gas": 19249555335915,
+      "total_tokens_burnt_yocto": "1813364252341500000000",
+      "storage_delta_bytes": 680,
+      "recipient_delta_atomic": "100000",
+      "contract_delta_atomic": "-200000",
+      "native_status": "Succeeded",
+      "accounting": {
+        "campaign_id": 5,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "0",
+        "spent": "100000",
+        "available": "900000"
+      }
+    },
+    {
+      "test": "concurrent-payout-two",
+      "source": "docs/evidence/milestone-5/m5c-implementation/sandbox/concurrent-payout-two.json",
+      "receipts": [
+        {
+          "receipt_id": "HRUxc4WZBXXttHSNbWoakHG955YLRxZtuSueer53ipSS",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "executor.testnet",
+          "method": "begin_native_preflight",
+          "arguments": {
+            "payout_id": 7,
+            "authorization_id": "sandbox-auth:7",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 300000000000000,
+          "burnt_gas": 5182087969597,
+          "status": {
+            "SuccessReceiptId": "HBBY13DeSStzDNsBcqVJqrLDFRiQ4Rghp8qAzLWP3YFw"
+          },
+          "block_hash": "7MSpxj1EpmE7iFbH51Ke1wDaLby1w3p9j6nYtaKKQCqi"
+        },
+        {
+          "receipt_id": "6tXCnpwechX3JtSFT9fKetytUZfAj9gJvkrtYg4q5wVk",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "storage_balance_of",
+          "arguments": {
+            "account_id": "other.testnet"
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 10000000000000,
+          "burnt_gas": 1214020501985,
+          "status": {
+            "SuccessValue": "eyJ0b3RhbCI6IjEyNjAwMDAwMDAwMDAwMDAwMDAwMDAiLCJhdmFpbGFibGUiOiIwIn0="
+          },
+          "block_hash": "5si6faw8qUDxCK4PEXvj13snEYVgA4PmCCzudQuMXpHT"
+        },
+        {
+          "receipt_id": "HBBY13DeSStzDNsBcqVJqrLDFRiQ4Rghp8qAzLWP3YFw",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_storage_checked",
+          "arguments": {
+            "payout_id": 7,
+            "authorization_id": "sandbox-auth:7",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 170000000000000,
+          "burnt_gas": 5323396552218,
+          "status": {
+            "SuccessReceiptId": "EqGhotRiNWkUzFC4hRZRLD8WanyNnWJj9sCdpZAT9Chu"
+          },
+          "block_hash": "2qZfTpYcpoYWyZW22F8EE7aPmRsmsLq4bbP7orGyDYFc"
+        },
+        {
+          "receipt_id": "7ENrwRvRv5TgbDXLMueWvcR9P5YBUw3Rxt4GhpJpoKYg",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "ft_transfer",
+          "arguments": {
+            "receiver_id": "other.testnet",
+            "amount": "100000",
+            "memo": "disburse:native:v1:7:1"
+          },
+          "deposit_yocto": "1",
+          "prepaid_gas": 30000000000000,
+          "burnt_gas": 1672396643903,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "AbhhFs7P1sK3JvRuU8YyuMw7eGKKFLzwZLi5SisqYRru"
+        },
+        {
+          "receipt_id": "EqGhotRiNWkUzFC4hRZRLD8WanyNnWJj9sCdpZAT9Chu",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_transfer_result",
+          "arguments": {
+            "payout_id": 7,
+            "authorization_id": "sandbox-auth:7",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 50000000000000,
+          "burnt_gas": 4318600694408,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "ALucdMVFttUmCWNJyAWdd8KaFcy645BGKfxKuveWYBNk"
+        }
+      ],
+      "total_unique_burnt_gas": 19138670841531,
+      "total_tokens_burnt_yocto": "1802275802903100000000",
+      "storage_delta_bytes": 680,
+      "recipient_delta_atomic": "100000",
+      "contract_delta_atomic": "-200000",
+      "native_status": "Succeeded",
+      "accounting": {
+        "campaign_id": 6,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "0",
+        "spent": "100000",
+        "available": "900000"
+      }
+    },
+    {
+      "test": "definitive-token-failure",
+      "source": "docs/evidence/milestone-5/m5c-implementation/sandbox/definitive-token-failure.json",
+      "receipts": [
+        {
+          "receipt_id": "GcWWu8txqy8waCkkWXa3xot5RcXacecr5fCiFox2fKWF",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "executor.testnet",
+          "method": "begin_native_preflight",
+          "arguments": {
+            "payout_id": 4,
+            "authorization_id": "sandbox-auth:4",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 300000000000000,
+          "burnt_gas": 5205589315347,
+          "status": {
+            "SuccessReceiptId": "7aGyt2mAzumWFJgaNYXeayiXEfnsec7zfswBxDkkCRra"
+          },
+          "block_hash": "CW5T6jMBJnjAB7YTWAhCWQHx8USX4VQn8vDfCq3XoF3N"
+        },
+        {
+          "receipt_id": "5Hh4H3b5bmvanCyT8goknPbttYijcXK6HbwGo2JvKBzV",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "storage_balance_of",
+          "arguments": {
+            "account_id": "recipient.testnet"
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 10000000000000,
+          "burnt_gas": 1214253974565,
+          "status": {
+            "SuccessValue": "eyJ0b3RhbCI6IjEyNjAwMDAwMDAwMDAwMDAwMDAwMDAiLCJhdmFpbGFibGUiOiIwIn0="
+          },
+          "block_hash": "4SU3cZ6gt1vLp96S2Q3HsuwtM4s1jMz5evrJfArmdrje"
+        },
+        {
+          "receipt_id": "7aGyt2mAzumWFJgaNYXeayiXEfnsec7zfswBxDkkCRra",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_storage_checked",
+          "arguments": {
+            "payout_id": 4,
+            "authorization_id": "sandbox-auth:4",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 170000000000000,
+          "burnt_gas": 5346102791760,
+          "status": {
+            "SuccessReceiptId": "Ac2wr4o3oi9jcteG8VMrPTReFRDp9NXfpNExSMjpjVzY"
+          },
+          "block_hash": "3Q9qNcpVPT8msD3xsYu3rCWs77WHBgHdW87ZrBvuQfUx"
+        },
+        {
+          "receipt_id": "72EtcEceTvftzxNcXio4Yr3Fgx1DtSG1XjFzNEtp5nJJ",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "ft_transfer",
+          "arguments": {
+            "receiver_id": "recipient.testnet",
+            "amount": "100000",
+            "memo": "disburse:native:v1:4:1"
+          },
+          "deposit_yocto": "1",
+          "prepaid_gas": 30000000000000,
+          "burnt_gas": 1158646952584,
+          "status": {
+            "Failure": {
+              "ActionError": {
+                "index": 0,
+                "kind": {
+                  "FunctionCallError": {
+                    "ExecutionError": "Smart contract panicked: Fixture token rejection"
+                  }
+                }
+              }
+            }
+          },
+          "block_hash": "9YrjxFrGposXbUoWR7wbqarmmNT1mDYLFHNqmjLZnRCH"
+        },
+        {
+          "receipt_id": "Ac2wr4o3oi9jcteG8VMrPTReFRDp9NXfpNExSMjpjVzY",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_transfer_result",
+          "arguments": {
+            "payout_id": 4,
+            "authorization_id": "sandbox-auth:4",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 50000000000000,
+          "burnt_gas": 4181973869113,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "5PHVxUWYB4f5pD1Phz96D1mKp4RjDonNRY3dC9xvLazF"
+        }
+      ],
+      "total_unique_burnt_gas": 18757917945289,
+      "total_tokens_burnt_yocto": "1741882257028900000000",
+      "storage_delta_bytes": 340,
+      "recipient_delta_atomic": "0",
+      "contract_delta_atomic": "0",
+      "native_status": "AttemptFailed",
+      "accounting": {
+        "campaign_id": 3,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "100000",
+        "spent": "0",
+        "available": "900000"
+      }
+    },
+    {
+      "test": "delivered-but-unexpected-result",
+      "source": "docs/evidence/milestone-5/m5c-implementation/sandbox/delivered-but-unexpected-result.json",
+      "receipts": [
+        {
+          "receipt_id": "3Lc68xmTN1WJtnUjM6JjePLYieE1sitQxBZ78JtGtQtB",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "executor.testnet",
+          "method": "begin_native_preflight",
+          "arguments": {
+            "payout_id": 18,
+            "authorization_id": "sandbox-auth:18",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 300000000000000,
+          "burnt_gas": 5221025563095,
+          "status": {
+            "SuccessReceiptId": "4RPhTTxNigtTdtYBszsA56tkEiond52zsAgo3PC1G8s7"
+          },
+          "block_hash": "62wDqs8eebj9Z5X8AhSJ5YYLKAUVdxRCC5N4gid3DJZ2"
+        },
+        {
+          "receipt_id": "5MaBrhJbRACFPKbQHScrKNEggXX5Ur7nkySquu9RqzrX",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "storage_balance_of",
+          "arguments": {
+            "account_id": "recipient.testnet"
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 10000000000000,
+          "burnt_gas": 1214253974565,
+          "status": {
+            "SuccessValue": "eyJ0b3RhbCI6IjEyNjAwMDAwMDAwMDAwMDAwMDAwMDAiLCJhdmFpbGFibGUiOiIwIn0="
+          },
+          "block_hash": "7W87UkXw9h7fMjaz6ggLnWc6fEAL9y8njF6QoyTAoYoD"
+        },
+        {
+          "receipt_id": "4RPhTTxNigtTdtYBszsA56tkEiond52zsAgo3PC1G8s7",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_storage_checked",
+          "arguments": {
+            "payout_id": 18,
+            "authorization_id": "sandbox-auth:18",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 170000000000000,
+          "burnt_gas": 5359381330543,
+          "status": {
+            "SuccessReceiptId": "7NcRLY1u1mr8gzKxGizogs7kCRDNUvAeMU4P1QeW8Tuf"
+          },
+          "block_hash": "5RmpSnhKxi1nCbA2pcZG79Mz5YzTwzXorLp3ZGida8mF"
+        },
+        {
+          "receipt_id": "43vSPRHm6DT9GhHAv87qQUxrfHZhM6qyx4q8P5FxDSJC",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "ft_transfer",
+          "arguments": {
+            "receiver_id": "recipient.testnet",
+            "amount": "100000",
+            "memo": "disburse:native:v1:18:1"
+          },
+          "deposit_yocto": "1",
+          "prepaid_gas": 30000000000000,
+          "burnt_gas": 1718922803493,
+          "status": {
+            "SuccessValue": "dHJ1ZQ=="
+          },
+          "block_hash": "6YufSeR2a2ZAQqdGbwL7fpHg4oVvdU1RXufLPjNw5rNN"
+        },
+        {
+          "receipt_id": "7NcRLY1u1mr8gzKxGizogs7kCRDNUvAeMU4P1QeW8Tuf",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_transfer_result",
+          "arguments": {
+            "payout_id": 18,
+            "authorization_id": "sandbox-auth:18",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 50000000000000,
+          "burnt_gas": 4239943671166,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "EMkxR16g9bcvUEmYvbJtfD7M4x9UE3CnN6okMvS84px5"
+        }
+      ],
+      "total_unique_burnt_gas": 19181791189712,
+      "total_tokens_burnt_yocto": "1806587837721200000000",
+      "storage_delta_bytes": 343,
+      "recipient_delta_atomic": "100000",
+      "contract_delta_atomic": "-100000",
+      "native_status": "ManualReview",
+      "accounting": {
+        "campaign_id": 16,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "100000",
+        "spent": "0",
+        "available": "900000"
+      }
+    },
+    {
+      "test": "external-callback-payout-success",
+      "source": "docs/evidence/milestone-5/m5c-implementation/sandbox/external-callback-payout-success.json",
+      "receipts": [
+        {
+          "receipt_id": "ApfpMnExmqdWzVobhRNVfRG2eaifE3gUmfsMHbmECXcF",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "executor.testnet",
+          "method": "begin_native_preflight",
+          "arguments": {
+            "payout_id": 12,
+            "authorization_id": "sandbox-auth:12",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 300000000000000,
+          "burnt_gas": 5212333637839,
+          "status": {
+            "SuccessReceiptId": "42hppgyhHXNta3BmcbSnYUKiCbDY85HcdKzeSbXwo8rs"
+          },
+          "block_hash": "BTvPNRjjYtQ77y7N2wcKwSaawpCZzRpkGrXPPLADb8F8"
+        },
+        {
+          "receipt_id": "Hjc48Xk6fPKqgDkBW4moqeiWt7yC1ZEWJgUdAJMWcu1y",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "storage_balance_of",
+          "arguments": {
+            "account_id": "recipient.testnet"
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 10000000000000,
+          "burnt_gas": 1214253974565,
+          "status": {
+            "SuccessValue": "eyJ0b3RhbCI6IjEyNjAwMDAwMDAwMDAwMDAwMDAwMDAiLCJhdmFpbGFibGUiOiIwIn0="
+          },
+          "block_hash": "36jh8L1YydPaQEwTUp6vAjE8ZcL1Nc26Dn3vQbJP76jk"
+        },
+        {
+          "receipt_id": "42hppgyhHXNta3BmcbSnYUKiCbDY85HcdKzeSbXwo8rs",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_storage_checked",
+          "arguments": {
+            "payout_id": 12,
+            "authorization_id": "sandbox-auth:12",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 170000000000000,
+          "burnt_gas": 5350222855532,
+          "status": {
+            "SuccessReceiptId": "EoipDUK3RMwd6w8tj6W3YBqdA58viveAREufyVsKwQ1p"
+          },
+          "block_hash": "7ST8aiDPVXW4mKv7e8kiiAF3Xid8cMeZEy4h7ziE1MCK"
+        },
+        {
+          "receipt_id": "3qBd2s4ADNpm9bjiABrUAf31BgrFvPJLnu1dexSYD4DQ",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "ft_transfer",
+          "arguments": {
+            "receiver_id": "recipient.testnet",
+            "amount": "100000",
+            "memo": "disburse:native:v1:12:1"
+          },
+          "deposit_yocto": "1",
+          "prepaid_gas": 30000000000000,
+          "burnt_gas": 1715771738434,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "AyxGwyGyC9LP8TR3i655SzmfvGLu5S3ePqEmpmYRM9rB"
+        },
+        {
+          "receipt_id": "EoipDUK3RMwd6w8tj6W3YBqdA58viveAREufyVsKwQ1p",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_transfer_result",
+          "arguments": {
+            "payout_id": 12,
+            "authorization_id": "sandbox-auth:12",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 50000000000000,
+          "burnt_gas": 4343812547417,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "FqVyJaN58dyXDQ34NJ1GvxFrvUztustAWrnnTWubSCaB"
+        }
+      ],
+      "total_unique_burnt_gas": 19264658600637,
+      "total_tokens_burnt_yocto": "1814874578813700000000",
+      "storage_delta_bytes": 343,
+      "recipient_delta_atomic": "100000",
+      "contract_delta_atomic": "-100000",
+      "native_status": "Succeeded",
+      "accounting": {
+        "campaign_id": 10,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "0",
+        "spent": "100000",
+        "available": "900000"
+      }
+    },
+    {
+      "test": "insufficient-token-balance",
+      "source": "docs/evidence/milestone-5/m5c-implementation/sandbox/insufficient-token-balance.json",
+      "receipts": [
+        {
+          "receipt_id": "CiVeVhriEUsUr93Pu7gSq79MMCZi5MZVgwaiaTvF4U1k",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "executor.testnet",
+          "method": "begin_native_preflight",
+          "arguments": {
+            "payout_id": 19,
+            "authorization_id": "sandbox-auth:19",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 300000000000000,
+          "burnt_gas": 5221244522629,
+          "status": {
+            "SuccessReceiptId": "CZ2FUFLdJuM6GLA5rjN9dUswb7Xn71vhixHK5PXPkJM"
+          },
+          "block_hash": "8TmpJCVQJyXovSZsv8PTUHP3aZvEJvPdKBQRe8cD2LPR"
+        },
+        {
+          "receipt_id": "5zbjezvHVrT72qdRGuCSDscqL3JmjB32KLuThsh419ZQ",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "storage_balance_of",
+          "arguments": {
+            "account_id": "recipient.testnet"
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 10000000000000,
+          "burnt_gas": 1214253974565,
+          "status": {
+            "SuccessValue": "eyJ0b3RhbCI6IjEyNjAwMDAwMDAwMDAwMDAwMDAwMDAiLCJhdmFpbGFibGUiOiIwIn0="
+          },
+          "block_hash": "HuWceoE5xHiDDzn1akwjvEm6nrgSJKxErr6mZL92JVBv"
+        },
+        {
+          "receipt_id": "CZ2FUFLdJuM6GLA5rjN9dUswb7Xn71vhixHK5PXPkJM",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_storage_checked",
+          "arguments": {
+            "payout_id": 19,
+            "authorization_id": "sandbox-auth:19",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 170000000000000,
+          "burnt_gas": 5359600290077,
+          "status": {
+            "SuccessReceiptId": "EuCLrdWA8cArFsEDwBxpAoqibDXwodEhS59RY4d4tZeo"
+          },
+          "block_hash": "JBG4zY63a9fKdoema7cAuFMRcwAbrRn3wdhZReuBBWst"
+        },
+        {
+          "receipt_id": "AY25A9ZKiX45c4gSqPVGoREMB1CBVyUXfgeGnT8k23GH",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "ft_transfer",
+          "arguments": {
+            "receiver_id": "recipient.testnet",
+            "amount": "100000",
+            "memo": "disburse:native:v1:19:1"
+          },
+          "deposit_yocto": "1",
+          "prepaid_gas": 30000000000000,
+          "burnt_gas": 1250754340893,
+          "status": {
+            "Failure": {
+              "ActionError": {
+                "index": 0,
+                "kind": {
+                  "FunctionCallError": {
+                    "ExecutionError": "Smart contract panicked: The account doesn't have enough balance"
+                  }
+                }
+              }
+            }
+          },
+          "block_hash": "F5wuYk2aVajDKumWSJz5x2HV9uCGPGBfuf9UXAm15zZh"
+        },
+        {
+          "receipt_id": "EuCLrdWA8cArFsEDwBxpAoqibDXwodEhS59RY4d4tZeo",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_transfer_result",
+          "arguments": {
+            "payout_id": 19,
+            "authorization_id": "sandbox-auth:19",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 50000000000000,
+          "burnt_gas": 4195334582564,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "H8BxCsFKBZUx9duJTuVSvRbpB7GNSRmYf7odt7CwaZmP"
+        }
+      ],
+      "total_unique_burnt_gas": 18892634120078,
+      "total_tokens_burnt_yocto": "1755353874507800000000",
+      "storage_delta_bytes": 343,
+      "recipient_delta_atomic": "0",
+      "contract_delta_atomic": "0",
+      "native_status": "AttemptFailed",
+      "accounting": {
+        "campaign_id": 17,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "100000",
+        "spent": "0",
+        "available": "900000"
+      }
+    },
+    {
+      "test": "minimum-gas-and-low-gas-rejection",
+      "source": "docs/evidence/milestone-5/m5c-implementation/sandbox/minimum-gas-and-low-gas-rejection.json",
+      "receipts": [
+        {
+          "receipt_id": "FP8xudpGPcXNoR826BdnV8XBhkMt3FmYBRqHmdAqAUQS",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "executor.testnet",
+          "method": "begin_native_preflight",
+          "arguments": {
+            "payout_id": 10,
+            "authorization_id": "sandbox-auth:10",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 220000000000000,
+          "burnt_gas": 5207010711796,
+          "status": {
+            "SuccessReceiptId": "9mKa6X3cPMJsNqJe7rmVmvdfkBore5uyncH21brMVL3A"
+          },
+          "block_hash": "7Mv4c5E8HV4KboSjKa1bAe9CRuHPWepzwZZjSceRCiAr"
+        },
+        {
+          "receipt_id": "EAQE94A78gvr1XHQHafKUSMY5jbSL72esToW67QZjYSh",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "storage_balance_of",
+          "arguments": {
+            "account_id": "recipient.testnet"
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 10000000000000,
+          "burnt_gas": 1214253974565,
+          "status": {
+            "SuccessValue": "eyJ0b3RhbCI6IjEyNjAwMDAwMDAwMDAwMDAwMDAwMDAiLCJhdmFpbGFibGUiOiIwIn0="
+          },
+          "block_hash": "6HMDqB4zQwLDoABSGE4mfNB37MX3mTq1ZFYVRHJU5pD7"
+        },
+        {
+          "receipt_id": "9mKa6X3cPMJsNqJe7rmVmvdfkBore5uyncH21brMVL3A",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_storage_checked",
+          "arguments": {
+            "payout_id": 10,
+            "authorization_id": "sandbox-auth:10",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 170000000000000,
+          "burnt_gas": 5348761362542,
+          "status": {
+            "SuccessReceiptId": "CtjcPj3V3zH1WeGkgChw8MLc5hx8qDWXUH9AvtPwYE1P"
+          },
+          "block_hash": "35jEdrJhSzM3PxsEvQvhRHGRVYpTyxFMdDmNBqTjNVbA"
+        },
+        {
+          "receipt_id": "96VujJgg6Q4wG3fCUzDFkbXHHKfbc3KrU3yWv5GEccd7",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "ft_transfer",
+          "arguments": {
+            "receiver_id": "recipient.testnet",
+            "amount": "100000",
+            "memo": "disburse:native:v1:10:1"
+          },
+          "deposit_yocto": "1",
+          "prepaid_gas": 30000000000000,
+          "burnt_gas": 1715771738434,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "AVfWP7rpQqeMYHva2KE6y7BmUaReJEZPmeSAk3HCkjMh"
+        },
+        {
+          "receipt_id": "CtjcPj3V3zH1WeGkgChw8MLc5hx8qDWXUH9AvtPwYE1P",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_transfer_result",
+          "arguments": {
+            "payout_id": 10,
+            "authorization_id": "sandbox-auth:10",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 50000000000000,
+          "burnt_gas": 4342617737009,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "BGyhLjc49pBSHJZhgxgfTA4qfGQeXGYp7Mz8xZ9pYJmL"
+        }
+      ],
+      "total_unique_burnt_gas": 19256679371196,
+      "total_tokens_burnt_yocto": "1814076655869600000000",
+      "storage_delta_bytes": 343,
+      "recipient_delta_atomic": "100000",
+      "contract_delta_atomic": "-100000",
+      "native_status": "Succeeded",
+      "accounting": {
+        "campaign_id": 8,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "0",
+        "spent": "100000",
+        "available": "900000"
+      }
+    },
+    {
+      "test": "missing-recipient-storage",
+      "source": "docs/evidence/milestone-5/m5c-implementation/sandbox/missing-recipient-storage.json",
+      "receipts": [
+        {
+          "receipt_id": "GbhJgHZmaeWbN4tPS5QHKd2Zyfj4paeHxxBgXD6piRCY",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "executor.testnet",
+          "method": "begin_native_preflight",
+          "arguments": {
+            "payout_id": 3,
+            "authorization_id": "sandbox-auth:3",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 300000000000000,
+          "burnt_gas": 5206896682872,
+          "status": {
+            "SuccessReceiptId": "BYjwN7M3HeYFxqQNmFbADJMWeBTY5jm93Pa7s9UeTFe9"
+          },
+          "block_hash": "CiGLh5pxKGv3TASKxVpbVTRyKyzaFSYHF8Wgf5D5YT4s"
+        },
+        {
+          "receipt_id": "95Z3p9cEZVvpoK2Gb7MFgdgk79ewNH65rCocbJYrSNta",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "storage_balance_of",
+          "arguments": {
+            "account_id": "unregistered.testnet"
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 10000000000000,
+          "burnt_gas": 1205174654905,
+          "status": {
+            "SuccessValue": "bnVsbA=="
+          },
+          "block_hash": "3doQpegtCmzuBtaSnZ93dDnQiZhfmnDvQfGd9Jdr8gEN"
+        },
+        {
+          "receipt_id": "BYjwN7M3HeYFxqQNmFbADJMWeBTY5jm93Pa7s9UeTFe9",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_storage_checked",
+          "arguments": {
+            "payout_id": 3,
+            "authorization_id": "sandbox-auth:3",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 170000000000000,
+          "burnt_gas": 4233913584898,
+          "status": {
+            "SuccessValue": "bnVsbA=="
+          },
+          "block_hash": "28D4TVsbdsoCCL62ConTfD76NeuCATMvHUVcHMgAhYum"
+        }
+      ],
+      "total_unique_burnt_gas": 11627788277095,
+      "total_tokens_burnt_yocto": "1095824058959500000000",
+      "storage_delta_bytes": 340,
+      "recipient_delta_atomic": "0",
+      "contract_delta_atomic": "0",
+      "native_status": "AttemptFailed",
+      "accounting": {
+        "campaign_id": 2,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "100000",
+        "spent": "0",
+        "available": "900000"
+      }
+    },
+    {
+      "test": "native-near-headroom",
+      "source": "docs/evidence/milestone-5/m5c-implementation/sandbox/native-near-headroom.json",
+      "receipts": [
+        {
+          "receipt_id": "Epda6pDr1Bb97Qb3PNDuRgRA8MxR8psQWspywzSPJFLA",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "executor.testnet",
+          "method": "begin_native_preflight",
+          "arguments": {
+            "payout_id": 11,
+            "authorization_id": "sandbox-auth:11",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 300000000000000,
+          "burnt_gas": 5212080607640,
+          "status": {
+            "SuccessReceiptId": "HPTBtNbafxj3SXDExNrvR1k1EKLQ9RqmFsWQSN1RzYDm"
+          },
+          "block_hash": "JAESi7qRCqJGNS6NbqzdVNWgDcB1ruhKVvX5LPtbKzvY"
+        },
+        {
+          "receipt_id": "W2VCQBWR6j8T6nd5cRJgvn1cpWCBywMEf5HG2Xqopfg",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "storage_balance_of",
+          "arguments": {
+            "account_id": "recipient.testnet"
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 10000000000000,
+          "burnt_gas": 1214253974565,
+          "status": {
+            "SuccessValue": "eyJ0b3RhbCI6IjEyNjAwMDAwMDAwMDAwMDAwMDAwMDAiLCJhdmFpbGFibGUiOiIwIn0="
+          },
+          "block_hash": "2GNLpuxyipoYXob1g6bPz7zKSv13mnsD3EypKKCzhVuA"
+        },
+        {
+          "receipt_id": "HPTBtNbafxj3SXDExNrvR1k1EKLQ9RqmFsWQSN1RzYDm",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_storage_checked",
+          "arguments": {
+            "payout_id": 11,
+            "authorization_id": "sandbox-auth:11",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 170000000000000,
+          "burnt_gas": 5349421822734,
+          "status": {
+            "SuccessReceiptId": "4Jq88HKRPvyYodgX1E6BAwDcRDHR6gmHV49cPDg5NzCV"
+          },
+          "block_hash": "DPrF6Ka2fcvSNvJNLab2TSk6DuLAQwVum4D2nQrBurpc"
+        },
+        {
+          "receipt_id": "3wcGEW4CowakH7GGbUgoAdCEq2BAoRTWTWTpsa2wiL2z",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "ft_transfer",
+          "arguments": {
+            "receiver_id": "recipient.testnet",
+            "amount": "100000",
+            "memo": "disburse:native:v1:11:1"
+          },
+          "deposit_yocto": "1",
+          "prepaid_gas": 30000000000000,
+          "burnt_gas": 1715771738434,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "HtUa5cdtxDkQCzsqauNsAbiXgLLeDsKKjjzKp3ATkGZ"
+        },
+        {
+          "receipt_id": "4Jq88HKRPvyYodgX1E6BAwDcRDHR6gmHV49cPDg5NzCV",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_transfer_result",
+          "arguments": {
+            "payout_id": 11,
+            "authorization_id": "sandbox-auth:11",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 50000000000000,
+          "burnt_gas": 4342972095423,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "Hra1hcTUn4oA8jrWFY9SHdT4PWifYbmAfpzrt4TiJR2R"
+        }
+      ],
+      "total_unique_burnt_gas": 19262764085646,
+      "total_tokens_burnt_yocto": "1814685127314600000000",
+      "storage_delta_bytes": 343,
+      "recipient_delta_atomic": "100000",
+      "contract_delta_atomic": "-100000",
+      "native_status": "Succeeded",
+      "accounting": {
+        "campaign_id": 9,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "0",
+        "spent": "100000",
+        "available": "900000"
+      }
+    },
+    {
+      "test": "oog-callback",
+      "source": "docs/evidence/milestone-5/m5c-implementation/sandbox/oog-callback.json",
+      "receipts": [
+        {
+          "receipt_id": "H1EkqvDGRqr2fTSzt1VLUgQtXEJfxmJbjUffWeREQeDQ",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "executor.testnet",
+          "method": "begin_native_preflight",
+          "arguments": {
+            "payout_id": 16,
+            "authorization_id": "sandbox-auth:16",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 300000000000000,
+          "burnt_gas": 5209652094231,
+          "status": {
+            "SuccessReceiptId": "CN1nLYaeGVZvSnRMimo6wpjvowmSpwVoTg8dfUDRKzVH"
+          },
+          "block_hash": "DYMojPd3LL6HaJG9cXs51VscVdrm3RqHfts7PLYrqnvo"
+        },
+        {
+          "receipt_id": "FvW29VYt5KTYtL3mgUfKgPG7rPX2PFjfywqzdo88viKd",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "storage_balance_of",
+          "arguments": {
+            "account_id": "recipient.testnet"
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 10000000000000,
+          "burnt_gas": 1214253974565,
+          "status": {
+            "SuccessValue": "eyJ0b3RhbCI6IjEyNjAwMDAwMDAwMDAwMDAwMDAwMDAiLCJhdmFpbGFibGUiOiIwIn0="
+          },
+          "block_hash": "F2AQcSSd3rp3xtmXY1uXeUxeEnW8pgQAVsUFfDJHNgdu"
+        },
+        {
+          "receipt_id": "CN1nLYaeGVZvSnRMimo6wpjvowmSpwVoTg8dfUDRKzVH",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_storage_checked",
+          "arguments": {
+            "payout_id": 16,
+            "authorization_id": "sandbox-auth:16",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 170000000000000,
+          "burnt_gas": 5349834523123,
+          "status": {
+            "SuccessReceiptId": "CwyVEBS8Fd2DdP4a9gzAwrHNF8TAtavWKGJATxW1vgt8"
+          },
+          "block_hash": "EzcyoqortXvcNgFLJaRokMA7bkNSRUgEsgdN6NyttcZL"
+        },
+        {
+          "receipt_id": "CERVBCmUaUWJD5jkSTccAAUZjEgpsSY3i9BPpo5MKJci",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "ft_transfer",
+          "arguments": {
+            "receiver_id": "recipient.testnet",
+            "amount": "100000",
+            "memo": "disburse:native:v1:16:1"
+          },
+          "deposit_yocto": "1",
+          "prepaid_gas": 30000000000000,
+          "burnt_gas": 1715771738434,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "CqCprP1TR6tVhK8gZkAApW7q2efAZSdCTiZfckzshdJX"
+        },
+        {
+          "receipt_id": "CwyVEBS8Fd2DdP4a9gzAwrHNF8TAtavWKGJATxW1vgt8",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_transfer_result",
+          "arguments": {
+            "payout_id": 16,
+            "authorization_id": "sandbox-auth:16",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 1,
+          "burnt_gas": 888267441863,
+          "status": {
+            "Failure": {
+              "ActionError": {
+                "index": 0,
+                "kind": {
+                  "FunctionCallError": {
+                    "ExecutionError": "Exceeded the prepaid gas."
+                  }
+                }
+              }
+            }
+          },
+          "block_hash": "Ge8XnfpJLyg5Vec4RbRsbMShtnda7g1mCj2uu8AsFd3N"
+        }
+      ],
+      "total_unique_burnt_gas": 15806043619066,
+      "total_tokens_burnt_yocto": "1469013080656600000000",
+      "storage_delta_bytes": 343,
+      "recipient_delta_atomic": "100000",
+      "contract_delta_atomic": "-100000",
+      "native_status": "TransferPending",
+      "accounting": {
+        "campaign_id": 14,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "100000",
+        "spent": "0",
+        "available": "900000"
+      }
+    },
+    {
+      "test": "panic-callback",
+      "source": "docs/evidence/milestone-5/m5c-implementation/sandbox/panic-callback.json",
+      "receipts": [
+        {
+          "receipt_id": "Fxb17Zwb7jimwcMYsAJK3UyUF2HUpr19dhYhAxGCAYFy",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "executor.testnet",
+          "method": "begin_native_preflight",
+          "arguments": {
+            "payout_id": 15,
+            "authorization_id": "sandbox-auth:15",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 300000000000000,
+          "burnt_gas": 5211798734598,
+          "status": {
+            "SuccessReceiptId": "GFLsnJjjJXeKiogexh3E5CnamKNqU8a5EBCzmg3N4XY2"
+          },
+          "block_hash": "4eJmuZJ4UMJkQBW2v77gvGTddo3kcUzYep3hKCeVcge2"
+        },
+        {
+          "receipt_id": "6ubkTsBBMEUJSkXHE3EF5h2pHJ8xTP51Xg4Aht3ZQfpr",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "storage_balance_of",
+          "arguments": {
+            "account_id": "recipient.testnet"
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 10000000000000,
+          "burnt_gas": 1214253974565,
+          "status": {
+            "SuccessValue": "eyJ0b3RhbCI6IjEyNjAwMDAwMDAwMDAwMDAwMDAwMDAiLCJhdmFpbGFibGUiOiIwIn0="
+          },
+          "block_hash": "5C8WuqWbF6ztVTzmJQrZJJQdqBrt6Vui3ou5JdtT1dMF"
+        },
+        {
+          "receipt_id": "GFLsnJjjJXeKiogexh3E5CnamKNqU8a5EBCzmg3N4XY2",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_storage_checked",
+          "arguments": {
+            "payout_id": 15,
+            "authorization_id": "sandbox-auth:15",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 170000000000000,
+          "burnt_gas": 5349701163490,
+          "status": {
+            "SuccessReceiptId": "GDFZn8h7dnT9MfsJEbfP7DLGX9b9zyXeBzy2dnbxshtK"
+          },
+          "block_hash": "7SFfAsrvypybNG4UjwTG6Q6QiK8Roev6CPL5jJwASp4e"
+        },
+        {
+          "receipt_id": "DH9sbHE6AZyETbPSYHe7aFfKKKrBHAxg5ynaoBwnvH2Z",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "ft_transfer",
+          "arguments": {
+            "receiver_id": "recipient.testnet",
+            "amount": "100000",
+            "memo": "disburse:native:v1:15:1"
+          },
+          "deposit_yocto": "1",
+          "prepaid_gas": 30000000000000,
+          "burnt_gas": 1715771738434,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "3xrBpnBSEx7CPwJhrob5ut9MjDU1PEmLVY8YYKcpNkFo"
+        },
+        {
+          "receipt_id": "GDFZn8h7dnT9MfsJEbfP7DLGX9b9zyXeBzy2dnbxshtK",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_transfer_result",
+          "arguments": {
+            "payout_id": 15,
+            "authorization_id": "sandbox-auth:15",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 50000000000000,
+          "burnt_gas": 3997410804004,
+          "status": {
+            "Failure": {
+              "ActionError": {
+                "index": 0,
+                "kind": {
+                  "FunctionCallError": {
+                    "ExecutionError": "Smart contract panicked: SANDBOX_ONLY_AFTER_SETTLEMENT_PANIC"
+                  }
+                }
+              }
+            }
+          },
+          "block_hash": "5LZcykdA7FASuZRzUABxvQQSgjj9cFDZrBLEt51rkMhY"
+        }
+      ],
+      "total_unique_burnt_gas": 18917200261941,
+      "total_tokens_burnt_yocto": "1780128744944100000000",
+      "storage_delta_bytes": 343,
+      "recipient_delta_atomic": "100000",
+      "contract_delta_atomic": "-100000",
+      "native_status": "TransferPending",
+      "accounting": {
+        "campaign_id": 13,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "100000",
+        "spent": "0",
+        "available": "900000"
+      }
+    },
+    {
+      "test": "pause-after-dispatch",
+      "source": "docs/evidence/milestone-5/m5c-implementation/sandbox/pause-after-dispatch.json",
+      "receipts": [
+        {
+          "receipt_id": "45s8Jw39mYLDnpvNTbqweTk3iDBeJPSKfVgGJh9Mv54V",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "executor.testnet",
+          "method": "begin_native_preflight",
+          "arguments": {
+            "payout_id": 13,
+            "authorization_id": "sandbox-auth:13",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 300000000000000,
+          "burnt_gas": 5212269008371,
+          "status": {
+            "SuccessReceiptId": "5vkvJjLoLxa4bDPy1hh14x3zpGhdsNgKNNirVKTw2ih5"
+          },
+          "block_hash": "7axwTK8HYrCTBQiWXdZVyjNbd5T3L4Kwz6UxXBbBFrhb"
+        },
+        {
+          "receipt_id": "7H41NFsgRMNYFf2Gv94MPzDNewCVZa4iwWuBvWrvvwBz",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "storage_balance_of",
+          "arguments": {
+            "account_id": "recipient.testnet"
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 10000000000000,
+          "burnt_gas": 1214253974565,
+          "status": {
+            "SuccessValue": "eyJ0b3RhbCI6IjEyNjAwMDAwMDAwMDAwMDAwMDAwMDAiLCJhdmFpbGFibGUiOiIwIn0="
+          },
+          "block_hash": "Cz1tFWnHs8TYp7wP3RUxKb1k1XPszHBWbZFVoHHxbrb3"
+        },
+        {
+          "receipt_id": "5vkvJjLoLxa4bDPy1hh14x3zpGhdsNgKNNirVKTw2ih5",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_storage_checked",
+          "arguments": {
+            "payout_id": 13,
+            "authorization_id": "sandbox-auth:13",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 170000000000000,
+          "burnt_gas": 5350147530236,
+          "status": {
+            "SuccessReceiptId": "3Y5rtufkYQTTv3KtPjiUHVTA5sWdB2Eng6WcrYA97HoC"
+          },
+          "block_hash": "F3YaA2brFDbyBzGeWcNe7W7J6ppJE633bzNiS2ACosfG"
+        },
+        {
+          "receipt_id": "3J3MK8JdqEHi6cixd8N5p3pgqdon3kDwWWyNc7W1Akb3",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "ft_transfer",
+          "arguments": {
+            "receiver_id": "recipient.testnet",
+            "amount": "100000",
+            "memo": "disburse:native:v1:13:1"
+          },
+          "deposit_yocto": "1",
+          "prepaid_gas": 30000000000000,
+          "burnt_gas": 2046669398310,
+          "status": {
+            "SuccessReceiptId": "yJGpxcTeQhKDxvAbALXqTZdhgo6auctJFGnEy7qonsz"
+          },
+          "block_hash": "G31xhCe1p25mM1FFjYEqJ8LM2x7HVXDcA4ZPB6H1pVyL"
+        },
+        {
+          "receipt_id": "yJGpxcTeQhKDxvAbALXqTZdhgo6auctJFGnEy7qonsz",
+          "executor": "owner.testnet",
+          "predecessor": "usdc.tidepool-sandbox.testnet",
+          "method": "pause_disburse",
+          "arguments": {},
+          "deposit_yocto": "0",
+          "prepaid_gas": 20000000000000,
+          "burnt_gas": 1480750217775,
+          "status": {
+            "SuccessReceiptId": "BzKeKpgFZfifcUqN4wGznkfHVFqdUdPBV1sXuYXhGiPM"
+          },
+          "block_hash": "HkFuhuQVyWPPpswv2Yn4R2dqfqu2D2sGSZ6JRhwNknzA"
+        },
+        {
+          "receipt_id": "BzKeKpgFZfifcUqN4wGznkfHVFqdUdPBV1sXuYXhGiPM",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "owner.testnet",
+          "method": "pause",
+          "arguments": {},
+          "deposit_yocto": "0",
+          "prepaid_gas": 10000000000000,
+          "burnt_gas": 1533160982057,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "BkX3atPVhWde1KdDrDCx5tyvJdocLJYBwtYfh4Zm8BRA"
+        },
+        {
+          "receipt_id": "3Y5rtufkYQTTv3KtPjiUHVTA5sWdB2Eng6WcrYA97HoC",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_transfer_result",
+          "arguments": {
+            "payout_id": 13,
+            "authorization_id": "sandbox-auth:13",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 50000000000000,
+          "burnt_gas": 4345084677173,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "EzTq14ShmEuMT8vigVD8itSwNWbwL7Ydev7AeX12pyoU"
+        }
+      ],
+      "total_unique_burnt_gas": 23056964760337,
+      "total_tokens_burnt_yocto": "2149468682283700000000",
+      "storage_delta_bytes": 343,
+      "recipient_delta_atomic": "100000",
+      "contract_delta_atomic": "-100000",
+      "native_status": "Succeeded",
+      "accounting": {
+        "campaign_id": 11,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "0",
+        "spent": "100000",
+        "available": "900000"
+      }
+    },
+    {
+      "test": "same-campaign-concurrent-payouts",
+      "source": "docs/evidence/milestone-5/m5c-implementation/sandbox/same-campaign-concurrent-payouts.json",
+      "receipts": [
+        {
+          "receipt_id": "HPqtVqQgRnamhzBMkTz4AK7y7Aibma9AXPH1rxD8T7t2",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "executor.testnet",
+          "method": "begin_native_preflight",
+          "arguments": {
+            "payout_id": 8,
+            "authorization_id": "sandbox-auth:8",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 300000000000000,
+          "burnt_gas": 5205700997287,
+          "status": {
+            "SuccessReceiptId": "5iDvuuC9FqE5gmvRMdzbzDcSihcf2AdpveYXuvuKSvvC"
+          },
+          "block_hash": "25QkR5cMpypz6paosjuEvsSjC6fWC4NSVHG2xcDUxib6"
+        },
+        {
+          "receipt_id": "ANNvrMTZ6NgEmrba9T4x6LHeqrVJwAc92Gabsv9iegg8",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "storage_balance_of",
+          "arguments": {
+            "account_id": "recipient.testnet"
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 10000000000000,
+          "burnt_gas": 1214253974565,
+          "status": {
+            "SuccessValue": "eyJ0b3RhbCI6IjEyNjAwMDAwMDAwMDAwMDAwMDAwMDAiLCJhdmFpbGFibGUiOiIwIn0="
+          },
+          "block_hash": "DPLPPzzPv8A9kkPpjEkk8eoLb1EaK6Cfm6RFATTy1m1m"
+        },
+        {
+          "receipt_id": "5iDvuuC9FqE5gmvRMdzbzDcSihcf2AdpveYXuvuKSvvC",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_storage_checked",
+          "arguments": {
+            "payout_id": 8,
+            "authorization_id": "sandbox-auth:8",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 170000000000000,
+          "burnt_gas": 5346558385708,
+          "status": {
+            "SuccessReceiptId": "GZhbuzaApfXwy5UkWz4WpgQC3uavtdJ77JRAKgaPwkei"
+          },
+          "block_hash": "Hcgx4Q4wB4zZoiCcvSoktTY8TfJd1CxZ25pfaAmwzAyB"
+        },
+        {
+          "receipt_id": "ChFZDQJzfXPViRkWzXSLXckxen8HMHKYo17UTRodzPVq",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "ft_transfer",
+          "arguments": {
+            "receiver_id": "recipient.testnet",
+            "amount": "100000",
+            "memo": "disburse:native:v1:8:1"
+          },
+          "deposit_yocto": "1",
+          "prepaid_gas": 30000000000000,
+          "burnt_gas": 1715502528387,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "2KQc1PUPoqRjGreiNu57cejPnwdsXDrBZiyRoLemtawY"
+        },
+        {
+          "receipt_id": "GZhbuzaApfXwy5UkWz4WpgQC3uavtdJ77JRAKgaPwkei",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_transfer_result",
+          "arguments": {
+            "payout_id": 8,
+            "authorization_id": "sandbox-auth:8",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 50000000000000,
+          "burnt_gas": 4340359733255,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "7LQSsWfr6ebP8HrGERSXYUU55L8aDie7RfCpviwArdwY"
+        }
+      ],
+      "total_unique_burnt_gas": 19250544098622,
+      "total_tokens_burnt_yocto": "1813463128612200000000",
+      "storage_delta_bytes": 680,
+      "recipient_delta_atomic": "100000",
+      "contract_delta_atomic": "-200000",
+      "native_status": "Succeeded",
+      "accounting": {
+        "campaign_id": 7,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "0",
+        "spent": "200000",
+        "available": "800000"
+      }
+    },
+    {
+      "test": "schedule-panic",
+      "source": "docs/evidence/milestone-5/m5c-implementation/sandbox/schedule-panic.json",
+      "receipts": [
+        {
+          "receipt_id": "8k2rGkSpiJdCXx2qCzZ8gGN8ynUritMhr4K6N9g6tzbJ",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "executor.testnet",
+          "method": "begin_native_preflight",
+          "arguments": {
+            "payout_id": 14,
+            "authorization_id": "sandbox-auth:14",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 300000000000000,
+          "burnt_gas": 5211866977068,
+          "status": {
+            "SuccessReceiptId": "DgKXgKhgeE2BYr7UrUp2TmwJaNNruk1pSpcEkGfkqKJN"
+          },
+          "block_hash": "FNZrzTntv3i3YBhtLee4TLCym26PiRKb69axJTPyzSqk"
+        },
+        {
+          "receipt_id": "8N8Vhz7dR4HfCW9MiptD2dkg1vzdjuuVUjkppT4dwzeh",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "storage_balance_of",
+          "arguments": {
+            "account_id": "recipient.testnet"
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 10000000000000,
+          "burnt_gas": 1214253974565,
+          "status": {
+            "SuccessValue": "eyJ0b3RhbCI6IjEyNjAwMDAwMDAwMDAwMDAwMDAwMDAiLCJhdmFpbGFibGUiOiIwIn0="
+          },
+          "block_hash": "BDk4GrpyxpChrt9SwHaKkzuQguV5PpbTr5b7BYswK8CB"
+        },
+        {
+          "receipt_id": "DgKXgKhgeE2BYr7UrUp2TmwJaNNruk1pSpcEkGfkqKJN",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_storage_checked",
+          "arguments": {
+            "payout_id": 14,
+            "authorization_id": "sandbox-auth:14",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 170000000000000,
+          "burnt_gas": 4349546968190,
+          "status": {
+            "Failure": {
+              "ActionError": {
+                "index": 0,
+                "kind": {
+                  "FunctionCallError": {
+                    "ExecutionError": "Smart contract panicked: SANDBOX_ONLY_SCHEDULING_PANIC"
+                  }
+                }
+              }
+            }
+          },
+          "block_hash": "DxSaXrszegDZoPzyXH57faLm2Mh8cjfSfjWgvmDb8ttF"
+        }
+      ],
+      "total_unique_burnt_gas": 11757566641673,
+      "total_tokens_burnt_yocto": "1108801895417300000000",
+      "storage_delta_bytes": 343,
+      "recipient_delta_atomic": "0",
+      "contract_delta_atomic": "0",
+      "native_status": "PreflightPending",
+      "accounting": {
+        "campaign_id": 12,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "100000",
+        "spent": "0",
+        "available": "900000"
+      }
+    },
+    {
+      "test": "successful-transfer",
+      "source": "docs/evidence/milestone-5/m5c-implementation/sandbox/successful-transfer.json",
+      "receipts": [
+        {
+          "receipt_id": "A5xgySpimoPnJBWqoDCVAyu1WwfMFinR67z51jhiKovW",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "executor.testnet",
+          "method": "begin_native_preflight",
+          "arguments": {
+            "payout_id": 2,
+            "authorization_id": "sandbox-auth:2",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 300000000000000,
+          "burnt_gas": 5186991445235,
+          "status": {
+            "SuccessReceiptId": "7wkT9RZJCmbyoYgW5h7JEAku76UMnbPm9ZajD9qucZkL"
+          },
+          "block_hash": "GtsEKskuyZFBbT8SMcR8MdPSaXLL43YWBRx7VrQnr8NM"
+        },
+        {
+          "receipt_id": "CgbCSPCuogJ6BHDk7WA45GaZ25wsNxYmfDwmrUXdbeid",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "storage_balance_of",
+          "arguments": {
+            "account_id": "recipient.testnet"
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 10000000000000,
+          "burnt_gas": 1214253974565,
+          "status": {
+            "SuccessValue": "eyJ0b3RhbCI6IjEyNjAwMDAwMDAwMDAwMDAwMDAwMDAiLCJhdmFpbGFibGUiOiIwIn0="
+          },
+          "block_hash": "FMerWTkRc5qj1xgff6m6VbpbP9KaELqq5fmYFrCwBWRf"
+        },
+        {
+          "receipt_id": "7wkT9RZJCmbyoYgW5h7JEAku76UMnbPm9ZajD9qucZkL",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_storage_checked",
+          "arguments": {
+            "payout_id": 2,
+            "authorization_id": "sandbox-auth:2",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 170000000000000,
+          "burnt_gas": 5332291179548,
+          "status": {
+            "SuccessReceiptId": "GVciLxT3kEwbzrFWn9ejESzc3yqavAkyS7sKLwjS7y3m"
+          },
+          "block_hash": "FJYtiMsjCSpvMp6nrDusHvJh85nQXxny4NwbgnKHenw7"
+        },
+        {
+          "receipt_id": "CjP8T3t2gceKJYeP75bJFiWoxV6nQNLBohkzz2JhuFFv",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "ft_transfer",
+          "arguments": {
+            "receiver_id": "recipient.testnet",
+            "amount": "100000",
+            "memo": "disburse:native:v1:2:1"
+          },
+          "deposit_yocto": "1",
+          "prepaid_gas": 30000000000000,
+          "burnt_gas": 1715502528387,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "8RdZ6hjsEdTDUY4cSx2mVDuUwaeuiuEvSVGqqYrap8qg"
+        },
+        {
+          "receipt_id": "GVciLxT3kEwbzrFWn9ejESzc3yqavAkyS7sKLwjS7y3m",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_transfer_result",
+          "arguments": {
+            "payout_id": 2,
+            "authorization_id": "sandbox-auth:2",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 50000000000000,
+          "burnt_gas": 4325938854453,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "5fZbBnj2G7wAje6PfLv5eYhDvBsjQJVDLqJy3ULEzkN5"
+        }
+      ],
+      "total_unique_burnt_gas": 19203146461608,
+      "total_tokens_burnt_yocto": "1808723364910800000000",
+      "storage_delta_bytes": 340,
+      "recipient_delta_atomic": "100000",
+      "contract_delta_atomic": "-100000",
+      "native_status": "Succeeded",
+      "accounting": {
+        "campaign_id": 1,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "0",
+        "spent": "100000",
+        "available": "900000"
+      }
+    },
+    {
+      "test": "upgrade-between-transfer-and-callback",
+      "source": "docs/evidence/milestone-5/m5c-implementation/sandbox/upgrade-between-transfer-and-callback.json",
+      "receipts": [
+        {
+          "receipt_id": "GPNUSGmtxS5D3r7pb7uRhAxojua1Un8THN8EE5B3YouB",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "executor.testnet",
+          "method": "begin_native_preflight",
+          "arguments": {
+            "payout_id": 17,
+            "authorization_id": "sandbox-auth:17",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 300000000000000,
+          "burnt_gas": 5221700464639,
+          "status": {
+            "SuccessReceiptId": "Wv1VXAWxhn3y1hE9TnwmhqiG6oYzAurStquT7mE55o7"
+          },
+          "block_hash": "71E4E27mYKYqkUfiY61asXdWQqfZTb64sUK6PE6fkAj2"
+        },
+        {
+          "receipt_id": "DLy5s3gmLXxQ94Auve3jbg7EiT3iFtnFD61tGcMgTyx6",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "storage_balance_of",
+          "arguments": {
+            "account_id": "recipient.testnet"
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 10000000000000,
+          "burnt_gas": 1214253974565,
+          "status": {
+            "SuccessValue": "eyJ0b3RhbCI6IjEyNjAwMDAwMDAwMDAwMDAwMDAwMDAiLCJhdmFpbGFibGUiOiIwIn0="
+          },
+          "block_hash": "B6JZDce3siUAQ5jR2SaYj5Hk3cNPM3HuCHxcuX8Enuku"
+        },
+        {
+          "receipt_id": "Wv1VXAWxhn3y1hE9TnwmhqiG6oYzAurStquT7mE55o7",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_storage_checked",
+          "arguments": {
+            "payout_id": 17,
+            "authorization_id": "sandbox-auth:17",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 170000000000000,
+          "burnt_gas": 5359946805539,
+          "status": {
+            "SuccessReceiptId": "Ai2SvbWQWBM8pm1Vnwx4jJcdiUbn6yjCys8xSZcEG578"
+          },
+          "block_hash": "9pvs7EFcEZwcobC19Mm45igezCef4JtD645yy7jvhS65"
+        },
+        {
+          "receipt_id": "2Qr3XsjoxxacYVb37xvDLXfHk2Rvt33R2fcyftDupb5k",
+          "executor": "usdc.tidepool-sandbox.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "ft_transfer",
+          "arguments": {
+            "receiver_id": "recipient.testnet",
+            "amount": "100000",
+            "memo": "disburse:native:v1:17:1"
+          },
+          "deposit_yocto": "1",
+          "prepaid_gas": 30000000000000,
+          "burnt_gas": 2046669398310,
+          "status": {
+            "SuccessReceiptId": "65oynPb34dfcsGwKgd2LS2nitSGXYQ9TCxrSV4hW6A2w"
+          },
+          "block_hash": "Dmeiad4AkktLVqwepfwK1NL4dG8S4DYApCyGp8MVmrMi"
+        },
+        {
+          "receipt_id": "65oynPb34dfcsGwKgd2LS2nitSGXYQ9TCxrSV4hW6A2w",
+          "executor": "owner.testnet",
+          "predecessor": "usdc.tidepool-sandbox.testnet",
+          "method": "pause_disburse",
+          "arguments": {},
+          "deposit_yocto": "0",
+          "prepaid_gas": 20000000000000,
+          "burnt_gas": 1480750217775,
+          "status": {
+            "SuccessReceiptId": "HaAcJJBwcYbyz3H9JpVs5Wy1HYMz5jYXAYyaFMr1PyrQ"
+          },
+          "block_hash": "Byp8p5wHF1o9Lo1MUwTCoDRWvhBKBpCQAd58UeXnnbbS"
+        },
+        {
+          "receipt_id": "HaAcJJBwcYbyz3H9JpVs5Wy1HYMz5jYXAYyaFMr1PyrQ",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "owner.testnet",
+          "method": "pause",
+          "arguments": {},
+          "deposit_yocto": "0",
+          "prepaid_gas": 10000000000000,
+          "burnt_gas": 1532911533502,
+          "status": {
+            "SuccessValue": ""
+          },
+          "block_hash": "8CCECjMVeXmBYLMbia8Q6eZPYdbEMsbwsZtKSANnkiXg"
+        },
+        {
+          "receipt_id": "Ai2SvbWQWBM8pm1Vnwx4jJcdiUbn6yjCys8xSZcEG578",
+          "executor": "disburse-test-contract.testnet",
+          "predecessor": "disburse-test-contract.testnet",
+          "method": "on_native_transfer_result",
+          "arguments": {
+            "payout_id": 17,
+            "authorization_id": "sandbox-auth:17",
+            "attempt_id": 1
+          },
+          "deposit_yocto": "0",
+          "prepaid_gas": 50000000000000,
+          "burnt_gas": 888267441862,
+          "status": {
+            "Failure": {
+              "ActionError": {
+                "index": 0,
+                "kind": {
+                  "FunctionCallError": {
+                    "MethodResolveError": "MethodNotFound"
+                  }
+                }
+              }
+            }
+          },
+          "block_hash": "VCYif5b5YYt2ghjvY2JBmvZ5HYzmGeNXUpchYuKDEo7"
+        }
+      ],
+      "total_unique_burnt_gas": 19619128808042,
+      "total_tokens_burnt_yocto": "1805685087054200000000",
+      "storage_delta_bytes": 114,
+      "recipient_delta_atomic": "100000",
+      "contract_delta_atomic": "-100000",
+      "native_status": "TransferPending",
+      "accounting": {
+        "campaign_id": 15,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "100000",
+        "spent": "0",
+        "available": "900000"
+      }
+    }
+  ],
+  "native_key_value_sizes": {
+    "native-attempt-records-v1": {
+      "records": 18,
+      "raw_key_value_min_bytes": 199,
+      "raw_key_value_max_bytes": 200,
+      "raw_key_value_total_bytes": 3592
+    },
+    "native-authorization-records-v1": {
+      "records": 18,
+      "raw_key_value_min_bytes": 440,
+      "raw_key_value_max_bytes": 447,
+      "raw_key_value_total_bytes": 8007
+    },
+    "native-execution-outcomes-v1": {
+      "records": 18,
+      "raw_key_value_min_bytes": 246,
+      "raw_key_value_max_bytes": 248,
+      "raw_key_value_total_bytes": 4448
+    },
+    "native-payout-mode-v1": {
+      "records": 18,
+      "raw_key_value_min_bytes": 30,
+      "raw_key_value_max_bytes": 30,
+      "raw_key_value_total_bytes": 540
+    },
+    "native-payout-records-v1": {
+      "records": 18,
+      "raw_key_value_min_bytes": 404,
+      "raw_key_value_max_bytes": 411,
+      "raw_key_value_total_bytes": 7349
+    }
+  },
+  "storage_size_limit": "Raw key/value sizes exclude protocol record overhead and WASM. Storage delta in case snapshots is actual account storage_usage.",
+  "fault_artifact_scope": "Panic, OOG, schedule-panic and incompatible-callback variants are separate test artifacts; production has no fault flag."
+}
