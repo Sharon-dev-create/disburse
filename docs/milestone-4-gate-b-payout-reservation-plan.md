@@ -1,3 +1,13 @@
+> **Latest update — 2026-11-15: M4-A PASS; Campaign 0 is Active. M4-B remains BLOCKED.**
+> Activation transaction `EZhByibUowLhnZ8bFFCmDBjMJQ25eovV5Rjx8AvcB8Yu` finalized and was independently verified.
+> Accounting remains funded/available1000000, reserved/spent0, payout count0.
+> The provider FAQ explicitly confirms no Testnet deployment; its catalog does not support Tidepool sandbox USDC.
+> No recipient, output route, custody-bound spender/deposit executor or live settlement verifier is established.
+> See the [current routing feasibility report](milestone-4-gate-b-routing-feasibility.md),
+> [activation execution](milestone-4-gate-a-execution.md) and updated blocked manifest.
+> The Approved-state observations below are **historical**, superseded only by the recorded activation.
+> No executable M4-B command, reservation, authorization, transfer or settlement was made.
+
 # Milestone 4-B — payout reservation preflight
 
 **BLOCKED. Proposal-only audit; no executable transaction prepared.**

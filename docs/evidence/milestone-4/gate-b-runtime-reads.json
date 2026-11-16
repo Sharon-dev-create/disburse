@@ -1,0 +1,105 @@
+{
+  "observedAt": "2026-11-15T17:43:13.230Z",
+  "requests": [
+    {
+      "path": "/v1/contract",
+      "status": 200,
+      "body": {
+        "data": {
+          "networkId": "testnet",
+          "contractId": "disburse-test-contract.testnet",
+          "codeHash": "CJUcu5UqBYA4ZV47TJMABQJWc7MdvdaYYMNdDeB1mxcf",
+          "ownerId": "disburse-topg.testnet",
+          "paused": false,
+          "campaignCount": "1",
+          "payoutCount": null,
+          "payoutCountSource": "inferred_from_zero_campaigns",
+          "readOnly": true
+        },
+        "meta": {
+          "readAt": "2026-11-15T17:43:23.637Z"
+        }
+      }
+    },
+    {
+      "path": "/v1/campaigns/0",
+      "status": 200,
+      "body": {
+        "data": {
+          "networkId": "testnet",
+          "contractId": "disburse-test-contract.testnet",
+          "campaign": {
+            "id": "0",
+            "title": "Disburse Milestone 3 funding verification",
+            "creatorId": "disburse-topg.testnet",
+            "tokenId": "usdc.tidepool-sandbox.testnet",
+            "status": "Active",
+            "createdAtNs": "1794722173685400100",
+            "accounting": {
+              "campaignId": "0",
+              "budget": "1000000",
+              "funded": "1000000",
+              "reserved": "0",
+              "spent": "0",
+              "available": "1000000",
+              "tokenId": "usdc.tidepool-sandbox.testnet",
+              "tokenDecimals": 6
+            }
+          }
+        },
+        "meta": {
+          "readAt": "2026-11-15T17:43:28.134Z"
+        }
+      }
+    },
+    {
+      "path": "/v1/campaigns/0/accounting",
+      "status": 200,
+      "body": {
+        "data": {
+          "networkId": "testnet",
+          "contractId": "disburse-test-contract.testnet",
+          "accounting": {
+            "campaignId": "0",
+            "budget": "1000000",
+            "funded": "1000000",
+            "reserved": "0",
+            "spent": "0",
+            "available": "1000000",
+            "tokenId": "usdc.tidepool-sandbox.testnet",
+            "tokenDecimals": 6
+          }
+        },
+        "meta": {
+          "readAt": "2026-11-15T17:43:30.369Z"
+        }
+      }
+    },
+    {
+      "path": "/v1/campaigns/0/payouts",
+      "status": 200,
+      "body": {
+        "data": {
+          "networkId": "near:testnet",
+          "contractId": "disburse-test-contract.testnet",
+          "campaignId": "0",
+          "jobs": [],
+          "truncated": false
+        },
+        "meta": {
+          "readAt": "2026-11-15T17:43:32.170Z"
+        }
+      }
+    },
+    {
+      "path": "/v1/payouts/0",
+      "status": 404,
+      "body": {
+        "error": {
+          "code": "payout_not_found",
+          "message": "The payout does not exist on the configured contract."
+        }
+      }
+    }
+  ]
+}

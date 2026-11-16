@@ -4,11 +4,15 @@
   "proposal_only": true,
   "executable": false,
   "approval_status": "NOT_READY",
-  "repository_revision": "4361b82cf66834021516c1d22347bf0c79e2e4e0",
-  "inspected_at_utc": "2026-11-15T16:30:45.506326+00:00",
+  "repository_revision": "913ae89e627c287af176aa9b0e6f9e4091d68ab7",
+  "inspected_at_utc": "2026-11-15T17:48:51.497773+00:00",
   "blockers": [
-    "Campaign0 is Approved, not Active; M4-A activation not evidenced on chain",
-    "No approved controlled recipient, destination/output token or compatible Testnet Intents route established"
+    "Production provider explicitly has no Testnet deployment",
+    "Exact sandbox source absent from supported-token catalog",
+    "No verified output token or source/destination route",
+    "RECIPIENT_UNVERIFIED",
+    "No implemented payout-bound source-custody spender or live deposit executor",
+    "No enforceable live spending/refund reconciliation and independent destination verifier"
   ],
   "network": "testnet",
   "reviewed_contract": "disburse-test-contract.testnet",
@@ -21,7 +25,7 @@
   "expected_output_token": null,
   "transaction": null,
   "cli_command": null,
-  "note": "No complete transaction arguments, actions, gas manifest or executable command prepared because Active precondition failed and destination is unresolved. Repeat full preflight after separately approved activation and recipient/route confirmation.",
+  "note": "Current Active status resolves historical activation blocker only. No executable M4-B args/actions/CLI generated. Earlier exact manifest preserved in gate-b-proposed-manifest-before-activation-913ae89.json.",
   "signed": false,
   "submitted": false,
   "recipient_verification_status": "UNVERIFIED_CONFIRMED_BY_USER",
@@ -29,9 +33,44 @@
   "destination_chain": null,
   "output_token": null,
   "instructions_complete": true,
-  "reservation_readiness": "BLOCKED: campaign still Approved and recipient unresolved",
-  "execution_readiness": "BLOCKED: no verified Testnet asset/Intents route, no execution authorization/refund policy; read-only host remains disabled for execution",
+  "reservation_readiness": "Mechanically eligible Active campaign, but proposal blocked by required end-to-end route and recipient conditions",
+  "execution_readiness": "BLOCKED; no genuine Testnet1Click route or composed live execution/settlement path",
   "read_only_mode_preserved": true,
   "compatibility_review": "gate-b-service-compatibility.json",
-  "explicit_separate_execution_approval_required": true
+  "explicit_separate_execution_approval_required": true,
+  "m4a_verification": "PASS",
+  "m4a_transaction_hash": "EZhByibUowLhnZ8bFFCmDBjMJQ25eovV5Rjx8AvcB8Yu",
+  "campaign_status": "Active",
+  "expected_output_amount": null,
+  "prepaid_gas": null,
+  "attached_deposit_requirement_yocto": "0",
+  "conditional_input_amount": {
+    "token_id": {
+      "Near": "usdc.tidepool-sandbox.testnet"
+    },
+    "atomic_amount": 100000,
+    "decimals": 6
+  },
+  "conditional_expected_accounting": {
+    "budget": "1000000",
+    "funded": "1000000",
+    "reserved": "100000",
+    "spent": "0",
+    "available": "900000"
+  },
+  "idempotency_unused_verified": true,
+  "idempotency_evidence": "gate-b-final-read.json",
+  "expected_initial_payout_status": "Reserved",
+  "expected_event_name": "payout_reserved",
+  "expected_event_fields": [
+    "payout_id",
+    "campaign_id",
+    "actor_id",
+    "input_token_id",
+    "input_amount",
+    "expected_output_token_id",
+    "expected_output_amount",
+    "status"
+  ],
+  "routing_evidence": "gate-b-routing-feasibility.json"
 }

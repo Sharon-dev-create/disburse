@@ -1,0 +1,308 @@
+{
+  "inspected_at_utc": "2026-11-15T17:48:51.497773+00:00",
+  "repository_revision": "913ae89e627c287af176aa9b0e6f9e4091d68ab7",
+  "verdict": "BLOCKED",
+  "activation": {
+    "verdict": "PASS",
+    "transaction_hash": "EZhByibUowLhnZ8bFFCmDBjMJQ25eovV5Rjx8AvcB8Yu",
+    "final_execution_status": "FINAL",
+    "status": "Active",
+    "accounting": {
+      "campaign_id": 0,
+      "budget": "1000000",
+      "funded": "1000000",
+      "reserved": "0",
+      "spent": "0",
+      "available": "1000000"
+    },
+    "operator_token_balance": "99000000",
+    "contract_token_balance": "1000000",
+    "campaign_count": 1,
+    "payout_count": 0,
+    "gas_burnt_total": 2357700367580,
+    "tokens_burnt_total": "213451780508000000000",
+    "event": {
+      "standard": "disburse",
+      "version": "1.0.0",
+      "event": "campaign_activated",
+      "data": [
+        {
+          "campaign_id": 0,
+          "actor_id": "disburse-op-b966e36d.testnet"
+        }
+      ]
+    },
+    "all_outcomes_successful": true,
+    "only_campaign_status_changed": true,
+    "global_state_and_configuration_unchanged": true,
+    "original_state_code_near_and_keys_unchanged": true,
+    "token_movements": 0,
+    "submission_attempts": 1,
+    "outcomes": [
+      {
+        "id": "EZhByibUowLhnZ8bFFCmDBjMJQ25eovV5Rjx8AvcB8Yu",
+        "executor_id": "disburse-op-b966e36d.testnet",
+        "gas_burnt": 309680746310,
+        "tokens_burnt": "30968074631000000000",
+        "status": {
+          "SuccessReceiptId": "9b4cwc2y5cwywCcfpcSRXgWcg38kjM1Q2NcUou6YFTgg"
+        }
+      },
+      {
+        "id": "9b4cwc2y5cwywCcfpcSRXgWcg38kjM1Q2NcUou6YFTgg",
+        "executor_id": "disburse-test-contract.testnet",
+        "gas_burnt": 1824837058770,
+        "tokens_burnt": "182483705877000000000",
+        "status": {
+          "SuccessValue": ""
+        }
+      },
+      {
+        "id": "BG6M9EL4V8Cut3z6fsb77ibUukUnkaKEV7QCw9ZeAvAJ",
+        "executor_id": "disburse-op-b966e36d.testnet",
+        "gas_burnt": 223182562500,
+        "tokens_burnt": "0",
+        "status": {
+          "SuccessValue": ""
+        }
+      }
+    ]
+  },
+  "current_campaign": {
+    "id": 0,
+    "creator_id": "disburse-topg.testnet",
+    "title": "Disburse Milestone 3 funding verification",
+    "token_id": "usdc.tidepool-sandbox.testnet",
+    "budget": 1000000,
+    "funded": 1000000,
+    "reserved": 0,
+    "spent": 0,
+    "status": "Active",
+    "created_at_ns": 1794722173685400100
+  },
+  "current_accounting": {
+    "campaign_id": 0,
+    "budget": "1000000",
+    "funded": "1000000",
+    "reserved": "0",
+    "spent": "0",
+    "available": "1000000"
+  },
+  "current_campaign_count": 1,
+  "current_payout_count": 0,
+  "current_operator_token_balance_atomic": "99000000",
+  "current_contract_token_balance_atomic": "1000000",
+  "source_asset": "nep141:usdc.tidepool-sandbox.testnet",
+  "source_network": "near:testnet",
+  "source_decimals": 6,
+  "provider": {
+    "observed_at_utc": "2026-11-15T17:44:07.713806+00:00",
+    "provider_environment": "Public production endpoint https://1click.chaindefuser.com",
+    "catalog_asset_count": 231,
+    "catalog_chain_keys": [
+      "abs",
+      "adi",
+      "aleo",
+      "aptos",
+      "arb",
+      "avax",
+      "base",
+      "bch",
+      "bera",
+      "bsc",
+      "btc",
+      "cardano",
+      "dash",
+      "doge",
+      "eth",
+      "fogo",
+      "gnosis",
+      "hood",
+      "hypercore",
+      "ltc",
+      "miden",
+      "monad",
+      "movement",
+      "near",
+      "op",
+      "plasma",
+      "pol",
+      "prl",
+      "qtc",
+      "scroll",
+      "sol",
+      "starknet",
+      "stellar",
+      "sui",
+      "ton",
+      "tron",
+      "xlayer",
+      "xrp",
+      "zec"
+    ],
+    "source_asset_requested": "nep141:usdc.tidepool-sandbox.testnet",
+    "source_exact_matches": [],
+    "testnet_or_sepolia_or_tidepool_matches": [],
+    "mainnet_comparison_assets_not_selected": [
+      {
+        "assetId": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "decimals": 6,
+        "blockchain": "near",
+        "symbol": "USDC",
+        "price": 0.999702,
+        "priceUpdatedAt": "2026-11-15T17:38:31.020Z",
+        "contractAddress": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "coingeckoId": "usd-coin"
+      },
+      {
+        "assetId": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+        "decimals": 6,
+        "blockchain": "eth",
+        "symbol": "USDC",
+        "price": 0.999702,
+        "priceUpdatedAt": "2026-11-15T17:38:31.020Z",
+        "contractAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "coingeckoId": "usd-coin"
+      },
+      {
+        "assetId": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+        "decimals": 6,
+        "blockchain": "base",
+        "symbol": "USDC",
+        "price": 0.999702,
+        "priceUpdatedAt": "2026-11-15T17:38:31.020Z",
+        "contractAddress": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "coingeckoId": "usd-coin"
+      }
+    ],
+    "official_faq_no_testnet_deployment": true,
+    "http_methods_used": [
+      "GET"
+    ],
+    "quotes_requested": 0,
+    "deposit_addresses_created": 0,
+    "no_credentials_used": true,
+    "no_testnet_route_at_any_amount": true,
+    "minimum_feasible_testnet_reservation_atomic": null,
+    "minimum_unavailable_reason": "Unsupported source/environment; increasing amount cannot fix a nonexistent Testnet route"
+  },
+  "recipient_status": "RECIPIENT_UNVERIFIED",
+  "qualified_routes": [],
+  "minimum_feasible_amount_atomic": null,
+  "amount_feasibility": "No feasible route at any amount in current Testnet environment; no quote/fees computed",
+  "matrix": [
+    {
+      "requirement": "Active campaign",
+      "status": "PASS",
+      "evidence": "Independent finalized activation and final read",
+      "blocker": ""
+    },
+    {
+      "requirement": "Funded balance",
+      "status": "PASS",
+      "evidence": "1000000 funded/available; contract custody1000000",
+      "blocker": ""
+    },
+    {
+      "requirement": "Supported source asset",
+      "status": "FAIL",
+      "evidence": "Absent from231-item catalog; no Testnet provider",
+      "blocker": "Sandbox USDC unsupported"
+    },
+    {
+      "requirement": "Supported destination network",
+      "status": "FAIL",
+      "evidence": "near:testnet format only; no provider Testnet",
+      "blocker": "No executable test network"
+    },
+    {
+      "requirement": "Supported output token",
+      "status": "FAIL",
+      "evidence": "No matching test asset/mapping",
+      "blocker": "Unresolved output"
+    },
+    {
+      "requirement": "Controlled recipient",
+      "status": "FAIL",
+      "evidence": "User confirmed unverified",
+      "blocker": "RECIPIENT_UNVERIFIED"
+    },
+    {
+      "requirement": "Executable testnet route",
+      "status": "FAIL",
+      "evidence": "No provider Testnet; no live contract spender/deposit executor",
+      "blocker": "Provider and implementation"
+    },
+    {
+      "requirement": "Exact-output spending cap",
+      "status": "PARTIAL",
+      "evidence": "Quote estimate/policy checks; no pinned funding execution",
+      "blocker": "No committed quote or live cap enforcement"
+    },
+    {
+      "requirement": "Execution authorization",
+      "status": "PARTIAL",
+      "evidence": "Locally tested lifecycle/SQL adapters",
+      "blocker": "No live signer/operational approval composition or records"
+    },
+    {
+      "requirement": "Refund safety",
+      "status": "PARTIAL",
+      "evidence": "Policy bindings exist",
+      "blocker": "No approved owner-bound refund/campaign reconciliation"
+    },
+    {
+      "requirement": "Durable persistence",
+      "status": "PARTIAL",
+      "evidence": "Postgres adapters and historical integration tests",
+      "blocker": "Not wired to execution; no DB writes this gate"
+    },
+    {
+      "requirement": "Settlement verification",
+      "status": "PARTIAL",
+      "evidence": "Rust trusted-Verifier checks; interface/mock service",
+      "blocker": "No canonical destination verifier"
+    },
+    {
+      "requirement": "Read-only mode preserved",
+      "status": "PASS",
+      "evidence": "Authenticated unknown GET403 read_only_mode and source host boundary",
+      "blocker": ""
+    }
+  ],
+  "authorization_limit": "Record-based policy and conditional consumption exist; no production signer or authenticated approval workflow composed. Same attempt single-use; no live end-to-end spend atomicity.",
+  "refund_limit": "No policy expiry or ownership proof; no automatic partial-refund credit/reconciliation; Active funding callback rejected; settlement charges full input",
+  "source_spend_limit": "No Rust NEP141 transfer/deposit method. Account-key bypass is not a reviewed payout path.",
+  "tests": {
+    "rust_passed": 98,
+    "service_individual_tests_passed": 51,
+    "service_command": "node --experimental-strip-types --test --test-isolation=none --test-reporter=spec tests/near-intents.test.ts tests/security.test.ts tests/discovery.test.ts tests/state-machine.test.ts tests/postgres-security-repositories.test.ts",
+    "real_postgres_tests_rerun": false,
+    "reason": "No PostgreSQL writes authorized; adapter tests use mocks"
+  },
+  "provider_calls": {
+    "methods": [
+      "GET"
+    ],
+    "quotes": 0,
+    "deposits": 0,
+    "credentials_used": false
+  },
+  "blockchain_transactions_this_task": {
+    "activation_submissions": 1,
+    "payout_submissions": 0,
+    "token_transfers": 0
+  },
+  "database_writes": 0,
+  "application_or_environment_changes": false,
+  "commit_or_push": false,
+  "primary_sources": [
+    "https://docs.near-intents.org/resources/faqs.md",
+    "https://1click.chaindefuser.com/v0/tokens",
+    "https://1click.chaindefuser.com/docs/v0/openapi.yaml",
+    "https://docs.near-intents.org/integration/distribution-channels/1click-api/swap-types.md",
+    "https://docs.near-intents.org/resources/fees.md",
+    "https://docs.near-intents.org/resources/swap-limits.md"
+  ],
+  "next_safe_step": "Choose separately scoped test strategy: real provider-supported sandbox or explicit native-Testnet design; do not reserve until source custody/spending, refund/caps, verifier and controlled recipient are reviewed."
+}

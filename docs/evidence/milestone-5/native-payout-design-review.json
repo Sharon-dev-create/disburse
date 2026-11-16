@@ -1,0 +1,1002 @@
+{
+  "schema_version": 1,
+  "verdict": "DESIGN READY FOR REVIEW",
+  "scope": "DESIGN_ONLY",
+  "network": "near:testnet",
+  "repository_revision": "913ae89e627c287af176aa9b0e6f9e4091d68ab7",
+  "branch": "main",
+  "inspection_utc": "2026-11-15T18:44:44.700368+00:00",
+  "finalized_block": {
+    "hash": "5ccVg6DsrNnk4VXWtKGRp8Z4QEjMvsu7HFSt7V526TNG",
+    "height": 277843166,
+    "timestamp_nanosec": "1794768250171387619"
+  },
+  "working_tree": "Pre-existing M4 documentation/evidence changes preserved; M5 adds documentation/evidence only; no commit or push.",
+  "deployment": {
+    "contract": "disburse-test-contract.testnet",
+    "owner": "disburse-topg.testnet",
+    "code_hash": "CJUcu5UqBYA4ZV47TJMABQJWc7MdvdaYYMNdDeB1mxcf",
+    "wasm": {
+      "jsonrpc": "2.0",
+      "result": {
+        "block_hash": "5ccVg6DsrNnk4VXWtKGRp8Z4QEjMvsu7HFSt7V526TNG",
+        "block_height": 277843166,
+        "hash": "CJUcu5UqBYA4ZV47TJMABQJWc7MdvdaYYMNdDeB1mxcf"
+      },
+      "id": "m5-design-read-only",
+      "sha256": "a7eaa8a4f035ac34a75271a9dda3fabc9074c47e4908c8e315a432c6472ad530",
+      "bytes": 299058,
+      "matches_local_wasm": true
+    },
+    "token": "usdc.tidepool-sandbox.testnet",
+    "token_code_hash": "DgV3WsKJsGtCjNWxYzFvi599szo7oojkKXWCoGBBAHwj",
+    "token_decimals": 6,
+    "contract_account_full_access_present": true,
+    "signer_access_verified": false,
+    "private_keys_inspected": false,
+    "provenance_limit": "Old deployed bytes equal existing local artifact; no new independent hermetic source rebuild."
+  },
+  "fresh_checks": {
+    "expected_code_hash": true,
+    "local_wasm_equals_deployed": true,
+    "owner_matches": true,
+    "unpaused": true,
+    "campaign_active": true,
+    "exact_accounting": true,
+    "campaign_count_one": true,
+    "payout_count_zero_source_decoded": true,
+    "token_allowlisted": true,
+    "contract_usdc_1000000": true,
+    "operator_usdc_99000000": true,
+    "both_token_accounts_registered": true,
+    "token_decimals_six": true,
+    "independent_rpc_accounting_matches": true,
+    "independent_rpc_balance_matches": true
+  },
+  "campaign": {
+    "id": 0,
+    "creator_id": "disburse-topg.testnet",
+    "title": "Disburse Milestone 3 funding verification",
+    "token_id": "usdc.tidepool-sandbox.testnet",
+    "budget": 1000000,
+    "funded": 1000000,
+    "reserved": 0,
+    "spent": 0,
+    "status": "Active",
+    "created_at_ns": 1794722173685400100
+  },
+  "accounting": {
+    "campaign_id": 0,
+    "budget": "1000000",
+    "funded": "1000000",
+    "reserved": "0",
+    "spent": "0",
+    "available": "1000000"
+  },
+  "campaign_count": 1,
+  "payout_count": 0,
+  "counter_decode": {
+    "owner": "disburse-topg.testnet",
+    "paused": false,
+    "next_campaign_id": 1,
+    "prefixes": [
+      "campaigns",
+      "role-assignments",
+      "accepted-ft-tokens",
+      "payout-records",
+      "payout-idempotency"
+    ],
+    "next_payout_id": 0,
+    "bytes_consumed": 137,
+    "bytes_total": 137
+  },
+  "balances_atomic": {
+    "contract": "1000000",
+    "operator": "99000000"
+  },
+  "near_budget": {
+    "balance_yocto": "9997589250750002699999999",
+    "storage_bytes": 299843,
+    "storage_price_yocto_per_byte": "10000000000000000000",
+    "liquid_after_existing_storage_yocto": "6999159250750002699999999",
+    "gas_payer": "Initiating signer prepays full receipt graph; contract supplies outgoing deposit and storage backing.",
+    "gas_allocations_verified": false,
+    "calibration_candidate_tgas": {
+      "outer": 150,
+      "storage_view": 10,
+      "storage_callback_including_descendants": 100,
+      "token_transfer": 30,
+      "final_callback": 30
+    },
+    "gate": "Measure sandbox gas and minimum guards, nested budget feasibility and storage margin before any live manifest."
+  },
+  "token_interface": {
+    "observed_ft_transfer_abi": {
+      "name": "ft_transfer",
+      "kind": "call",
+      "modifiers": [
+        "payable"
+      ],
+      "params": {
+        "serialization_type": "json",
+        "args": [
+          {
+            "name": "receiver_id",
+            "type_schema": {
+              "description": "NEAR Account Identifier.\n\nThis is a unique, syntactically valid, human-readable account identifier on the NEAR network.\n\n[See the crate-level docs for information about validation.](index.html#account-id-rules)\n\nAlso see [Error kind precedence](AccountId#error-kind-precedence).\n\n## Examples\n\n``` use near_account_id::AccountId;\n\nlet alice: AccountId = \"alice.near\".parse().unwrap();\n\nassert!(\"\u0192elicia.near\".parse::<AccountId>().is_err()); // (\u0192 is not f) ```",
+              "type": "string"
+            }
+          },
+          {
+            "name": "amount",
+            "type_schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memo",
+            "type_schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "standard_attached_deposit_yocto": "1",
+    "unit_return": true,
+    "implementation_semantics_verified": false,
+    "restriction_review_required": true,
+    "reference": "https://github.com/near/NEPs/blob/master/neps/nep-0141.md",
+    "trust_limit": "ABI does not prove token transfer behavior or absence of restrictions; remote code hash not atomically enforced by standard host interface."
+  },
+  "existing_methods": [
+    {
+      "name": "create_payout",
+      "authorization": "Operator or Administrator, unpaused",
+      "preconditions": "Active, positive amounts, campaign input token, available",
+      "effect": "Reserve only; identical idempotency reuse; no transfer"
+    },
+    {
+      "name": "start_payout_execution",
+      "authorization": "Operator/Admin, unpaused",
+      "preconditions": "Reserved, unique execution reference",
+      "effect": "Executing; no transfer"
+    },
+    {
+      "name": "mark_payout_pending_verification",
+      "authorization": "Operator/Admin, unpaused",
+      "preconditions": "Executing, consistent execution reference",
+      "effect": "PendingVerification; no proof"
+    },
+    {
+      "name": "mark_payout_failed",
+      "authorization": "Operator/Admin, pause-independent",
+      "preconditions": "Executing/PendingVerification, structured failure",
+      "effect": "Failed; reserve retained; caller attestation"
+    },
+    {
+      "name": "move_payout_to_manual_review",
+      "authorization": "Operator/Admin, pause-independent",
+      "preconditions": "Existing supported lifecycle state",
+      "effect": "ManualReview; reserve retained"
+    },
+    {
+      "name": "settle_payout",
+      "authorization": "Explicit Verifier, pause-independent",
+      "preconditions": "PendingVerification, exact evidence/replay guards",
+      "effect": "Succeeded, reserved to spent; trusted attestation, no token proof"
+    },
+    {
+      "name": "release_failed_payout_reservation",
+      "authorization": "Explicit Verifier",
+      "preconditions": "Failed, failure and nonsettlement evidence",
+      "effect": "ReservationReleased, reserved to available"
+    },
+    {
+      "name": "confirm_manual_review_execution",
+      "authorization": "Explicit Verifier",
+      "preconditions": "ManualReview, execution confirmation",
+      "effect": "PendingVerification, no money move"
+    },
+    {
+      "name": "release_manual_review_reservation",
+      "authorization": "Explicit Verifier",
+      "preconditions": "ManualReview, nonsettlement evidence",
+      "effect": "ReservationReleased, reserved to available"
+    },
+    {
+      "name": "ft_on_transfer",
+      "authorization": "Allowlisted predecessor token, unpaused",
+      "preconditions": "Approved campaign, matching token, budget headroom",
+      "effect": "Credits funded, returns unused; no outgoing transfer"
+    }
+  ],
+  "existing_statuses": [
+    "Created",
+    "Authorized",
+    "Reserved",
+    "Executing",
+    "PendingVerification",
+    "Succeeded",
+    "Failed",
+    "RefundPending",
+    "Refunded",
+    "ManualReview",
+    "ReservationReleased"
+  ],
+  "existing_limitations": [
+    "No native transfer promises, withdrawal, rescue, native retry, state version or migration method.",
+    "Manual settlement and recovery trust privileged attestations.",
+    "Generic destination strings establish only nonblank values, not valid supported routes.",
+    "Legacy transient Authorized is not independent execution approval.",
+    "Current read-only service does not compose live worker/signer; 1Click dry-quote route does not execute this Testnet token."
+  ],
+  "proposed_architecture": {
+    "mode": "NativeNearV1",
+    "custody": "Contract-owned NEP141 balance until approved direct cross-contract ft_transfer. No wallet advance or Intents deposit.",
+    "coordination": "Hybrid on-chain authority/callbacks, off-chain durable observation and independent finality verification.",
+    "interfaces": [
+      "create_native_payout",
+      "approve_native_execution",
+      "execute_native_payout",
+      "private on_native_storage_checked",
+      "private on_native_transfer_result",
+      "native views and separately specified dual-attestation resolution"
+    ],
+    "legacy_guard_requirement": "All legacy execution/failure/settlement/release/confirmation mutations reject native mode.",
+    "idempotency": "Shared campaign/key index compares immutable full request AND mode. No legacy payout conversion.",
+    "events": [
+      "native_execution_authorized",
+      "native_execution_attempt_started",
+      "native_transfer_dispatched",
+      "native_transfer_failed",
+      "native_payout_settled",
+      "native_payout_manual_review",
+      "native_resolution_confirmed",
+      "native_reservation_released"
+    ]
+  },
+  "authorization": {
+    "reserve": "Operator/Admin",
+    "approve": "Explicit NativeApprover; distinct from reservation actor and executor",
+    "initiate": "Explicit NativeExecutor plus unused bound independent approval",
+    "settle": "Private trusted-token success callback once",
+    "normal_failure": "Private callback, reserve retained",
+    "exceptional_resolution": "Distinct explicit Verifier and NativeApprover attest same canonical evidence; neither reservation actor nor executor",
+    "governance": "Owner, subject to root FullAccess deployment authority",
+    "binding": [
+      "domain/version",
+      "network",
+      "contract",
+      "campaign_id",
+      "payout_id",
+      "reservation_digest",
+      "reservation_actor",
+      "recipient",
+      "token",
+      "decimals",
+      "amount",
+      "authorization_id",
+      "approver",
+      "expiry",
+      "attempt_id"
+    ],
+    "approval_consumption": "Atomic before first promise; new monotonic attempt and fresh approval per retry",
+    "database_controls": "Supplementary snapshots, single-use records and lease fencing; never chain authority",
+    "ttl_policy": "Bounded; concrete TTL unresolved; on-chain timestamp expiry rechecked before dispatch",
+    "identity_limit": "Different account IDs do not prove different human controllers; operational independence must be verified."
+  },
+  "state_machine": {
+    "storage": "Versioned sidecars; no legacy enum reorder/struct append",
+    "states": [
+      "NativeReserved",
+      "Approved",
+      "PreflightPending",
+      "TransferPending",
+      "NativeSucceeded",
+      "AttemptFailed",
+      "ManualReview",
+      "Released"
+    ],
+    "legacy_projection": {
+      "NativeReserved": "Reserved",
+      "Approved": "Reserved",
+      "PreflightPending": "Reserved",
+      "TransferPending": "Executing",
+      "NativeSucceeded": "Succeeded",
+      "AttemptFailed": "Failed",
+      "ManualReview": "ManualReview",
+      "Released": "ReservationReleased"
+    },
+    "terminal": [
+      "NativeSucceeded",
+      "Released"
+    ],
+    "unknown_policy": "Preserve consumed locked attempt and reservation; no retry or release.",
+    "late_callback": "Same unresolved attempt may settle once from quarantine; conflicting finalized outcome freezes."
+  },
+  "invariants": [
+    "funded <= budget",
+    "available + reserved + spent = funded",
+    "spent <= funded",
+    "reserved <= funded - spent",
+    "one unresolved attempt per payout",
+    "one approval consumed per attempt",
+    "transfer amount equals immutable reserved payout input",
+    "no native access through legacy trusted manual settlement/release"
+  ],
+  "reference_payout": {
+    "campaign_id": 0,
+    "amount_atomic": "100000",
+    "recipient_id": null,
+    "current": {
+      "available": "1000000",
+      "reserved": "0",
+      "spent": "0"
+    },
+    "after_reservation_or_pending": {
+      "available": "900000",
+      "reserved": "100000",
+      "spent": "0"
+    },
+    "after_success": {
+      "available": "900000",
+      "reserved": "0",
+      "spent": "100000"
+    },
+    "accounting_categories_added": false,
+    "custody_reconciliation": "Pending delivered-but-unbooked debits remain reserved; reconcile across all campaigns without treating raw token balance as free allocation."
+  },
+  "callback": {
+    "private": true,
+    "promise_result_count": 1,
+    "identity": [
+      "mode",
+      "payout_id",
+      "authorization_id",
+      "attempt_id",
+      "locked current state"
+    ],
+    "success": "Trusted standard ft_transfer receipt committed; unit return has no amount/bool to decode; once-only reserved to spent",
+    "failure": "Definitive token failure, reserve retained, no USDC refund transfer",
+    "panic_oog_decode_failure": "Token may have committed; preserve pending, no resend; evidence-based resolution",
+    "pause_expiry": "Block new dispatch, allow completion of existing attempt",
+    "gas": "Bounded/preallocated writes, measured worst-case promise graph required"
+  },
+  "failure_recovery": {
+    "never_submitted": "Re-read on-chain attempt before any resubmission",
+    "unknown": "ManualReview/no new transfer",
+    "definitive_failure": "Finalized prior token receipt or definitive no-dispatch proof required, fresh independent approval/new attempt",
+    "success_callback_lost": "Resolve bookkeeping only; no second transfer",
+    "conflicting_or_missing_evidence": "Freeze reservation",
+    "refund": "Failed standard ft_transfer atomically leaves USDC in source; no Intents refund policy",
+    "trust_limit": "Dual attestations are trusted, not cryptographically verified RPC receipt proofs on-chain; collusion can cause false retry."
+  },
+  "recipient": {
+    "status": "RECIPIENT_UNVERIFIED",
+    "account_id": null,
+    "network": "near:testnet",
+    "token": "usdc.tidepool-sandbox.testnet",
+    "must_differ_from": [
+      "contract",
+      "owner",
+      "Operator"
+    ],
+    "requirements": [
+      "Explicit controlled participant/demo approval",
+      "AccountId syntax plus finalized account existence",
+      "NEP413 fresh nonce/domain/expiry and independent signature verification against current account key",
+      "Token registration",
+      "Initial finalized atomic balance",
+      "On-chain recipient allowlist backed by evidence digest"
+    ],
+    "immutable_after_reservation": true,
+    "proof_performed": false
+  },
+  "settlement_verification": {
+    "authoritative": "Finalized exact trusted-token action/receipt graph and private callback state, cross-checked with independent RPC",
+    "links": [
+      "campaign",
+      "payout",
+      "authorization",
+      "attempt",
+      "token",
+      "recipient",
+      "amount",
+      "memo",
+      "transfer_receipt",
+      "callback",
+      "accounting"
+    ],
+    "corroborative": "Committed standard token log and same-block source/recipient balances with other movements attributed",
+    "insufficient": [
+      "hash alone",
+      "backend success",
+      "provider quote",
+      "initiation success",
+      "balance delta alone",
+      "pre-delivery event"
+    ],
+    "rpc_corroboration": {
+      "rpc": "https://rpc.testnet.near.org",
+      "block_hash": "5ccVg6DsrNnk4VXWtKGRp8Z4QEjMvsu7HFSt7V526TNG",
+      "observations": {
+        "accounting": {
+          "jsonrpc": "2.0",
+          "result": {
+            "block_hash": "5ccVg6DsrNnk4VXWtKGRp8Z4QEjMvsu7HFSt7V526TNG",
+            "block_height": 277843166,
+            "logs": []
+          },
+          "id": "m5-read",
+          "decoded": {
+            "campaign_id": 0,
+            "budget": "1000000",
+            "funded": "1000000",
+            "reserved": "0",
+            "spent": "0",
+            "available": "1000000"
+          }
+        },
+        "balance": {
+          "jsonrpc": "2.0",
+          "result": {
+            "block_hash": "5ccVg6DsrNnk4VXWtKGRp8Z4QEjMvsu7HFSt7V526TNG",
+            "block_height": 277843166,
+            "logs": []
+          },
+          "id": "m5-read",
+          "decoded": "1000000"
+        }
+      }
+    }
+  },
+  "migration": {
+    "recommendation": "Conditional Option A in-place isolated upgrade preserving old bytes, versioned unique sidecars, immutable mode guards; Option B separately funded new isolated fallback if preservation unproven.",
+    "option_c": "Auxiliary cannot spend source token balance without source upgrade or unsafe custody/root access; reject for initial demo.",
+    "new_top_level_layout_required": false,
+    "existing_migrate_method": false,
+    "prefixes": [
+      "campaigns",
+      "role-assignments",
+      "accepted-ft-tokens",
+      "payout-records",
+      "payout-idempotency"
+    ],
+    "helper_prefixes": [
+      "payout-execution-references",
+      "payout-lifecycle-reasons",
+      "payout-failure-evidence-v1",
+      "payout-settlement-records-v1",
+      "payout-resolution-records-v1",
+      "payout-settlement-executions-v1",
+      "payout-settlement-references-v1"
+    ],
+    "proposed_prefixes": [
+      "native-config-v1",
+      "native-payout-mode-v1",
+      "native-payout-records-v1",
+      "native-attempt-records-v1",
+      "native-authorization-records-v1",
+      "native-role-assignments-v1",
+      "native-recipient-approvals-v1",
+      "native-resolution-proposals-v1"
+    ],
+    "must_preserve": [
+      "owner",
+      "roles",
+      "campaigns/status/accounting",
+      "accepted tokens",
+      "counters",
+      "payouts/idempotency/replay/evidence indexes",
+      "token custody"
+    ],
+    "rollback": "No automatic older-WASM redeployment or snapshot restore over external transfers; freeze, independently reconcile pending attempts, reviewed compatible forward fix."
+  },
+  "threat_model": [
+    {
+      "id": "T01",
+      "severity": "Critical",
+      "name": "Unauthorized execution / compromised Operator",
+      "scenario": "Operator creates a payout and tries to execute without independent consent.",
+      "preconditions": "Operator role or API access.",
+      "impact": "Unauthorized custody loss.",
+      "mitigation": "Explicit on-chain NativeApprover approval, separate actors, fixed reservation and NativeExecutor role; reject legacy bypass.",
+      "residual_risk": "Owner can change permissions; colluding principals remain trusted.",
+      "required_test": "No-role, Operator-only, self-approval and all legacy mutation bypass tests."
+    },
+    {
+      "id": "T02",
+      "severity": "Critical",
+      "name": "Duplicate spend after callback loss",
+      "scenario": "Token delivered but callback panics; worker assumes failure and retries.",
+      "preconditions": "Successful token receipt with missing callback state.",
+      "impact": "Same payout paid twice.",
+      "mitigation": "Consume approval and lock attempt before promises; keep reserved; no timeout retry; dual evidence-based bookkeeping recovery.",
+      "residual_risk": "Colluding recovery attestors can falsely assert failure.",
+      "required_test": "Real transfer success plus callback panic/OOG, restart and attempted duplicate."
+    },
+    {
+      "id": "T03",
+      "severity": "Critical",
+      "name": "Legacy manual settlement or release bypass",
+      "scenario": "Verifier settles nonexistent native delivery or releases an unresolved transfer.",
+      "preconditions": "Native payout accessible through legacy methods.",
+      "impact": "False spent or newly spendable delivered funds.",
+      "mitigation": "Immutable native mode; reject every legacy settlement/failure/release/execution-confirmation route for native records.",
+      "residual_risk": "Coverage omissions are catastrophic.",
+      "required_test": "Method-by-method negative matrix including paused and ManualReview paths."
+    },
+    {
+      "id": "T04",
+      "severity": "Critical",
+      "name": "Unsafe migration / rollback",
+      "scenario": "Changed Borsh fields or old WASM ignores sidecar locks.",
+      "preconditions": "Deployment authority or incompatible build.",
+      "impact": "Lost state, lost replay protections, duplicate transfers.",
+      "mitigation": "Preserve old bytes, version sidecars, full snapshot fixtures, freeze and forward fix; no automatic rollback.",
+      "residual_risk": "Root deployer can install arbitrary code.",
+      "required_test": "Old snapshot including nonempty indexes; candidate/old-code behavioral compatibility tests."
+    },
+    {
+      "id": "T05",
+      "severity": "Critical",
+      "name": "Root FullAccess compromise",
+      "scenario": "Account key signs direct token transfer or installs malicious WASM.",
+      "preconditions": "Contract account FullAccess access.",
+      "impact": "Complete loss bypassing app caps/roles.",
+      "mitigation": "Exclude root keys from service, secure separately approved deployment process, monitor keys/code and freeze operations on drift.",
+      "residual_risk": "Cannot prevent root bypass while FullAccess remains; no permission change authorized now.",
+      "required_test": "Demonstrate trust boundary locally and reject service root-key configuration."
+    },
+    {
+      "id": "T06",
+      "severity": "High",
+      "name": "Compromised execution service / API token",
+      "scenario": "Backend submits altered payout or fabricates job success.",
+      "preconditions": "Service compromise.",
+      "impact": "Wrong recipient/payment or false UI settlement.",
+      "mitigation": "On-chain approval binding and roles, scoped future signer, chain-first reconciliation, readonly deployment kept separate.",
+      "residual_risk": "Compromised permitted executor can cause delay/gas spending within approvals.",
+      "required_test": "Alter each binding field, mock backend success without token receipt."
+    },
+    {
+      "id": "T07",
+      "severity": "High",
+      "name": "Duplicate execution concurrency",
+      "scenario": "Two workers or retries race on same payout.",
+      "preconditions": "Lease expiry, restarted process or duplicate events.",
+      "impact": "Two transfer promises.",
+      "mitigation": "Single on-chain active attempt and approval consumption; immutable mode/idempotency; DB fencing supplementary.",
+      "residual_risk": "Gas wasted on rejected calls.",
+      "required_test": "Concurrent execute calls, stale DB leases and auth consumption races."
+    },
+    {
+      "id": "T08",
+      "severity": "High",
+      "name": "Callback spoofing / stale callback",
+      "scenario": "Attacker calls callback, or old attempt result targets new attempt.",
+      "preconditions": "Public callback or missing identity check.",
+      "impact": "False settlement/retry state.",
+      "mitigation": "Private predecessor=current; one result; payout/auth/attempt check and applied marker; preserve state on mismatch.",
+      "residual_risk": "Root self-call remains privileged; depends on deployment integrity.",
+      "required_test": "External/contract caller, wrong result count, wrong auth, stale and duplicate callbacks."
+    },
+    {
+      "id": "T09",
+      "severity": "High",
+      "name": "Cross-contract interleaving",
+      "scenario": "Pause, another payout callback or campaign change occurs between receipts.",
+      "preconditions": "Asynchronous promises.",
+      "impact": "Stale accounting overwrite or unauthorized dispatch.",
+      "mitigation": "Persist lock first; reload current accounting; recheck before dispatch; allow safe completion while paused.",
+      "residual_risk": "Late callback may require review after governance changes.",
+      "required_test": "Interleave two payouts and campaigns, pause/revoke/expire between stages."
+    },
+    {
+      "id": "T10",
+      "severity": "High",
+      "name": "Amount / token / decimals manipulation",
+      "scenario": "Alter expected output or token after approval.",
+      "preconditions": "Loose legacy destination/amount validation.",
+      "impact": "Overpayment, wrong asset or misleading UI.",
+      "mitigation": "Strict native identity, same input/output atomic amount, decimals6, stored digest, no arbitrary execution args.",
+      "residual_risk": "Trusted token implementation can violate semantics.",
+      "required_test": "Token, amount, decimals, mode and output mismatch tests."
+    },
+    {
+      "id": "T11",
+      "severity": "High",
+      "name": "Recipient substitution / false control",
+      "scenario": "Approved destination swapped or NEP413 replay used.",
+      "preconditions": "Mutable recipient or weak proof validation.",
+      "impact": "Irrecoverable transfer to attacker.",
+      "mitigation": "Immutable recipient, explicit allowlist, independent control proof/nonce/domain/expiry/current key membership and storage check.",
+      "residual_risk": "Key theft after proof; allowlist governance compromise.",
+      "required_test": "Mutation, replay, wrong account/key/domain/network and expired proof tests."
+    },
+    {
+      "id": "T12",
+      "severity": "High",
+      "name": "Budget / cross-campaign bypass",
+      "scenario": "Pooled balance used to fund unfunded campaign or double reserve.",
+      "preconditions": "Arithmetic or campaign binding bug.",
+      "impact": "Another campaign loses funds.",
+      "mitigation": "Checked invariant arithmetic, exact reservation amount and campaign binding; surplus not autoallocated.",
+      "residual_risk": "Out-of-band root or token movements can break custody.",
+      "required_test": "Boundary u128, exhausted budget, multiple payouts/campaigns and unsolicited token surplus."
+    },
+    {
+      "id": "T13",
+      "severity": "High",
+      "name": "Incorrect evidence / colluding recovery",
+      "scenario": "Hash/log/balance accepted as proof, or false nonsettlement attested.",
+      "preconditions": "Recovery authority or unverified RPC.",
+      "impact": "Double payment or false terminal state.",
+      "mitigation": "Canonical finalized receipt graph from two RPCs, exact binding, two distinct attestors, no unresolved retry/release.",
+      "residual_risk": "Attestation is trusted, not on-chain cryptographic receipt verification.",
+      "required_test": "Forged hash/log, missing receipt, conflicting RPCs, same-person dual approval."
+    },
+    {
+      "id": "T14",
+      "severity": "High",
+      "name": "Token failure or malicious upgrade",
+      "scenario": "Token rejects storage/transfer, freezes accounts or returns success without transfer.",
+      "preconditions": "Trusted token behavior changes.",
+      "impact": "Frozen funds or falsely recorded delivery.",
+      "mitigation": "Pinned account and monitored code identity, source/conformance gate; reject upgrades/drift; bounded failure handling.",
+      "residual_risk": "No atomic remote code-hash pin; token governance remains trusted.",
+      "required_test": "Mock reject/no-op/nonstandard return and upgrade-between-preflight tests."
+    },
+    {
+      "id": "T15",
+      "severity": "High",
+      "name": "Callback gas/storage exhaustion",
+      "scenario": "Token commits but callback lacks gas or storage balance.",
+      "preconditions": "Underbudgeted graph, large evidence strings.",
+      "impact": "Delivered but unsettled locked payout.",
+      "mitigation": "Bounded preallocated records, measured gas margins, minimum prepaid guards; preserve attempt and review on callback loss.",
+      "residual_risk": "No retroactive gas top-up; liveness can stop.",
+      "required_test": "Real sandbox OOG/storage pressure plus no-resend assertions."
+    },
+    {
+      "id": "T16",
+      "severity": "High",
+      "name": "RPC inconsistency / timeout",
+      "scenario": "Timeout interpreted as failed submission.",
+      "preconditions": "Unreliable endpoint or stale finality.",
+      "impact": "Duplicate send or wrong evidence.",
+      "mitigation": "Pinned finalized block, two endpoints, canonical receipt traversal; timeout\u2192unknown.",
+      "residual_risk": "Two endpoints may share infrastructure; no light-client proof.",
+      "required_test": "Timeout before/after submission, divergent endpoints and missing history."
+    },
+    {
+      "id": "T17",
+      "severity": "High",
+      "name": "Database crash / restart / stale lease",
+      "scenario": "Crash after chain dispatch but before DB commit.",
+      "preconditions": "Nonatomic DB/chain workflow.",
+      "impact": "Duplicate send or lost observation.",
+      "mitigation": "Chain attempt authority, durable outbox/attempt intent with fences, replayable discovery, resume observation not transfer.",
+      "residual_risk": "Manual intervention may be required; DB durability not chain authority.",
+      "required_test": "Real PostgreSQL crash-boundary and lease-expiry concurrent-worker tests."
+    },
+    {
+      "id": "T18",
+      "severity": "High",
+      "name": "Accidental mainnet execution",
+      "scenario": "Signer or RPC configuration points to mainnet.",
+      "preconditions": "Misconfiguration/copy-paste.",
+      "impact": "Real assets at risk.",
+      "mitigation": "Configured chain/genesis and exact isolated account/token assertions, Testnet-only mode; no arbitrary network field.",
+      "residual_risk": "Root administrator can change config/build.",
+      "required_test": "Wrong genesis/RPC/account/token fail closed before signing."
+    },
+    {
+      "id": "T19",
+      "severity": "Medium",
+      "name": "Missing or changed recipient storage",
+      "scenario": "Registration disappears after check.",
+      "preconditions": "Recipient unregisters or unsupported storage implementation.",
+      "impact": "Failed attempt and fees.",
+      "mitigation": "Separate approved registration, storage callback then trusted atomic token failure handling.",
+      "residual_risk": "TOCTOU cannot be eliminated by preflight alone.",
+      "required_test": "Missing storage, malformed view and unregister interleaving integration tests."
+    },
+    {
+      "id": "T20",
+      "severity": "Medium",
+      "name": "Pause / expiry denial of safe completion",
+      "scenario": "Global pause blocks a success callback.",
+      "preconditions": "Shared pause guard copied into callback.",
+      "impact": "Delivered funds indefinitely reserved.",
+      "mitigation": "Block new initiation and storage-stage dispatch, not settlement of existing attempt.",
+      "residual_risk": "Recovery may still need humans after callback failure.",
+      "required_test": "Pause/expiry/token delist immediately before final callback."
+    },
+    {
+      "id": "T21",
+      "severity": "Medium",
+      "name": "Dashboard presents reservation as payment",
+      "scenario": "List is stale or DB job says success with no canonical proof.",
+      "preconditions": "Read API/display ambiguity.",
+      "impact": "False operational confidence.",
+      "mitigation": "Separate reservation, dispatch, delivery and settlement; show evidence/lag; chain status authoritative.",
+      "residual_risk": "Read-only list depends on persisted job discovery.",
+      "required_test": "Direct detail versus lagging list, missing evidence and conflicting DB status tests."
+    }
+  ],
+  "test_matrix": [
+    {
+      "id": "R01",
+      "layer": "Rust unit",
+      "cases": "Role matrix, no-role, self-approval, altered binding, expired/revoked approval",
+      "acceptance": "All unauthorized calls reject without state/promise changes."
+    },
+    {
+      "id": "R02",
+      "layer": "Rust unit",
+      "cases": "Invalid state, mode mismatch, legacy settlement/failure/release/confirmation bypass",
+      "acceptance": "Every legacy mutation rejects native mode; no reserved/spent delta."
+    },
+    {
+      "id": "R03",
+      "layer": "Rust unit + property",
+      "cases": "Budget exhaustion, u128 boundaries, many payouts and campaigns sharing token",
+      "acceptance": "All four campaign invariants always hold; no cross-campaign accounting."
+    },
+    {
+      "id": "R04",
+      "layer": "Rust unit",
+      "cases": "Identical/conflicting idempotency; legacy/native key collision",
+      "acceptance": "Same native ID no new reserve/event/promise; any mode/detail conflict rejects."
+    },
+    {
+      "id": "R05",
+      "layer": "Rust unit",
+      "cases": "Success/failed, duplicate/stale/wrong-auth/wrong-count callbacks",
+      "acceptance": "Exactly one settlement; failures preserve reserve; stale/spoofed results cannot mutate another attempt."
+    },
+    {
+      "id": "R06",
+      "layer": "Rust unit + sandbox",
+      "cases": "Retry after finalized failure, retry blocked after success/unknown, release guard",
+      "acceptance": "Only fresh independent authorization/new attempt with unchanged binding; no overlapping dispatch."
+    },
+    {
+      "id": "R07",
+      "layer": "Sandbox real promises",
+      "cases": "Successful standard ft_transfer and storage preflight",
+      "acceptance": "Correct predecessor, string amount, 1yocto, one token movement, callback reserved\u2192spent."
+    },
+    {
+      "id": "R08",
+      "layer": "Sandbox real promises",
+      "cases": "Missing recipient storage, insufficient balance, malformed storage response, token reject",
+      "acceptance": "No invented refund; failed token receipt leaves tokens; locked reservation until reviewed action."
+    },
+    {
+      "id": "R09",
+      "layer": "Sandbox real promises",
+      "cases": "Callback panic, gas exhaustion, decoding failure after token success",
+      "acceptance": "Delivery persists but no second transfer; pending/ManualReview remains reserved; recovery settles only once."
+    },
+    {
+      "id": "R10",
+      "layer": "Sandbox real promises",
+      "cases": "Pause/expiry/revocation/delist and concurrent callback interleavings",
+      "acceptance": "No new transfer after pause/expiry; dispatched completion safe; reload current campaign accounting."
+    },
+    {
+      "id": "R11",
+      "layer": "Sandbox real promises",
+      "cases": "Token success/no-op or upgraded/nonstandard mock, storage unregister race",
+      "acceptance": "Expose token trust assumption; drift/uncertain evidence freezes; no claim ABI alone proves semantics."
+    },
+    {
+      "id": "R12",
+      "layer": "Migration fixture + sandbox",
+      "cases": "Exact current old snapshot plus synthetic nonempty legacy evidence/indexes",
+      "acceptance": "Byte-preserve legacy entries, semantic equality, token custody unchanged; no reinit/prefix collision."
+    },
+    {
+      "id": "R13",
+      "layer": "Migration negative",
+      "cases": "Changed top-level/Payout layout, old WASM, corrupt snapshot, wrong bootstrap caller/version",
+      "acceptance": "Reject incompatible strategy and unsafe rollback; native paths disabled until reviewed sentinel."
+    },
+    {
+      "id": "S01",
+      "layer": "Real PostgreSQL integration, future isolated test DB",
+      "cases": "Concurrent claims, lease expiry/fencing, single-use authorization consumption",
+      "acceptance": "One authoritative DB claim; stale worker cannot commit; on-chain duplicate still rejected."
+    },
+    {
+      "id": "S02",
+      "layer": "Real PostgreSQL + sandbox integration",
+      "cases": "Crash before send, after send before DB commit, after callback before evidence persistence",
+      "acceptance": "Restart monitors same attempt; never sends token twice; cursor/job commit atomic."
+    },
+    {
+      "id": "S03",
+      "layer": "Service unit + integration",
+      "cases": "RPC timeout, stale/conflicting endpoints, missing receipt, forged log/hash, settlement evidence integrity",
+      "acceptance": "Unknown\u2192ManualReview; exact finalized action graph required, balances corroborative only."
+    },
+    {
+      "id": "S04",
+      "layer": "Service/API/frontend",
+      "cases": "Native mode routing, native no-refund policy, direct detail and persisted-list lag",
+      "acceptance": "No 1Click quote/deposit; truthful status and scope; no arbitrary signer capability."
+    },
+    {
+      "id": "S05",
+      "layer": "Host security regression",
+      "cases": "Restricted read-only startup and denied mutation/worker/signer composition",
+      "acceptance": "Current environment stays read-only, no schema migration/DB writes/live signer."
+    },
+    {
+      "id": "S06",
+      "layer": "Recipient proof verification",
+      "cases": "NEP413 nonce/domain/expiry/account/key-membership and registration/balance fixture",
+      "acceptance": "Reject replay/wrong account; no invented recipient or implicit allowlist grant."
+    },
+    {
+      "id": "L01",
+      "layer": "Separately approved Testnet demonstration",
+      "cases": "Deployment, identity/state verification, recipient, reserve, approve, execute, receipts, accounting/dashboard",
+      "acceptance": "Every state-changing step has separate exact approval; one 100000-atomic payment only."
+    }
+  ],
+  "tests_run": {
+    "rust": {
+      "command": "cargo test --locked --offline",
+      "passed": 98,
+      "failed": 0,
+      "log": "rust-tests.log"
+    },
+    "service": {
+      "passed": 51,
+      "failed": 0,
+      "files": [
+        "near-intents.test.ts",
+        "security.test.ts",
+        "discovery.test.ts",
+        "state-machine.test.ts",
+        "postgres-security-repositories.test.ts"
+      ],
+      "log": "service-tests.log"
+    },
+    "real_postgres_run": false,
+    "native_promise_integration_run": false,
+    "dependencies_installed": false
+  },
+  "implementation_milestones": [
+    {
+      "id": "M5-B",
+      "objective": "Local sidecar state/approval/mode guards",
+      "acceptance": "R01-R06 schema and guard matrix, no enabled transfer",
+      "approval": "Separate explicit stage approval; no live action implied"
+    },
+    {
+      "id": "M5-C",
+      "objective": "Local promises/storage/private callbacks",
+      "acceptance": "R05-R11 real receipt gas/failure tests",
+      "approval": "Separate explicit stage approval; no live action implied"
+    },
+    {
+      "id": "M5-D",
+      "objective": "Recovery/evidence/retry safety",
+      "acceptance": "R06/R09/S03 no resend after unknown or success",
+      "approval": "Separate explicit stage approval; no live action implied"
+    },
+    {
+      "id": "M5-E",
+      "objective": "Snapshot migration validation",
+      "acceptance": "R12/R13 old and nonempty fixtures preserve state and custody",
+      "approval": "Separate explicit stage approval; no live action implied"
+    },
+    {
+      "id": "M5-F",
+      "objective": "Future native service integration",
+      "acceptance": "S01-S06 isolated real PostgreSQL/sandbox, unchanged readonly composition",
+      "approval": "Separate explicit stage approval; no live action implied"
+    },
+    {
+      "id": "M5-G",
+      "objective": "Separately approved isolated deployment",
+      "acceptance": "Exact artifact review, state/custody/code verification and separate bootstrap/role approvals",
+      "approval": "Separate explicit stage approval; no live action implied"
+    },
+    {
+      "id": "M5-H",
+      "objective": "One separately approved controlled payout",
+      "acceptance": "L01 receipt-delivery/accounting/dashboard proof after individual approval gates",
+      "approval": "Separate explicit stage approval; no live action implied"
+    }
+  ],
+  "unresolved_questions": [
+    "Recipient unverified",
+    "Independent approver/executor/recovery principals not selected/granted",
+    "Concrete TTL and gas/storage/cap policy",
+    "Token implementation/governance/restrictions review",
+    "Secure deployment signer access not checked",
+    "New candidate build/migration/promise proof does not exist",
+    "Dual-attestation recovery trust acceptance",
+    "Real PostgreSQL and native promise tests future",
+    "Job-backed list integration future"
+  ],
+  "required_approvals": [
+    "M5-B local implementation",
+    "Each later local stage/security review",
+    "Exact isolated deploy or upgrade",
+    "Each bootstrap/role/recipient-storage/allowlist/pause/unpause mutation",
+    "Exact native reservation",
+    "Independent on-chain attempt approval",
+    "Exact initiate transaction including callback settlement graph",
+    "Each exceptional recovery or retry/release"
+  ],
+  "actions": {
+    "application_source_modified": false,
+    "blockchain_transactions_signed": 0,
+    "blockchain_transactions_submitted": 0,
+    "payouts_reserved": 0,
+    "token_transfers": 0,
+    "database_writes": 0,
+    "workers_started": 0,
+    "read_only_mode_changed": false,
+    "roles_changed": false,
+    "private_keys_inspected": false,
+    "committed_or_pushed": false
+  },
+  "documents": [
+    "docs/milestone-5-native-payout-architecture.md",
+    "docs/milestone-5-security-threat-model.md",
+    "docs/milestone-5-migration-safety.md",
+    "docs/milestone-5-implementation-plan.md"
+  ],
+  "references": [
+    "https://github.com/near/NEPs/blob/master/neps/nep-0141.md",
+    "https://github.com/near/NEPs/blob/master/neps/nep-0413.md",
+    "https://docs.near.org/smart-contracts/security/cross-contract-calls/callbacks",
+    "https://docs.near.org/smart-contracts/release/upgrade"
+  ],
+  "validation": {
+    "all_fresh_checks_pass": true,
+    "source_hashes_match_prior_inspection": {
+      "Cargo.lock": true,
+      "Cargo.toml": true,
+      "src/lib.rs": true,
+      "src/state/campaign.rs": true,
+      "src/state/mod.rs": true,
+      "src/state/payout.rs": true,
+      "src/state/recipient.rs": true,
+      "src/types/amount.rs": true,
+      "src/types/destination.rs": true,
+      "src/types/evidence.rs": true,
+      "src/types/identifier.rs": true,
+      "src/types/mod.rs": true,
+      "src/types/role.rs": true,
+      "src/types/status.rs": true
+    },
+    "json_parse_pass": true,
+    "m5_markdown_trailing_whitespace_pass": true,
+    "tracked_application_diff": [],
+    "scope": "Only new M5 documents/public evidence/test logs written; prior tracked M4 modifications remain.",
+    "new_files": [
+      "docs/evidence/milestone-5/finalized-preflight.json",
+      "docs/evidence/milestone-5/independent-rpc.json",
+      "docs/evidence/milestone-5/native-payout-design-review.json",
+      "docs/evidence/milestone-5/rust-tests.log",
+      "docs/evidence/milestone-5/service-tests.log",
+      "docs/evidence/milestone-5/token-abi.json",
+      "docs/milestone-5-implementation-plan.md",
+      "docs/milestone-5-migration-safety.md",
+      "docs/milestone-5-native-payout-architecture.md",
+      "docs/milestone-5-security-threat-model.md"
+    ]
+  }
+}
