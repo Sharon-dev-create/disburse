@@ -1,0 +1,480 @@
+{
+  "schema_version": 1,
+  "milestone": "M5-B",
+  "verdict": "PASS",
+  "scope": "LOCAL_IMPLEMENTATION_ONLY",
+  "repository_revision": "5e48e47d30032578486bbce5f111fbb7103e7164",
+  "branch": "main",
+  "baseline_worktree": "clean main...origin/main",
+  "baseline_commit_subject": "configurations",
+  "inspection_date_local": "2026-11-16",
+  "timezone": "Africa/Douala",
+  "recorded_utc": "2026-11-16T03:04:40.623382+00:00",
+  "design_baseline": {
+    "documents": [
+      "docs/milestone-5-native-payout-architecture.md",
+      "docs/milestone-5-security-threat-model.md",
+      "docs/milestone-5-migration-safety.md",
+      "docs/milestone-5-implementation-plan.md",
+      "docs/evidence/milestone-5/native-payout-design-review.json"
+    ],
+    "unchanged": true,
+    "preexisting_source_conflict": null,
+    "reconciliations": [
+      "B-only begin_native_preflight locks/consumes without scheduling. execute_native_payout and transfer/success paths absent; C must join atomic promise scheduling before deployment.",
+      "AttemptFailed is represented name for proposed DefinitiveFailure, publicly unreachable in B.",
+      "Explicit B instruction to reject repeated bootstrap resolves A wording idempotent/reject already initialized.",
+      "Configurable positive local cap <=100000 and TTL <=one hour; no live policy/grants selected."
+    ]
+  },
+  "deployment_status": {
+    "deployed": false,
+    "live_state_requeried": false,
+    "old_deployed_identity_historical": {
+      "contract": "disburse-test-contract.testnet",
+      "token": "usdc.tidepool-sandbox.testnet",
+      "network": "near:testnet",
+      "code_hash": "CJUcu5UqBYA4ZV47TJMABQJWc7MdvdaYYMNdDeB1mxcf",
+      "block": {
+        "hash": "5ccVg6DsrNnk4VXWtKGRp8Z4QEjMvsu7HFSt7V526TNG",
+        "height": 277843166,
+        "timestamp_nanosec": "1794768250171387619"
+      }
+    },
+    "recipient_status": "RECIPIENT_UNVERIFIED",
+    "full_access_keys_inspected": false,
+    "custody_unchanged_by_actions": true
+  },
+  "implementation": {
+    "modules": [
+      "src/native.rs",
+      "src/state/native.rs"
+    ],
+    "common_reservation": "Existing logic extracted without changing legacy signature or state serialization; execution mode checked in shared idempotency.",
+    "schema_version": 1,
+    "prefixes": [
+      "native-config-v1",
+      "native-payout-mode-v1",
+      "native-payout-records-v1",
+      "native-authorization-records-v1",
+      "native-attempt-records-v1",
+      "native-role-assignments-v1",
+      "native-recipient-approvals-v1"
+    ],
+    "source_token": "usdc.tidepool-sandbox.testnet",
+    "network": "near:testnet",
+    "decimals": 6,
+    "local_maximum_payout_atomic": "100000",
+    "local_maximum_ttl_ns": "3600000000000"
+  },
+  "authorization": {
+    "reserve": "Existing Operator/Administrator including implicit owner Admin.",
+    "approve": "Explicit native Approver, not reservation actor.",
+    "preflight": "Explicit native Executor, not approver; original approver role still present; actor may be reserver only with explicit Executor grant.",
+    "governance": "Owner, paused, initialized config; cannot grant native roles to owner/contract or both roles to one account.",
+    "revoke_unused": "Original approver or owner; allowed paused, no consumed/pending reset.",
+    "inheritance": "No implicit native privileges for owner/Admin/Operator/Verifier.",
+    "binding": [
+      "domain/version",
+      "contract",
+      "network",
+      "campaign_id",
+      "payout_id",
+      "token",
+      "recipient",
+      "amount",
+      "decimals",
+      "reservation_actor",
+      "reservation_time",
+      "recipient_evidence_hash",
+      "authorization_id",
+      "attempt_id",
+      "approver",
+      "approved_at",
+      "expires_at"
+    ],
+    "replay": "Global permanent authorization keys and monotonic payout-scoped checked attempt numbers; no mode conversion.",
+    "recipient_approval": "Owner-reviewed immutable SHA256 evidence reference; no implemented NEP413 verifier or storage query; no selected real recipient.",
+    "trust_limit": "Account separation does not prove different human control; root deployment authority can bypass app code."
+  },
+  "state_machine": {
+    "implemented": [
+      {
+        "from": "none",
+        "to": "Reserved",
+        "method": "create_native_payout",
+        "accounting": "Reserve once via existing helper"
+      },
+      {
+        "from": "Reserved",
+        "to": "Approved",
+        "method": "approve_native_execution",
+        "accounting": "unchanged"
+      },
+      {
+        "from": "Approved",
+        "to": "Approved",
+        "method": "exact identical approval replay",
+        "accounting": "unchanged; no new writes/events"
+      },
+      {
+        "from": "Approved",
+        "to": "Reserved",
+        "method": "revoke_native_authorization",
+        "accounting": "unchanged; auth permanently Revoked; retain attempt history/counter"
+      },
+      {
+        "from": "Approved",
+        "to": "PreflightPending",
+        "method": "begin_native_preflight",
+        "accounting": "unchanged; auth Consumed, no promise or submission"
+      }
+    ],
+    "unreachable_public_states": [
+      "TransferPending",
+      "Succeeded",
+      "AttemptFailed",
+      "ManualReview",
+      "Released"
+    ],
+    "deferred": [
+      "Token storage preflight promise",
+      "Atomic transfer scheduling",
+      "Private token callback settlement/failure",
+      "ManualReview recovery",
+      "Definitive failure retry/release"
+    ],
+    "legacy_projection": "All reachable native lifecycle states keep legacy PayoutStatus::Reserved in B.",
+    "revoked_attempt_history": "Attempt retains prior phase; linked authorization Revoked and cleared current payout pointers determine nonexecutability.",
+    "pending_policy": "No reset/revoke/retry/release after preflight consumption. No claim tokens submitted."
+  },
+  "legacy_guards": {
+    "exported_methods": [
+      "start_payout_execution",
+      "mark_payout_pending_verification",
+      "mark_payout_failed",
+      "move_payout_to_manual_review",
+      "settle_payout",
+      "release_failed_payout_reservation",
+      "confirm_manual_review_execution",
+      "release_manual_review_reservation"
+    ],
+    "private_helper": "release_reservation_with_evidence",
+    "predicate": "Native marker OR native record blocks legacy mutation, including orphan metadata.",
+    "test_strength": "Exact mode-guard panic asserted with privileged caller while paused and unpaused; cannot pass only due to another precondition.",
+    "historical_behavior": "98 original tests unchanged and passing; synthetic legacy settlement/failure/release after addition succeeds.",
+    "campaign_cancellation": "Changes lifecycle only, no reservation release; blocks native approval/preflight; pending accounting retained."
+  },
+  "accounting": {
+    "invariants": [
+      "funded <= budget",
+      "reserved + spent <= funded",
+      "available = funded - reserved - spent",
+      "available + reserved + spent = funded",
+      "spent <= funded"
+    ],
+    "reference_after_local_reservation": {
+      "funded": "1000000",
+      "available": "900000",
+      "reserved": "100000",
+      "spent": "0"
+    },
+    "approval_revoke_preflight": "No amount changes or token transfer.",
+    "rejection_checks": "Full storage byte equality, no logs or receipts; overflow, exhausted budget, u128 cap and u64 counter boundaries.",
+    "two_campaigns_shared_token": true
+  },
+  "migration": {
+    "top_level_layout_changed": false,
+    "top_level_migration_required": false,
+    "legacy_state_struct_text_equal": true,
+    "legacy_types_and_enums_unchanged_sha256": {
+      "Cargo.toml": "eb19d2188cec81c38bf8156ea1cc72ebeb92e8f2e61bc8b0b891824e3d28d31c",
+      "Cargo.lock": "ef714da6bef72ea3d4beecdbeab973ff6d5869d42b3b1101d1ba7c4f045d908c",
+      "src/state/campaign.rs": "350d4651a0bf12d284c79f71305f28f8eeeda7365da997c2ee47c7a0d5fffbaf",
+      "src/state/payout.rs": "5274bb22ef8f848d64ce3369ab8b5f80613fb90e963cb12f5d9a5c7ab7bdb1e1",
+      "src/state/recipient.rs": "9098d565c3eab0fe3af06a3fb777425d8e1128fe5fa98e9283289307cf46080e",
+      "src/types/amount.rs": "fce2c3608c786f5956a12fe32075a7ae567af818c33cedab35817c06dfa64265",
+      "src/types/destination.rs": "26de2a07ffd5074f90a6869921c57609f2cc53d4152becb0d2a1d2749e7d3678",
+      "src/types/status.rs": "af306c73bf630159de4e0cc177a5abee4d83b723f955e8357b3ddd133142de03",
+      "src/types/role.rs": "15cda0d310a4d05df824eccd2b794bbdf76dc18e07d51ffc80fb371f1037d014",
+      "src/types/evidence.rs": "03c55248c629e9b77061fb807a164b13b0a6f5ea28f3460604c16ed84f99f801"
+    },
+    "bootstrap": "Owner-only paused one-time config-key extension; raw STATE hash/equivalence and SDK-serialized known prefix validation; no legacy rewrites or reinitialization.",
+    "authentic_fixture": {
+      "path": "tests/fixtures/m5b-deployed-state.json",
+      "sha256": "bb3c5ffd471136c15728206891cf48e06ac1f5e715229cc1cee2ba1ccbc368be",
+      "entry_count": 4,
+      "raw_values_match_M5A": true,
+      "block": {
+        "hash": "5ccVg6DsrNnk4VXWtKGRp8Z4QEjMvsu7HFSt7V526TNG",
+        "height": 277843166,
+        "timestamp_nanosec": "1794768250171387619"
+      },
+      "payout_count": 0,
+      "pause_boundary": "Explicitly pause/persist old state before byte-preserving bootstrap baseline."
+    },
+    "synthetic_nonempty_fixture": "Runtime-generated source-derived legacy settlement/failure/release and all indexes; not authentic on-chain history or old-WASM sandbox proof.",
+    "negative_cases": [
+      "Repeated/unauthorized/unpaused/wrong-account bootstrap",
+      "Malformed/trailing/mismatched state and hash",
+      "Valid Borsh with unexpected collection prefix",
+      "Invalid caps/TTL",
+      "Unknown config version",
+      "Prefix collision/orphan mode/new ID collision"
+    ],
+    "limits": [
+      "Mock runtime only, no protocol migration or custody execution.",
+      "Cannot enumerate arbitrary orphan prefixes on-chain.",
+      "Full candidate old-WASM/sandbox migration validation and fresh snapshot deferred to M5-E.",
+      "No safe automatic old-WASM rollback; forward fix/freeze pending remains requirement."
+    ]
+  },
+  "validation": {
+    "baseline": {
+      "command": "cargo test --locked",
+      "passed": 98,
+      "failed": 0,
+      "log": "m5b/baseline-tests.log"
+    },
+    "fmt": {
+      "command": "cargo fmt --all -- --check",
+      "status": "PASS",
+      "log": "m5b/fmt.log"
+    },
+    "clippy": {
+      "command": "cargo clippy --locked --all-targets -- -D warnings",
+      "status": "PASS",
+      "log": "m5b/clippy.log"
+    },
+    "tests": {
+      "command": "cargo test --locked",
+      "status": "PASS",
+      "passed": 126,
+      "failed": 0,
+      "original": 98,
+      "new": 28,
+      "doc_tests": 0,
+      "log": "m5b/implementation-tests.log",
+      "new_test_names": [
+        "independent_approval_preflight_consumption_and_no_accounting_or_promises",
+        "unauthorized_owner_admin_operator_and_self_approval_are_denied",
+        "explicit_executor_can_be_reserver_with_independent_approval_only",
+        "root_self_and_dual_native_role_grants_reject",
+        "expiry_and_invalid_ttl_reject_without_consumption",
+        "revocation_is_safe_and_new_approval_has_fresh_identity",
+        "role_revocation_blocks_approved_attempt_and_owner_can_revoke_while_paused",
+        "identical_approval_is_idempotent_conflicting_approval_is_rejected",
+        "duplicate_pending_attempts_unknown_payout_and_cross_payout_auth_reject",
+        "immutable_recipient_amount_network_token_decimals_and_campaign_are_validated",
+        "altered_binding_and_detached_sidecar_fail_closed",
+        "native_and_legacy_idempotency_cannot_convert_modes",
+        "pending_manual_review_and_terminal_states_cannot_approve_revoke_or_restart",
+        "accounting_boundary_overflow_counter_overflow_and_multiple_payouts",
+        "pause_campaign_cancel_and_token_removal_cannot_free_native_reservation",
+        "recipient_allowlist_exclusions_and_evidence_immutability",
+        "uninitialized_and_unknown_schema_fail_closed",
+        "all_legacy_native_mutation_bypasses_are_rejected",
+        "authentic_deployed_bytes_deserialize_and_bootstrap_preserves_every_legacy_entry",
+        "bootstrap_rejects_unauthorized_repeat_incompatible_hash_and_bounds",
+        "bootstrap_rejects_malformed_state_unpaused_and_wrong_deployment_identity",
+        "nonempty_legacy_payout_indexes_failure_settlement_and_resolution_survive_bootstrap",
+        "storage_prefixes_are_unique_and_legacy_borsh_layout_is_unchanged",
+        "json_binding_schema_uses_decimal_strings_and_no_transfer_or_success_abi",
+        "two_campaigns_share_token_but_not_reservation_or_authorization",
+        "explicit_native_binding_and_attempt_records_reject_corruption",
+        "unknown_config_version_and_new_id_collisions_fail_before_reservation",
+        "bootstrap_rejects_structurally_valid_but_changed_legacy_prefixes"
+      ]
+    },
+    "bare_build": {
+      "command": "cargo near build",
+      "status": "ENVIRONMENT_LIMITATION",
+      "reason": "Installed CLI opens interactive subcommand selector; input device is not a TTY.",
+      "log": "m5b/build-command.log"
+    },
+    "build": {
+      "command": "cargo near build non-reproducible-wasm --locked",
+      "status": "PASS",
+      "log": "m5b/build.log",
+      "environment": "host; not reproducible build certification",
+      "artifact": "target/near/disburse_contract.wasm",
+      "bytes": 385351,
+      "sha256": "ad51f8bc061138013ff33620d33adff8dffacb4eaf1c06b09853c79b92c58e94",
+      "metadata": {
+        "name": "disburse-contract",
+        "version": "0.1.0",
+        "build": {
+          "compiler": "rustc 1.100.0",
+          "builder": "cargo-near cargo-near-build 0.11.5"
+        },
+        "wasm_hash": "Cfa2ccbYvp1qWBeHhKW77NhJghGf9aXaTPE1qN3u8Ydy"
+      }
+    },
+    "abi": {
+      "legacy_function_entries_identical": true,
+      "legacy_function_count": 35,
+      "native_functions": [
+        "approve_native_execution",
+        "approve_native_recipient",
+        "begin_native_preflight",
+        "create_native_payout",
+        "get_native_attempt",
+        "get_native_authorization",
+        "get_native_config",
+        "get_native_mode",
+        "get_native_payout",
+        "get_native_recipient",
+        "has_native_role",
+        "initialize_native_execution",
+        "revoke_native_authorization",
+        "set_native_role"
+      ],
+      "native_mutations_nonpayable": true,
+      "native_transfer_success_callback_release_retry_execute_methods_absent": true,
+      "evidence": "m5b/candidate-abi.json"
+    },
+    "source_audit": {
+      "legacy_tests_text_unchanged": true,
+      "no_promise_scheduling_in_native_module": true,
+      "no_dependency_manifest_lock_change": true,
+      "no_typescript_frontend_changes": true,
+      "all_M5A_files_unchanged": true
+    },
+    "diff_check": "PASS"
+  },
+  "acceptance_criteria": [
+    {
+      "name": "independent_authorization",
+      "status": "PASS",
+      "evidence": "Explicit Approver/Executor, no inherited owner/admin authority, approver distinct from reservation actor/executor."
+    },
+    {
+      "name": "immutable_binding",
+      "status": "PASS",
+      "evidence": "Canonical V1 Borsh reservation digest plus complete bound authorization and identity crosschecks against parent payout/campaign."
+    },
+    {
+      "name": "versioned_sidecars",
+      "status": "PASS",
+      "evidence": "V1 config, mode, role, recipient, binding, payout, authorization and attempt namespaces; no legacy struct changes."
+    },
+    {
+      "name": "guarded_transitions",
+      "status": "PASS",
+      "evidence": "Only Reserved\u2192Approved, unused approval revocation\u2192Reserved, Approved\u2192locked PreflightPending. Later states represented only."
+    },
+    {
+      "name": "replay_protection",
+      "status": "PASS",
+      "evidence": "Global authorization ID permanence, monotonic checked per-payout attempts, idempotent exact approval, one consumed pending lock."
+    },
+    {
+      "name": "legacy_bypass_prevention",
+      "status": "PASS",
+      "evidence": "Eight exported legacy mutations and private release helper reject native marker OR record, tested by exact guard reason."
+    },
+    {
+      "name": "campaign_accounting",
+      "status": "PASS",
+      "evidence": "Existing shared checked reservation arithmetic; approval/revoke/preflight do not change money; all-storage rejection snapshots and multi-campaign/boundary tests."
+    },
+    {
+      "name": "historical_state_preservation",
+      "status": "PASS",
+      "evidence": "Authentic old public raw bytes deserialize/roundtrip and every prior key remains unchanged through paused bootstrap; separate synthetic nonempty evidence/index fixture."
+    },
+    {
+      "name": "existing_tests",
+      "status": "PASS",
+      "evidence": "All 98 baseline tests unchanged and pass."
+    },
+    {
+      "name": "adversarial_tests",
+      "status": "PASS",
+      "evidence": "28 new tests pass."
+    },
+    {
+      "name": "no_transfer_path",
+      "status": "PASS",
+      "evidence": "No promises/native send/success/callback/release methods; zero mock receipts and ABI/source review."
+    },
+    {
+      "name": "no_chain_submission",
+      "status": "PASS",
+      "evidence": "No blockchain RPC/signing/submission/deploy/token/role action performed."
+    }
+  ],
+  "changed_files": [
+    "docs/evidence/milestone-5/m5b-implementation-results.json",
+    "docs/evidence/milestone-5/m5b/baseline-tests.log",
+    "docs/evidence/milestone-5/m5b/build-command.log",
+    "docs/evidence/milestone-5/m5b/build.log",
+    "docs/evidence/milestone-5/m5b/candidate-abi.json",
+    "docs/evidence/milestone-5/m5b/clippy.log",
+    "docs/evidence/milestone-5/m5b/first-compile.log",
+    "docs/evidence/milestone-5/m5b/fmt.log",
+    "docs/evidence/milestone-5/m5b/implementation-tests.log",
+    "docs/milestone-5b-authorization-security.md",
+    "docs/milestone-5b-migration-validation.md",
+    "docs/milestone-5b-native-execution-state.md",
+    "src/lib.rs",
+    "src/native.rs",
+    "src/native/tests.rs",
+    "src/state/mod.rs",
+    "src/state/native.rs",
+    "tests/fixtures/m5b-deployed-state.json"
+  ],
+  "file_sha256": {
+    "docs/evidence/milestone-5/m5b/baseline-tests.log": "b7eb567ee234bf6983e813ea815c4efcda4bc018b76f6e8b97a25e9dd922619b",
+    "docs/evidence/milestone-5/m5b/build-command.log": "0e9706952ac54529128012d2b8a884c9afa8674c0ab682e76a41fc446fe2760a",
+    "docs/evidence/milestone-5/m5b/build.log": "eb1b67ab6c91c965971376ec37bff6b98d5b115662db76c641e5f9a1eb7d7cf0",
+    "docs/evidence/milestone-5/m5b/candidate-abi.json": "87ffa522164afc2ab6b25f7e5dd27c32979c9170f38185538b0b943dee9877a6",
+    "docs/evidence/milestone-5/m5b/clippy.log": "cdceffa3029ba7f096a4fa6ad22c61f880c1f3fc05e5f938579cfe1166136cb3",
+    "docs/evidence/milestone-5/m5b/first-compile.log": "111d616e839432b191a53c31df2ef248f55e2c9365aafdf808042413c129999b",
+    "docs/evidence/milestone-5/m5b/fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "docs/evidence/milestone-5/m5b/implementation-tests.log": "049b95180dc4e77d271f49b2e45ff727533abf52223e8e9ebcc403c1caeb5996",
+    "docs/milestone-5b-authorization-security.md": "5643916d59a09bb4fc8f28e98b6af7afe1991066a6036c75fa28d060ff1f82a9",
+    "docs/milestone-5b-migration-validation.md": "f6fba7d477f9484951c20829df5e967d59d32ca61c839b90ef606f67f763e9a4",
+    "docs/milestone-5b-native-execution-state.md": "ef63d847524aae8583855d2a4f3c8a09d5f21d7eeeef5e77287c1ec52f43875c",
+    "src/lib.rs": "16efd166cc973ed3f4a48b3b20cfb4d84a58ed05408ad235a39e9eb12deff55c",
+    "src/native.rs": "661788b5a6346e0c57b565d5d82180a9963603c1ac7a357fb6e9558d3dc173bf",
+    "src/native/tests.rs": "0a81ed5fa8d433e6349f6a80468fe3da8b09177e20baee021032da56e2ae2a66",
+    "src/state/mod.rs": "11db84104d8b4a9345c955c2ec0af5fca45f6bf805e6c06a20b07bbf6b53ac5d",
+    "src/state/native.rs": "2f9e2ab4c5e6fb65dad5161addbda1c275c2f0709cd74a8686baafdf4dbd55c0",
+    "tests/fixtures/m5b-deployed-state.json": "bb3c5ffd471136c15728206891cf48e06ac1f5e715229cc1cee2ba1ccbc368be"
+  },
+  "remaining_risks": [
+    "B preflight lock has no completion path; must not deploy B as live payout executor.",
+    "M5-C must make transfer pending inseparable from fixed transfer promise and private callback; measure real gas/storage and callback failure semantics.",
+    "Native recipient control, registration/balance and independent real principals unverified.",
+    "Token code/semantics and upgrade governance trust unresolved for live use.",
+    "Root account governance and recovery attestor collusion remain accepted-design risks, not fixed by sidecars.",
+    "M5-D recovery/receipt verification and M5-E full sandbox migration still required.",
+    "Future service chain/genesis checks and real DB/worker integration not implemented; current readonly service unchanged."
+  ],
+  "m5c_prerequisites": [
+    "Explicit approval for local code/tests only",
+    "Preserve B mode/approval/binding guard coverage",
+    "Integrate atomic storage preflight with consumed attempt; no standalone resend escape hatch",
+    "Private identity-bound callbacks, one promise result, no public fake success",
+    "Real async mock-token sandbox tests including successful transfer plus callback panic/OOG and no resend",
+    "Measured nested gas/NEAR storage budgets and recipient registration handling",
+    "No live deployment/reservation/role/signing/transfer implied"
+  ],
+  "actions": {
+    "blockchain_rpc_queries": 0,
+    "blockchain_signatures": 0,
+    "blockchain_submissions": 0,
+    "deployments_or_upgrades": 0,
+    "live_role_changes": 0,
+    "live_reservations": 0,
+    "live_transfers": 0,
+    "live_settlements": 0,
+    "database_writes": 0,
+    "workers_started": 0,
+    "readonly_mode_changes": 0,
+    "dependencies_installed": 0,
+    "commits_or_pushes": 0
+  },
+  "next_gate": "M5-C native NEP141 transfer/callback implementation, local development/tests only; requires explicit approval."
+}

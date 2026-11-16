@@ -1,3 +1,5 @@
+mod native;
+
 pub mod state;
 pub mod types;
 
@@ -278,108 +280,17 @@ impl Disburse {
         input_amount: TokenAmount,
         expected_output_amount: TokenAmount,
     ) -> u64 {
-        self.assert_campaign_operations_enabled();
-        let actor_id = env::predecessor_account_id();
-        require!(
-            self.is_operator_or_administrator(&actor_id),
-            "Operator or administrator role required to create payouts"
-        );
-        require!(
-            validate_identifier(&idempotency_key).is_ok(),
-            "Idempotency key cannot be empty"
-        );
-        require!(
-            input_amount.atomic_amount() > 0,
-            "Input amount must be greater than zero"
-        );
-        require!(
-            expected_output_amount.atomic_amount() > 0,
-            "Expected output amount must be greater than zero"
-        );
-
-        let request = PayoutRequest {
-            campaign_id,
-            recipient_near_account_id,
-            destination,
-            input_amount,
-            expected_output_amount,
-        };
-        let idempotency_index = (campaign_id, idempotency_key);
-        if let Some(existing_id) = self.payout_idempotency.get(&idempotency_index).copied() {
-            let existing = self
-                .payouts
-                .get(&existing_id)
-                .unwrap_or_else(|| env::panic_str("Payout idempotency invariant violated"));
-            require!(
-                Self::payout_matches_request(existing, &request),
-                "Idempotency key reused with different payout details"
-            );
-            return existing_id;
-        }
-
-        let mut campaign = self.campaign_or_panic(campaign_id);
-        self.require_campaign_status(&campaign, CampaignStatus::Active, "create payout for");
-        require!(
-            request.input_amount.token_id().near_account_id() == Some(&campaign.token_id),
-            "Payout input token must match campaign funding token"
-        );
-        let available = Self::available_campaign_funds(&campaign);
-        require!(
-            request.input_amount.atomic_amount() <= available,
-            "Insufficient available campaign funds"
-        );
-        let new_reserved = campaign
-            .reserved
-            .checked_add(request.input_amount.atomic_amount())
-            .unwrap_or_else(|| env::panic_str("Campaign reservation overflow"));
-        let new_committed = new_reserved
-            .checked_add(campaign.spent)
-            .unwrap_or_else(|| env::panic_str("Campaign accounting overflow"));
-        require!(
-            new_committed <= campaign.funded,
-            "Campaign accounting invariant violated"
-        );
-
-        let payout_id = self.next_payout_id;
-        let next_payout_id = payout_id
-            .checked_add(1)
-            .unwrap_or_else(|| env::panic_str("Payout ID overflow"));
-        require!(
-            !self.payouts.contains_key(&payout_id),
-            "Payout ID collision"
-        );
-
-        let mut payout = Payout {
-            id: payout_id,
-            campaign_id,
-            recipient_near_account_id: request.recipient_near_account_id,
-            input_amount: request.input_amount,
-            destination: request.destination,
-            expected_output_amount: request.expected_output_amount,
-            status: PayoutStatus::Created,
-            created_at_ns: env::block_timestamp(),
-            execution_reference: None,
-            settlement_evidence_reference: None,
-        };
-        payout.status = PayoutStatus::Authorized;
-        campaign.reserved = new_reserved;
-        payout.status = PayoutStatus::Reserved;
-
-        self.campaigns.insert(campaign_id, campaign);
-        self.payouts.insert(payout_id, payout.clone());
-        self.payout_idempotency.insert(idempotency_index, payout_id);
-        self.next_payout_id = next_payout_id;
-        self.emit_event("payout_reserved", near_sdk::serde_json::json!({
-            "payout_id": payout_id,
-            "campaign_id": campaign_id,
-            "actor_id": actor_id,
-            "input_token_id": Self::token_id_string(payout.input_amount.token_id()),
-            "input_amount": payout.input_amount.atomic_amount().to_string(),
-            "expected_output_token_id": Self::token_id_string(payout.expected_output_amount.token_id()),
-            "expected_output_amount": payout.expected_output_amount.atomic_amount().to_string(),
-            "status": "Reserved",
-        }));
-        payout_id
+        self.reserve_payout(
+            idempotency_key,
+            PayoutRequest {
+                campaign_id,
+                recipient_near_account_id,
+                destination,
+                input_amount,
+                expected_output_amount,
+            },
+            false,
+        )
     }
 
     pub fn get_payout(&self, payout_id: u64) -> Option<PayoutView> {
@@ -424,6 +335,7 @@ impl Disburse {
 
     /// Begin the off-chain execution phase. No transaction is submitted by this contract.
     pub fn start_payout_execution(&mut self, payout_id: u64, execution_reference: String) {
+        Self::assert_legacy_payout(payout_id);
         self.assert_campaign_operations_enabled();
         let actor_id = self.assert_payout_operator_or_administrator();
         require!(
@@ -466,6 +378,7 @@ impl Disburse {
 
     /// Records that execution was submitted or acknowledged; it is not settlement evidence.
     pub fn mark_payout_pending_verification(&mut self, payout_id: u64) {
+        Self::assert_legacy_payout(payout_id);
         self.assert_campaign_operations_enabled();
         let actor_id = self.assert_payout_operator_or_administrator();
         let mut payout = self.payout_or_panic(payout_id);
@@ -500,6 +413,7 @@ impl Disburse {
     /// Records a terminal execution failure. The privileged caller attests the supplied evidence;
     /// the contract does not independently query a source chain or verify the evidence reference.
     pub fn mark_payout_failed(&mut self, payout_id: u64, evidence: ExecutionFailureEvidence) {
+        Self::assert_legacy_payout(payout_id);
         let actor_id = self.assert_payout_operator_or_administrator();
         require!(
             validate_identifier(&evidence.reason).is_ok(),
@@ -553,6 +467,7 @@ impl Disburse {
 
     /// Paused contracts still allow an authorized operator to quarantine uncertain execution.
     pub fn move_payout_to_manual_review(&mut self, payout_id: u64, reason: String) {
+        Self::assert_legacy_payout(payout_id);
         let actor_id = self.assert_payout_operator_or_administrator();
         require!(
             validate_identifier(&reason).is_ok(),
@@ -595,6 +510,7 @@ impl Disburse {
         payout_id: u64,
         evidence: PayoutResolutionEvidence,
     ) {
+        Self::assert_legacy_payout(payout_id);
         let actor_id = self.assert_verifier();
         let payout = self.payout_or_panic(payout_id);
         require!(
@@ -629,6 +545,7 @@ impl Disburse {
         payout_id: u64,
         evidence: PayoutResolutionEvidence,
     ) {
+        Self::assert_legacy_payout(payout_id);
         let actor_id = self.assert_verifier();
         let mut payout = self.payout_or_panic(payout_id);
         require!(
@@ -678,6 +595,7 @@ impl Disburse {
         payout_id: u64,
         evidence: PayoutResolutionEvidence,
     ) {
+        Self::assert_legacy_payout(payout_id);
         let actor_id = self.assert_verifier();
         let payout = self.payout_or_panic(payout_id);
         require!(
@@ -708,6 +626,7 @@ impl Disburse {
     /// transaction or content hash. Token decimals are not authoritative; equality uses token
     /// identity and atomic amount.
     pub fn settle_payout(&mut self, payout_id: u64, evidence: SettlementEvidence) {
+        Self::assert_legacy_payout(payout_id);
         let actor_id = env::predecessor_account_id();
         require!(
             self.has_direct_role(&actor_id, UserRole::Verifier),
@@ -1271,6 +1190,7 @@ impl Disburse {
         execution_key: Option<SettlementExecutionKey>,
         event: &str,
     ) {
+        Self::assert_legacy_payout(payout.id);
         require!(
             matches!(
                 payout.status,
@@ -1557,6 +1477,123 @@ impl FungibleTokenReceiver for Disburse {
     }
 }
 
+impl Disburse {
+    fn reserve_payout(
+        &mut self,
+        idempotency_key: String,
+        request: PayoutRequest,
+        native: bool,
+    ) -> u64 {
+        self.assert_campaign_operations_enabled();
+        let actor_id = env::predecessor_account_id();
+        require!(
+            self.is_operator_or_administrator(&actor_id),
+            "Operator or administrator role required to create payouts"
+        );
+        require!(
+            validate_identifier(&idempotency_key).is_ok(),
+            "Idempotency key cannot be empty"
+        );
+        require!(
+            request.input_amount.atomic_amount() > 0,
+            "Input amount must be greater than zero"
+        );
+        require!(
+            request.expected_output_amount.atomic_amount() > 0,
+            "Expected output amount must be greater than zero"
+        );
+
+        let campaign_id = request.campaign_id;
+        let idempotency_index = (campaign_id, idempotency_key);
+        if let Some(existing_id) = self.payout_idempotency.get(&idempotency_index).copied() {
+            let existing = self
+                .payouts
+                .get(&existing_id)
+                .unwrap_or_else(|| env::panic_str("Payout idempotency invariant violated"));
+            require!(
+                Self::native_modes().contains_key(&existing_id) == native,
+                "Payout idempotency execution mode mismatch"
+            );
+            if !native {
+                Self::assert_legacy_payout(existing_id);
+            }
+            require!(
+                Self::payout_matches_request(existing, &request),
+                "Idempotency key reused with different payout details"
+            );
+            return existing_id;
+        }
+
+        let mut campaign = self.campaign_or_panic(campaign_id);
+        self.require_campaign_status(&campaign, CampaignStatus::Active, "create payout for");
+        require!(
+            request.input_amount.token_id().near_account_id() == Some(&campaign.token_id),
+            "Payout input token must match campaign funding token"
+        );
+        let available = Self::available_campaign_funds(&campaign);
+        require!(
+            request.input_amount.atomic_amount() <= available,
+            "Insufficient available campaign funds"
+        );
+        let new_reserved = campaign
+            .reserved
+            .checked_add(request.input_amount.atomic_amount())
+            .unwrap_or_else(|| env::panic_str("Campaign reservation overflow"));
+        let new_committed = new_reserved
+            .checked_add(campaign.spent)
+            .unwrap_or_else(|| env::panic_str("Campaign accounting overflow"));
+        require!(
+            new_committed <= campaign.funded,
+            "Campaign accounting invariant violated"
+        );
+
+        let payout_id = self.next_payout_id;
+        let next_payout_id = payout_id
+            .checked_add(1)
+            .unwrap_or_else(|| env::panic_str("Payout ID overflow"));
+        require!(
+            !self.payouts.contains_key(&payout_id),
+            "Payout ID collision"
+        );
+
+        require!(
+            !Self::native_modes().contains_key(&payout_id)
+                && !Self::native_payouts().contains_key(&payout_id),
+            "Native payout ID collision"
+        );
+        let mut payout = Payout {
+            id: payout_id,
+            campaign_id,
+            recipient_near_account_id: request.recipient_near_account_id,
+            input_amount: request.input_amount,
+            destination: request.destination,
+            expected_output_amount: request.expected_output_amount,
+            status: PayoutStatus::Created,
+            created_at_ns: env::block_timestamp(),
+            execution_reference: None,
+            settlement_evidence_reference: None,
+        };
+        payout.status = PayoutStatus::Authorized;
+        campaign.reserved = new_reserved;
+        payout.status = PayoutStatus::Reserved;
+
+        self.campaigns.insert(campaign_id, campaign);
+        self.payouts.insert(payout_id, payout.clone());
+        self.payout_idempotency.insert(idempotency_index, payout_id);
+        self.next_payout_id = next_payout_id;
+        self.emit_event("payout_reserved", near_sdk::serde_json::json!({
+            "payout_id": payout_id,
+            "campaign_id": campaign_id,
+            "actor_id": actor_id,
+            "input_token_id": Self::token_id_string(payout.input_amount.token_id()),
+            "input_amount": payout.input_amount.atomic_amount().to_string(),
+            "expected_output_token_id": Self::token_id_string(payout.expected_output_amount.token_id()),
+            "expected_output_amount": payout.expected_output_amount.atomic_amount().to_string(),
+            "status": "Reserved",
+        }));
+        payout_id
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;

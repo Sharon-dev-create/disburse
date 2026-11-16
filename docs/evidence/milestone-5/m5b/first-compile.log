@@ -1,0 +1,27 @@
+   Compiling disburse-contract v0.1.0 (/home/topg/disburse)
+error[E0583]: file not found for module `tests`
+   --> src/native.rs:323:1
+    |
+323 | mod tests;
+    | ^^^^^^^^^^
+    |
+    = help: to create the module `tests`, create file "src/native/tests.rs" or "src/native/tests/mod.rs"
+    = note: if there is a `mod tests` elsewhere in the crate already, import it with `use crate::...` instead
+
+error[E0624]: associated function `native_payouts` is private
+    --> src/lib.rs:1551:27
+     |
+1551 |                 && !Self::native_payouts().contains_key(&payout_id),
+     |                           ^^^^^^^^^^^^^^ private associated function
+     |
+    ::: src/native.rs:234:5
+     |
+ 234 |     fn native_payouts() -> LookupMap<u64, NativePayout> { LookupMap::new(PAYOUT_PREFIX.to_vec()) }
+     |     --------------------------------------------------- private associated function defined here
+
+For more information about this error, try `rustc --explain E0624`.
+error: could not compile `disburse-contract` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+Some errors have detailed explanations: E0583, E0624.
+For more information about an error, try `rustc --explain E0583`.
+error: could not compile `disburse-contract` (lib test) due to 2 previous errors

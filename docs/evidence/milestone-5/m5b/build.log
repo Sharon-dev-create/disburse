@@ -1,0 +1,41 @@
+• Collecting cargo project metadata...
+• done
+
+• Checking rustc version...
+INFO: contract's near-sdk targets protocol version 85; rustc 1.100.0 accepted (bulk-memory opcodes supported by nearcore VM)
+• done
+
+• Checking the host environment...
+• done
+
+• Generating ABI
+ │    Compiling disburse-contract v0.1.0 (/home/topg/disburse)
+ │     Finished `dev` profile [unoptimized] target(s) in 2.28s
+• Extracting ABI...
+• done
+
+• Compressing ABI to be embedded..
+• done
+
+• Building contract
+ │    Compiling disburse-contract v0.1.0 (/home/topg/disburse)
+ │     Finished `release` profile [optimized] target(s) in 11.86s
+
+Modification timestamps of:
+ |    "/home/topg/disburse/target/wasm32-unknown-unknown/release/disburse_contract.wasm" = SystemTime { tv_sec: 1794798041, tv_nsec: 446386491 }
+ |    "/home/topg/disburse/target/near/disburse_contract.wasm" = SystemTime { tv_sec: 1794797795, tv_nsec: 396798795 }
+
+• Running an optimize for size post-step with wasm-opt --enable-nontrapping-float-to-int --enable-bulk-memory...
+    Finished wasm-opt -O in 1s 870ms
+• done
+
+✓ Contract successfully built! (in CARGO_NEAR_BUILD_ENVIRONMENT=host)
+     -                Binary: /home/topg/disburse/target/near/disburse_contract.wasm
+     -                  Size: 385.4 KB (385351 bytes)
+     - SHA-256 checksum hex : ad51f8bc061138013ff33620d33adff8dffacb4eaf1c06b09853c79b92c58e94
+     - SHA-256 checksum bs58: Cfa2ccbYvp1qWBeHhKW77NhJghGf9aXaTPE1qN3u8Ydy
+     -                   ABI: /home/topg/disburse/target/near/disburse_contract_abi.json
+     -          Embedded ABI: /home/topg/disburse/target/near/disburse_contract_abi.zst
+    Finished cargo near build in 17s
+Here is the console command if you ever need to re-run it again:
+cargo near build non-reproducible-wasm --locked
