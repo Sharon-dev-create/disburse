@@ -1,0 +1,69 @@
+{
+  "scope": "New ephemeral local cluster only",
+  "identity": {
+    "database": "disburse_test",
+    "role": "disburse_test",
+    "version": "PostgreSQL 17.10 (Ubuntu 17.10-0ubuntu0.25.10.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 15.2.0-4ubuntu4) 15.2.0, 64-bit"
+  },
+  "counts": {
+    "native_reconciliation_jobs": "37",
+    "native_receipt_observations": "87",
+    "native_reconciliation_decisions": "76",
+    "native_reconciliation_receipt_claims": "11",
+    "native_reconciliation_transaction_claims": "11"
+  },
+  "restarts": [
+    {
+      "job_key": "afd956773280d713fbd4b1991b540e52eda9555a77a799ab8eba9b93ccbe7b6b",
+      "fence": "4",
+      "worker_id": null,
+      "observed_at": "2026-11-16T11:28:28.610Z"
+    },
+    {
+      "job_key": "271d00bffe68e99aac27d1a600d85650146f2a65403d774ba34340c351656c83",
+      "fence": "4",
+      "worker_id": null,
+      "observed_at": "2026-11-16T11:35:03.002Z"
+    },
+    {
+      "job_key": "6ac963b19bac147aa59be732f92db57a78aba5e19c18cd65105bcf19c9eb1c97",
+      "fence": "4",
+      "worker_id": null,
+      "observed_at": "2026-11-16T11:41:24.172Z"
+    },
+    {
+      "job_key": "05b24c6a435acd95adfd8f78e1425fb4fa8da3cdff2e08f06c418fb690f4bf6a",
+      "fence": "4",
+      "worker_id": "child-264967",
+      "observed_at": "2026-11-16T11:43:12.703Z"
+    },
+    {
+      "job_key": "fd29186ce731f05803a9fa8a925ca3c74155d60702af5806b3442c0b87a337c5",
+      "fence": "4",
+      "worker_id": "child-274271",
+      "observed_at": "2026-11-16T11:46:13.885Z"
+    }
+  ],
+  "migrations": [
+    {
+      "version": "0001",
+      "name": "security_repositories",
+      "checksum": "647dbad3fb908f4a44e5915d736aa2d49fb0c88ad05061bb02fe14e803686eff"
+    },
+    {
+      "version": "0002",
+      "name": "execution_jobs",
+      "checksum": "7195df7d3c98c75ea52fb9d526f80dac42cdbbed1f404876c156b2408520be86"
+    },
+    {
+      "version": "0003",
+      "name": "execution_jobs_campaign_read_index",
+      "checksum": "14e2f2b5b493005d7ca2abc759aead6bb9059af4279feb547c6a13d0c3394a01"
+    },
+    {
+      "version": "0004",
+      "name": "native_reconciliation",
+      "checksum": "32c762ce113981691c849ab148dbdb3d5d2ad698a2c61cb7330f2dce16f871f4"
+    }
+  ]
+}

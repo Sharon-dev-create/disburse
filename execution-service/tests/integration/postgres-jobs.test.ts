@@ -59,13 +59,13 @@ before(async () => {
 
 after(async () => pool.end());
 
-void test("job migrations apply idempotently and record version 0003", async () => {
+void test("job migrations apply idempotently and record version 0004", async () => {
   const first = await applyPostgresMigrations(pool);
   const second = await applyPostgresMigrations(pool);
   assert.deepEqual(first.applied, []);
   assert.deepEqual(second.applied, []);
-  assert.equal(first.currentVersion, "0003");
-  assert.equal(second.currentVersion, "0003");
+  assert.equal(first.currentVersion, "0004");
+  assert.equal(second.currentVersion, "0004");
 });
 
 void test("creation is durable, idempotent, payout-unique, and preserves exact amounts", async () => {

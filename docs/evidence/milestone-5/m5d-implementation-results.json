@@ -1,0 +1,997 @@
+{
+  "milestone": "M5-D",
+  "verdict": "PARTIAL",
+  "read_only_subsystem": "PASS for demonstrated local capabilities",
+  "authenticated_onchain_recovery": "BLOCKED: no authenticated proof verifier or approved recovery-attestation boundary; no mutation added",
+  "date_utc": "2026-11-16T11:49:55.045919+00:00",
+  "initial_HEAD": "d6f444ae5f6d1843206421f138908db7fca4db30",
+  "observed_final_HEAD": "0006f76160a3e23e9870e4349636c7814bb9a7b3",
+  "revision_note": "HEAD advanced externally capturing prior C reports; no commit/push commands issued; no source reversion.",
+  "prerequisite_review": {
+    "result": "PASS",
+    "path": "docs/evidence/milestone-5/m5c-independent-rereview/results.json",
+    "unresolved_critical_implementation_findings": 0,
+    "unresolved_high_implementation_findings": 0,
+    "source_and_wasm_still_match": true,
+    "independence": "Separate adversarial pass by same assistant, not third-party certification"
+  },
+  "trust_boundary": "TRUSTED_RPC_OBSERVATION_NOT_ON_CHAIN_PROOF; two configured sources, no authenticated chain fact or monetary mutation",
+  "verification": [
+    "chain identity",
+    "tx_status FINAL",
+    "single pinned finalized state snapshot",
+    "exact V1 Borsh binding digest",
+    "current authorization/attempt/legacy payout/outcome",
+    "canonical finalized outcome blocks",
+    "complete connected receipt graph",
+    "executed code policy",
+    "exact transfer target/predecessor/method/recipient/amount/memo/1yocto",
+    "data-ID callback dependencies",
+    "committed matching token event plus expected atomic unit result",
+    "complete semantic receipt-graph agreement"
+  ],
+  "states": [
+    "ObservedSucceededSettled",
+    "ObservedSucceededSettlementPending",
+    "ObservedTransferFailed",
+    "ManualReview"
+  ],
+  "discovery_limitations": [
+    "Actual ABI has no global payout-count/list method; scan explicit bounded ID ranges from indexed/submitted IDs",
+    "Transaction locator is required and independently verified; no fabricated hash from memo",
+    "No automatic native event/locator or dashboard integration"
+  ],
+  "implemented_recovery": "Read-only identification, receipt classification, discrepancy/uncertainty/conflict evidence, durable lease-safe restart; original locks and accounting unchanged",
+  "unimplemented": [
+    "on-chain recovery settlement",
+    "retry",
+    "release",
+    "manual success",
+    "recovery authorization/quorum",
+    "proof verification/light client",
+    "production host/worker/API integration"
+  ],
+  "postgres": {
+    "migration": "0004_native_reconciliation.sql",
+    "additive": true,
+    "local_test_only_guard": true,
+    "immutable_identity_locator": true,
+    "append_only_evidence_decisions_claims": true,
+    "verification_policy_snapshot_and_worker_provenance": true,
+    "fenced_completion": true,
+    "network_outside_transactions": true,
+    "real_SIGKILL_restart": true,
+    "durability_evidence": "docs/evidence/milestone-5/m5d/postgres-durability.json"
+  },
+  "tests": {
+    "rust": {
+      "passed": 146,
+      "failed": 0,
+      "ignored": 0,
+      "new_D_Rust_tests": 0
+    },
+    "service": {
+      "passed": 134,
+      "new_D_tests": 24,
+      "failed": 0,
+      "skipped": 0
+    },
+    "postgres": {
+      "passed": 27,
+      "new_D_tests": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    "live_read_only_native": {
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    "callback_observer_overlap": "PASS, actual synthetic transfer and only C accounting mutation",
+    "fresh_receipt_scenario_groups": 20,
+    "real_WASM_migrations": [
+      "authenticated historical deployed-WASM to C",
+      "authenticated M5-B to C"
+    ],
+    "commands": [
+      {
+        "name": "rust-fmt",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "exit_code": 0,
+        "log": "docs/evidence/milestone-5/m5d/validation/rust-fmt.log"
+      },
+      {
+        "name": "rust-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "--locked",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0,
+        "log": "docs/evidence/milestone-5/m5d/validation/rust-clippy.log"
+      },
+      {
+        "name": "rust-tests",
+        "command": [
+          "cargo",
+          "test",
+          "--locked"
+        ],
+        "exit_code": 0,
+        "log": "docs/evidence/milestone-5/m5d/validation/rust-tests.log"
+      },
+      {
+        "name": "wasm-build",
+        "command": [
+          "cargo",
+          "near",
+          "build",
+          "non-reproducible-wasm",
+          "--locked"
+        ],
+        "exit_code": 0,
+        "log": "docs/evidence/milestone-5/m5d/validation/wasm-build.log"
+      },
+      {
+        "name": "format",
+        "command": [
+          "pnpm",
+          "format:check"
+        ],
+        "exit_code": 0,
+        "log": "docs/evidence/milestone-5/m5d/validation/format.log"
+      },
+      {
+        "name": "typecheck",
+        "command": [
+          "pnpm",
+          "typecheck"
+        ],
+        "exit_code": 0,
+        "log": "docs/evidence/milestone-5/m5d/validation/typecheck.log"
+      },
+      {
+        "name": "lint",
+        "command": [
+          "pnpm",
+          "lint"
+        ],
+        "exit_code": 0,
+        "log": "docs/evidence/milestone-5/m5d/validation/lint.log"
+      },
+      {
+        "name": "service-tests",
+        "command": [
+          "pnpm",
+          "test"
+        ],
+        "exit_code": 0,
+        "log": "docs/evidence/milestone-5/m5d/validation/service-tests.log"
+      },
+      {
+        "name": "postgres-tests",
+        "command": [
+          "pnpm",
+          "test:postgres"
+        ],
+        "exit_code": 0,
+        "log": "docs/evidence/milestone-5/m5d/validation/postgres-tests.log"
+      },
+      {
+        "name": "live-read-only-tests",
+        "command": [
+          "node",
+          "--experimental-strip-types",
+          "--test",
+          "tests/integration/native-live.test.ts"
+        ],
+        "exit_code": 0,
+        "log": "docs/evidence/milestone-5/m5d/validation/live-read-only-tests.log"
+      },
+      {
+        "name": "migration-idempotency",
+        "command": [
+          "pnpm",
+          "db:migrate:test"
+        ],
+        "exit_code": 0,
+        "log": "docs/evidence/milestone-5/m5d/validation/migration-idempotency.log"
+      }
+    ]
+  },
+  "test_distinctions": [
+    "Actual local WASM/action/data receipts and live read-only RPC used",
+    "Two live RPC aliases share ONE synthetic node; not independent real operators",
+    "Forged/conflicting RPC cases use mutated copies of actual captured data",
+    "Real PostgreSQL concurrency/rollback/immutability and killed/restarted child processes; repository-only decisions explicitly synthetic",
+    "Convenience wrapper syntax checked; constituent steps executed, not another redundant end-to-end wrapper run"
+  ],
+  "migration": {
+    "Rust_source_changed": false,
+    "WASM_sha256": "37e432600c43d5fc7d44b2d81bc9a852d5e120a7dc043c7f06f83d1e62a24ea9",
+    "legacy_and_V1_serialization_unchanged": true,
+    "old_migration_checksums_unchanged": true,
+    "prior_A_B_C_evidence_unchanged": true,
+    "production_schema_not_applied": true
+  },
+  "acceptance_criteria": [
+    {
+      "id": 1,
+      "criterion": "independent_C_review",
+      "status": "PASS"
+    },
+    {
+      "id": 2,
+      "criterion": "finalized_receipt_discovery",
+      "status": "PASS_WITH_EXPLICIT_RANGE_AND_LOCATOR_BOUNDARIES"
+    },
+    {
+      "id": 3,
+      "criterion": "exact_attempt_binding",
+      "status": "PASS"
+    },
+    {
+      "id": 4,
+      "criterion": "success_failure_classification",
+      "status": "PASS_UNDER_REVIEWED_ATOMIC_TOKEN_RPC_TRUST"
+    },
+    {
+      "id": 5,
+      "criterion": "unknown_locked",
+      "status": "PASS"
+    },
+    {
+      "id": 6,
+      "criterion": "idempotent_ingestion",
+      "status": "PASS"
+    },
+    {
+      "id": 7,
+      "criterion": "real_process_restart",
+      "status": "PASS"
+    },
+    {
+      "id": 8,
+      "criterion": "concurrent_fenced_workers",
+      "status": "PASS"
+    },
+    {
+      "id": 9,
+      "criterion": "no_transfer_capability",
+      "status": "PASS"
+    },
+    {
+      "id": 10,
+      "criterion": "no_double_settlement_and_callback_overlap",
+      "status": "PASS"
+    },
+    {
+      "id": 11,
+      "criterion": "authenticated_onchain_recovery",
+      "status": "NOT_IMPLEMENTED_BLOCKED"
+    },
+    {
+      "id": 12,
+      "criterion": "forged_conflicting_evidence",
+      "status": "PASS"
+    },
+    {
+      "id": 13,
+      "criterion": "campaign_invariants",
+      "status": "PASS"
+    },
+    {
+      "id": 14,
+      "criterion": "historical_compatibility",
+      "status": "PASS"
+    },
+    {
+      "id": 15,
+      "criterion": "local_sandbox_postgres_tests",
+      "status": "PASS"
+    },
+    {
+      "id": 16,
+      "criterion": "no_live_changes",
+      "status": "PASS"
+    }
+  ],
+  "remaining_risks": [
+    "Authenticated on-chain recovery absent; delivered/unbooked funds remain locked",
+    "RPC trust/operational independence and token/root governance not eliminated",
+    "Live recipient and actual Tidepool conformance/gas remain unverified",
+    "Production native locator indexing, mode-aware integration and dashboard remain future gates; existing restricted mode preserved",
+    "HTTP cap checked after body read; no streaming-hardening/public ingestion claim",
+    "Failed collection retains an unavailable observation, not a journal of every partial RPC response",
+    "PostgreSQL privileged owner can bypass triggers; database is never settlement authority"
+  ],
+  "actions": {
+    "live_transactions": 0,
+    "live_deployments_or_upgrades": 0,
+    "live_payouts": 0,
+    "production_config_changes": 0,
+    "production_DB_access": false,
+    "production_workers_started": 0,
+    "git_commit_or_push_commands": 0,
+    "temporary_nodes_and_DB_stopped": true
+  },
+  "next_gate": "Separate independent M5-D security review; no deployment decision. On-chain recovery requires a separately justified/authenticated design before mutation implementation.",
+  "changed_files": [
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/build.log",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/clippy.log",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fmt.log",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/all-sandbox-suites.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/node-b-migration.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/node-faults.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/node-main.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox-b-migration.log",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox-faults.log",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox-main.log",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/b-to-c-wasm-migration.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/concurrent-duplicate-execution.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/concurrent-payout-one.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/concurrent-payout-two.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/definitive-token-failure.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/delivered-but-unexpected-result.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/external-callback-payout-success.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/external-callbacks-rejected.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/fault-suite-summary.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/historical-wasm-migration.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/index.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/insufficient-token-balance.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/minimum-gas-and-low-gas-rejection.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/missing-recipient-storage.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/native-near-headroom.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/oog-callback-duplicate-rejected.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/oog-callback.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/panic-callback-duplicate-rejected.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/panic-callback.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/pause-after-dispatch.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/restart-uncertain-response-model.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/same-campaign-concurrent-payouts.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/schedule-panic-duplicate-rejected.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/schedule-panic.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/stale-duplicate-self-callbacks.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/successful-transfer-duplicate-rejected.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/successful-transfer.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/suite-summary.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/upgrade-between-transfer-and-callback.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/results.json",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5c-independent-rereview/tests.log",
+      "purpose": "Fresh C security re-review, exact candidate/source pins, regression logs or new real-sandbox evidence; earlier review unchanged."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d-implementation-results.json",
+      "purpose": "M5-D architecture, trust boundary, failure/recovery limitation, persistence, tests, migration or structured audit evidence."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/baseline-service-tests.log",
+      "purpose": "M5-D architecture, trust boundary, failure/recovery limitation, persistence, tests, migration or structured audit evidence."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/baseline-typecheck.log",
+      "purpose": "M5-D architecture, trust boundary, failure/recovery limitation, persistence, tests, migration or structured audit evidence."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/callback-observer-race.json",
+      "purpose": "M5-D architecture, trust boundary, failure/recovery limitation, persistence, tests, migration or structured audit evidence."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/callback-observer-race.log",
+      "purpose": "M5-D architecture, trust boundary, failure/recovery limitation, persistence, tests, migration or structured audit evidence."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/capture.log",
+      "purpose": "M5-D architecture, trust boundary, failure/recovery limitation, persistence, tests, migration or structured audit evidence."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/development-notes.json",
+      "purpose": "M5-D architecture, trust boundary, failure/recovery limitation, persistence, tests, migration or structured audit evidence."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/all-sandbox-suites.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/node-b-migration.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/node-faults.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/node-main.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox-b-migration.log",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox-faults.log",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox-main.log",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/b-to-c-wasm-migration.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/concurrent-duplicate-execution.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/concurrent-payout-one.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/concurrent-payout-two.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/definitive-token-failure.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/delivered-but-unexpected-result.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/external-callback-payout-success.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/external-callbacks-rejected.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/fault-suite-summary.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/historical-wasm-migration.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/index.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/insufficient-token-balance.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/minimum-gas-and-low-gas-rejection.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/missing-recipient-storage.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/native-near-headroom.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/oog-callback-duplicate-rejected.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/oog-callback.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/panic-callback-duplicate-rejected.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/panic-callback.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/pause-after-dispatch.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/restart-uncertain-response-model.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/same-campaign-concurrent-payouts.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/schedule-panic-duplicate-rejected.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/schedule-panic.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/stale-duplicate-self-callbacks.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/successful-transfer-duplicate-rejected.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/successful-transfer.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/suite-summary.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/upgrade-between-transfer-and-callback.json",
+      "purpose": "New retained synthetic real-receipt/migration outcomes, balances, state and local-node metadata."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/live-reconciliation-tests.json",
+      "purpose": "M5-D architecture, trust boundary, failure/recovery limitation, persistence, tests, migration or structured audit evidence."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/local-environments.json",
+      "purpose": "M5-D architecture, trust boundary, failure/recovery limitation, persistence, tests, migration or structured audit evidence."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/postgres-durability.json",
+      "purpose": "M5-D architecture, trust boundary, failure/recovery limitation, persistence, tests, migration or structured audit evidence."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/sandbox/definitive-token-failure.json",
+      "purpose": "Read-only finalized RPC bundle, immutable identity, local code policy and classification fixture."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/sandbox/delivered-but-unexpected-result.json",
+      "purpose": "Read-only finalized RPC bundle, immutable identity, local code policy and classification fixture."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/sandbox/insufficient-token-balance.json",
+      "purpose": "Read-only finalized RPC bundle, immutable identity, local code policy and classification fixture."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/sandbox/oog-callback.json",
+      "purpose": "Read-only finalized RPC bundle, immutable identity, local code policy and classification fixture."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/sandbox/panic-callback.json",
+      "purpose": "Read-only finalized RPC bundle, immutable identity, local code policy and classification fixture."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/sandbox/successful-transfer.json",
+      "purpose": "Read-only finalized RPC bundle, immutable identity, local code policy and classification fixture."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/validation/format.log",
+      "purpose": "Exact final validation command results or logs."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/validation/integration.json",
+      "purpose": "Exact final validation command results or logs."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/validation/lint.log",
+      "purpose": "Exact final validation command results or logs."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/validation/live-read-only-tests.log",
+      "purpose": "Exact final validation command results or logs."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/validation/migration-idempotency.log",
+      "purpose": "Exact final validation command results or logs."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/validation/postgres-tests.log",
+      "purpose": "Exact final validation command results or logs."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/validation/rust-clippy.log",
+      "purpose": "Exact final validation command results or logs."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/validation/rust-fmt.log",
+      "purpose": "Exact final validation command results or logs."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/validation/rust-tests.log",
+      "purpose": "Exact final validation command results or logs."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/validation/rust.json",
+      "purpose": "Exact final validation command results or logs."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/validation/service-tests.log",
+      "purpose": "Exact final validation command results or logs."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/validation/service.json",
+      "purpose": "Exact final validation command results or logs."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/validation/typecheck.log",
+      "purpose": "Exact final validation command results or logs."
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d/validation/wasm-build.log",
+      "purpose": "Exact final validation command results or logs."
+    },
+    {
+      "path": "docs/milestone-5c-independent-implementation-rereview.md",
+      "purpose": "M5-D architecture, trust boundary, failure/recovery limitation, persistence, tests, migration or structured audit evidence."
+    },
+    {
+      "path": "docs/milestone-5d-failure-recovery.md",
+      "purpose": "M5-D architecture, trust boundary, failure/recovery limitation, persistence, tests, migration or structured audit evidence."
+    },
+    {
+      "path": "docs/milestone-5d-integration-test-results.md",
+      "purpose": "M5-D architecture, trust boundary, failure/recovery limitation, persistence, tests, migration or structured audit evidence."
+    },
+    {
+      "path": "docs/milestone-5d-migration-safety.md",
+      "purpose": "M5-D architecture, trust boundary, failure/recovery limitation, persistence, tests, migration or structured audit evidence."
+    },
+    {
+      "path": "docs/milestone-5d-postgres-persistence.md",
+      "purpose": "M5-D architecture, trust boundary, failure/recovery limitation, persistence, tests, migration or structured audit evidence."
+    },
+    {
+      "path": "docs/milestone-5d-receipt-evidence-verification.md",
+      "purpose": "M5-D architecture, trust boundary, failure/recovery limitation, persistence, tests, migration or structured audit evidence."
+    },
+    {
+      "path": "docs/milestone-5d-reconciliation-architecture.md",
+      "purpose": "M5-D architecture, trust boundary, failure/recovery limitation, persistence, tests, migration or structured audit evidence."
+    },
+    {
+      "path": "execution-service/sql/migrations/0004_native_reconciliation.sql",
+      "purpose": "Additive0004 evidence jobs, observations, decisions, claims and integrity triggers."
+    },
+    {
+      "path": "execution-service/src/persistence/postgres-migrations.ts",
+      "purpose": "Register additive0004 in existing checksum migration runner."
+    },
+    {
+      "path": "execution-service/src/reconciliation/discovery.ts",
+      "purpose": "Additive local read-only native discovery, receipt validation, persistence or explicit one-shot reconciliation; no host activation."
+    },
+    {
+      "path": "execution-service/src/reconciliation/evidence.ts",
+      "purpose": "Additive local read-only native discovery, receipt validation, persistence or explicit one-shot reconciliation; no host activation."
+    },
+    {
+      "path": "execution-service/src/reconciliation/postgres.ts",
+      "purpose": "Additive local read-only native discovery, receipt validation, persistence or explicit one-shot reconciliation; no host activation."
+    },
+    {
+      "path": "execution-service/src/reconciliation/rpc.ts",
+      "purpose": "Additive local read-only native discovery, receipt validation, persistence or explicit one-shot reconciliation; no host activation."
+    },
+    {
+      "path": "execution-service/src/reconciliation/verifier.ts",
+      "purpose": "Additive local read-only native discovery, receipt validation, persistence or explicit one-shot reconciliation; no host activation."
+    },
+    {
+      "path": "execution-service/src/reconciliation/worker.ts",
+      "purpose": "Additive local read-only native discovery, receipt validation, persistence or explicit one-shot reconciliation; no host activation."
+    },
+    {
+      "path": "execution-service/tests/integration/native-capture.ts",
+      "purpose": "Native exact-binding/adversarial, local RPC, persistence, process-restart or callback/observer test support."
+    },
+    {
+      "path": "execution-service/tests/integration/native-live.test.ts",
+      "purpose": "Native exact-binding/adversarial, local RPC, persistence, process-restart or callback/observer test support."
+    },
+    {
+      "path": "execution-service/tests/integration/native-race-observer.ts",
+      "purpose": "Native exact-binding/adversarial, local RPC, persistence, process-restart or callback/observer test support."
+    },
+    {
+      "path": "execution-service/tests/integration/native-restart-child.ts",
+      "purpose": "Native exact-binding/adversarial, local RPC, persistence, process-restart or callback/observer test support."
+    },
+    {
+      "path": "execution-service/tests/integration/postgres-jobs.test.ts",
+      "purpose": "Update existing integration schema-version expectation to0004; preserve prior tests."
+    },
+    {
+      "path": "execution-service/tests/integration/postgres-native-reconciliation.test.ts",
+      "purpose": "Native exact-binding/adversarial, local RPC, persistence, process-restart or callback/observer test support."
+    },
+    {
+      "path": "execution-service/tests/native-reconciliation.test.ts",
+      "purpose": "Native exact-binding/adversarial, local RPC, persistence, process-restart or callback/observer test support."
+    },
+    {
+      "path": "execution-service/tests/support/native-reconciliation.ts",
+      "purpose": "Native exact-binding/adversarial, local RPC, persistence, process-restart or callback/observer test support."
+    },
+    {
+      "path": "tests/sandbox/RECONCILIATION.md",
+      "purpose": "Explicit synthetic-only reproducibility/observer-overlap harness or instructions; no real keychain/public transactions."
+    },
+    {
+      "path": "tests/sandbox/native_reconciliation_race.py",
+      "purpose": "Explicit synthetic-only reproducibility/observer-overlap harness or instructions; no real keychain/public transactions."
+    },
+    {
+      "path": "tests/sandbox/run_reconciliation.py",
+      "purpose": "Explicit synthetic-only reproducibility/observer-overlap harness or instructions; no real keychain/public transactions."
+    }
+  ],
+  "sha256": {
+    "docs/evidence/milestone-5/m5c-independent-rereview/build.log": "8b8e3c60d4766e3514b1a4ebe38f7d0ee65b1165a0cf2aed7b3bc173cd3e9f07",
+    "docs/evidence/milestone-5/m5c-independent-rereview/clippy.log": "b2c020f27a01faabb96e5d55c11fd219cf7c484c9cf34b3342bfc8444d934c89",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/all-sandbox-suites.json": "2d5ab262483c5bdb723c5bf3916c1508385354bdb9ec9c749d5a49860471a122",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/node-b-migration.json": "061e216e92e394db22780d19e918db7f9fc538524d670a88d0491d0bfdc5b7a2",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/node-faults.json": "2d8c6a0cf4aa876d89891e1630cb430ce794f7f6f751f463ef4622a6898d97d8",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/node-main.json": "b3d03b83c00a9f4e54bb59f8ad1e78d7aa7db19819d51a077dabdfd7fb7054ee",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox-b-migration.log": "d18158960ff409fc9a2c1b02638af2c8e7bc9fd7a15ac3234d2ffb5a34b9651f",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox-faults.log": "3b1fe49936d295d94a70de4d2809dfda81a6b6116f2ada1b2b117f1c1a9ff2f8",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox-main.log": "7a195cd204d43b7ed776b490a8fc20feff95667ec03cb599acec70b2d2a26bc6",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/b-to-c-wasm-migration.json": "fe2bc2dbe37e6bcf9c07203cebb90367e32c86f7f52ca0c75ee4f3ff878f9695",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/concurrent-duplicate-execution.json": "5f897259fb95ca2ae0eeb14cbf2bebac0a021e41d98593ca4555c2914902c57a",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/concurrent-payout-one.json": "b8ed985e5586733691f915125faa041764df9806d977392a0f801da22d876544",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/concurrent-payout-two.json": "dffe14af749f10a8bc2521f9e5e4a4066d4243d84aaff37f20e55d4fc6668d68",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/definitive-token-failure.json": "8c124b3b317013ed2e414360d1a259b13560ec3d74f5e25560eafa52ef80c8c7",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/delivered-but-unexpected-result.json": "4784d30a30a76ef9f1c37b1f779bd25238f3330221d56f186e5198e47dba43c4",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/external-callback-payout-success.json": "5817245864a166b721c1822cb57aa2065b16964f2b42c9dca88b80386629c8dc",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/external-callbacks-rejected.json": "c6fe94cae6ee7ec8932b277f088724d75540581f064266b706a669698afb20c1",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/fault-suite-summary.json": "be31f014d22a0716b4c85a97276b00991b828f6eff0d0165f6b4bf3806f09876",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/historical-wasm-migration.json": "9a7823383a8e80bce3fe5453ba55d96fc81ee01ca9d6dd3f7b30d73837a83b5f",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/index.json": "18b2c426f50f1962a89b7cfb4d7a856a4768670dd2c5383f1b947b3b4fd881d1",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/insufficient-token-balance.json": "a05c911406516c3bf47cb9ad6ad22ee0c8e688cddf4043f46c4c9ced06dbb94f",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/minimum-gas-and-low-gas-rejection.json": "7c99ad9835725fe222e4f26fd79fe6f89c2a1f4caaeabf40ecc8b71921a45f6f",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/missing-recipient-storage.json": "2e5705013c464ec989bc8098f929b9f32b9741a2f2bc8f6a73101ca90eece8b1",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/native-near-headroom.json": "2749fa439bd81e7595334c9a62556e568a2f3bf5073a24ba651f01403b0defb3",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/oog-callback-duplicate-rejected.json": "091d2e4674144e9587bca77a89db83c574c0c82f3e586d8b3eb6e3afc816b973",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/oog-callback.json": "14046800874363ac63c622b36d41c147825095e93a6725114d87e69019e1af4c",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/panic-callback-duplicate-rejected.json": "d0502768459b49826ea69e56e57b5d750619d6a4a5c0f856542ae09ee1bb3660",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/panic-callback.json": "2e69dfc5bf716b498431000a8e9798a87bc6d31da493f2b5b5b59635dd6eda2d",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/pause-after-dispatch.json": "387e7422aa94159694ff873e50912f5f753bf409d9e749a755a37404488dcd48",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/restart-uncertain-response-model.json": "243c2e8896a10e329cf49d6124bc64f3b2b25c49897b5cca01207caeebcb1c24",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/same-campaign-concurrent-payouts.json": "85ebdf2a56bd70154fccc046eae9417c17051631075c580f380ea6cd8218e02d",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/schedule-panic-duplicate-rejected.json": "1859b52ac3a6506c3c30f04911261aedfa2556cf76b3f8f4a103bd2cd13e11e1",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/schedule-panic.json": "821e6f083f9142607d08140a5ae83df009adf4bd30fc131876f3a13d3a280ae6",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/stale-duplicate-self-callbacks.json": "ea480c26543c1e950015ed69615e7c6d145ab8c886304fe0b520a411481ab32c",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/successful-transfer-duplicate-rejected.json": "094a3e670276e4ce699445e923180ee8b025f2cdc056945d8cd71c542bd3ecda",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/successful-transfer.json": "a0627d34ee8608d9a83e737fe9ece69668edfcf81b5fc9281fcab672754bb3a2",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/suite-summary.json": "06b3af4326561dab35958a33f2ba4be637ead9feb88181e3ed5adb7cc9175a75",
+    "docs/evidence/milestone-5/m5c-independent-rereview/fresh-sandbox/sandbox/upgrade-between-transfer-and-callback.json": "a35713a64be02bd08e45f1358c53a0f4175311fa9bfe4320995443c7295c93fe",
+    "docs/evidence/milestone-5/m5c-independent-rereview/results.json": "4e8240adea96d7f420c0f7033aea3690e7fec905fffb57aed4a11a16ce326546",
+    "docs/evidence/milestone-5/m5c-independent-rereview/tests.log": "0bb2ff1597c86bb7b4ff09d7dce556b9cf36c728a7bfc36e9a131c8e2e714c2b",
+    "docs/evidence/milestone-5/m5d/baseline-service-tests.log": "8f26bdce46310e55fb0ecd52edb8d6e16e9a221ea0bb07f1e2793d1e8ac56ba7",
+    "docs/evidence/milestone-5/m5d/baseline-typecheck.log": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92",
+    "docs/evidence/milestone-5/m5d/callback-observer-race.json": "acdf9f420fce8d3de5e8a11284f94a788ec8d272dc833a12835437effc2810f4",
+    "docs/evidence/milestone-5/m5d/callback-observer-race.log": "577cbed806350a81ed1ea5b6af8ccebf2e70dc52e8ef36819f13688e5e30b415",
+    "docs/evidence/milestone-5/m5d/capture.log": "1eaa4469932046967b403e382b9e549466f4955035cd23bb7048e6496e0dd058",
+    "docs/evidence/milestone-5/m5d/development-notes.json": "5f3ff24bef1ae4497b07a6ead2bca857713bb7cd3dc409d5f2ea66a1aa93b272",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/all-sandbox-suites.json": "2d5ab262483c5bdb723c5bf3916c1508385354bdb9ec9c749d5a49860471a122",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/node-b-migration.json": "1613471c1c07f4cf10a912dc15aa57d1f4fdad203f81216b9b2085965991f9d7",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/node-faults.json": "dbba62c6c2e16386495b46f6c369ff9db6f3cc3d204b0760ad37f48c97c1ca3d",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/node-main.json": "b91f2aa5f090e6015217f3f7f58f012593a9eceb8eea05c070d0fc289678784d",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox-b-migration.log": "ff9e37d396607a2f77a2e6151184f67e823d85213e40c903712710c0f5d255fa",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox-faults.log": "9c1f3dbe8da9a5ae0ef3df92d7e081e740973617e9fb674c80bc6b3dc6570250",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox-main.log": "b19a7122a2e62c192b600673ce1058ecb1336f2d76a8048018f54302e6faee57",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/b-to-c-wasm-migration.json": "d6e3647decc51d1f6accde5a0a37f442714b1cb77c97fa953fb141d6f7be6a50",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/concurrent-duplicate-execution.json": "b5d7e842c6d5ad09204290fdf4975d0fed0b5fae6938e4113d7edd6a16a21a9c",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/concurrent-payout-one.json": "a98fc9a0282e7ac3a9ff95c86fe33799ba0b7395e86a9f1bd845da0049a193a7",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/concurrent-payout-two.json": "e989847101eef8848db33de47a785e42633805c75e25ca2c6dee5a90ac118aea",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/definitive-token-failure.json": "d95ca9e631b5eb84dcd936c029febfa0baf67e6884d7108746d215ebd381e802",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/delivered-but-unexpected-result.json": "61a2446c8605381ff0436285918009a2781f4e71c34c5070308bcc8b777102ae",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/external-callback-payout-success.json": "b7b45602a04a3554690dca4126c3b20e79540afe188f47d6854ebbb4a181fef5",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/external-callbacks-rejected.json": "c76c4bdddca081aff4e92994d976198c9c7d7cadf0594aa0c4abdd2b34d158d7",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/fault-suite-summary.json": "be31f014d22a0716b4c85a97276b00991b828f6eff0d0165f6b4bf3806f09876",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/historical-wasm-migration.json": "d6b58a14d5388f1891e3dc2b873cdf8ced4ffc6864d1c65121f6b00de9a345e1",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/index.json": "18b2c426f50f1962a89b7cfb4d7a856a4768670dd2c5383f1b947b3b4fd881d1",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/insufficient-token-balance.json": "fe3e6f72b1286fbdc892068d5910551ff72222aed7d08ec95d4f767559d03e5f",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/minimum-gas-and-low-gas-rejection.json": "9033c01e2456c47bea1a67bbe2cc41350439643a60ee94782505cd648dd4f97e",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/missing-recipient-storage.json": "823ac66071831e2ea7e1038e928813c993a50ffd2265c1f77cf1b9e3b1fad669",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/native-near-headroom.json": "cea5c8ea7bb9eea1ee8cee1ddf5a80d9117391b3caa4f4b75dd697f32036b1cf",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/oog-callback-duplicate-rejected.json": "84285f63146340c1fee465d99e516c22a6a67f1995dcb0daedf2747d7bffaf1e",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/oog-callback.json": "ffa79c8f67bc79928123698cb7854eaebb42eab1b6838c04708c661ac55dfec8",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/panic-callback-duplicate-rejected.json": "e683a7398f37c4fa20fb05d6db695589c7e1899678c8b4f809bbf495f5b0f003",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/panic-callback.json": "23f8adf0f6dc8e7970dc10bb38ad4ae4d9533de13b362f76cbcc34c517df8eb9",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/pause-after-dispatch.json": "2271c5d70aa7f53f3d2620307ed7da1edab56588dde586cb1d769f32e7941084",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/restart-uncertain-response-model.json": "9230a15faba3f4fac47ab00a51f3574357bef3cecd3c7c11e0a66c8195dcb077",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/same-campaign-concurrent-payouts.json": "acbfdd932147e2f3e6ac58b0a1d7081065723257348aac222a6da8bb28589429",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/schedule-panic-duplicate-rejected.json": "a92cb2e4beda8e3f71c6ecd72609e8880976244d38f8448fc1685e09a670130c",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/schedule-panic.json": "346d4bc178369a4cf6611a365035cce27b95f0cf8998da2fa1d70c96eeba66f7",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/stale-duplicate-self-callbacks.json": "be3cb0571fcf59fb2d268618e68d93b9e632cdc186f22b3d7717b6d771ecc4e1",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/successful-transfer-duplicate-rejected.json": "27af882223609c1f8b0cfa52765e6be28e604303aaea80ce1249615fd6e544af",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/successful-transfer.json": "316b11bf1ffa61acb8b618af8c7da51eefd2f0ae7b036e8375c1b8176964f53b",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/suite-summary.json": "06b3af4326561dab35958a33f2ba4be637ead9feb88181e3ed5adb7cc9175a75",
+    "docs/evidence/milestone-5/m5d/fresh-receipt-suite/sandbox/upgrade-between-transfer-and-callback.json": "33647ecddd9acc049e7daa402c32077c6d10249e7a49fac30b6d2548d63325e6",
+    "docs/evidence/milestone-5/m5d/live-reconciliation-tests.json": "5c27a6b706b18024e4fc0f67a883d9293e5027ca0993ea0d62692046def9693b",
+    "docs/evidence/milestone-5/m5d/local-environments.json": "9e8eee81caa040d0c05cdc5eb2c4bb3ff465d1b3c599e2a6adab3308a8d66d02",
+    "docs/evidence/milestone-5/m5d/postgres-durability.json": "f573bc0743ea51ff7d89ef7d78d858edcf586701968b8780652d57e21cbe2b7e",
+    "docs/evidence/milestone-5/m5d/sandbox/definitive-token-failure.json": "877ad744b2dafff255f57930316ef5cc98cc59022f1caee658a3ea3faad231aa",
+    "docs/evidence/milestone-5/m5d/sandbox/delivered-but-unexpected-result.json": "4d7b42b8004bacb393f45de1046343a9182d146e6ba22c9071ffd5cd7d63243d",
+    "docs/evidence/milestone-5/m5d/sandbox/insufficient-token-balance.json": "3572d1dd02a5e48e98eac53e478047c45801d956b113a7837961a27952b48d6f",
+    "docs/evidence/milestone-5/m5d/sandbox/oog-callback.json": "f40c5818b0af56561f7de8e3cfb22d41c4906c8de3d8e7279e9d25896fd79a6b",
+    "docs/evidence/milestone-5/m5d/sandbox/panic-callback.json": "925a4dc47005ed7a8bc7cd63186aeed0929c48146100e4ad890abeaeca6f6a42",
+    "docs/evidence/milestone-5/m5d/sandbox/successful-transfer.json": "9a686467c0f2e2327038bdde830a46bb21c8d87f6d2175f1e07bebd54d37cff3",
+    "docs/evidence/milestone-5/m5d/validation/format.log": "0c0246fee8e0a91379a58cb5ea3a76c37c24b5c4a37db3c7051a1c4738f84ab0",
+    "docs/evidence/milestone-5/m5d/validation/integration.json": "bf46d40056e37eaf8ca38758042b1c5a48512cd3f22a9f06ae74fe6a5b944a11",
+    "docs/evidence/milestone-5/m5d/validation/lint.log": "426c4c193463ac2c4801152ebcf59e624e012ac76019aded22ab8eaa05e77dd6",
+    "docs/evidence/milestone-5/m5d/validation/live-read-only-tests.log": "2d889180d2cfebdde059ff0bfa25af76df5846fc20cb6bfbfadd2d8ae87774be",
+    "docs/evidence/milestone-5/m5d/validation/migration-idempotency.log": "f9dd31816170f87ae4fa7fdf210b7ecb8560d50f4c6fb92d675a66f4d4a13d5b",
+    "docs/evidence/milestone-5/m5d/validation/postgres-tests.log": "b5a0eb7b4e560250874d2133b89e4083b3076163e160388eb67d1f66ae8e1b83",
+    "docs/evidence/milestone-5/m5d/validation/rust-clippy.log": "c54bca416b8a09e3c2018b0ada16771065b3b9b5469242539af42bc53077e2cf",
+    "docs/evidence/milestone-5/m5d/validation/rust-fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "docs/evidence/milestone-5/m5d/validation/rust-tests.log": "2cb2279c7a58f5e1bffd93ee6a8ea58cdd49127aa3a5ee0e6981c93d181519bc",
+    "docs/evidence/milestone-5/m5d/validation/rust.json": "b33ab2d2a82cc6e38b71a4a7ececbdb5235c6a9f51e2c30f53eb8f416d0d7b9d",
+    "docs/evidence/milestone-5/m5d/validation/service-tests.log": "f038adc7de70c1b7b3377f4babeabb3c3a98689e6254173e430df281a70c1147",
+    "docs/evidence/milestone-5/m5d/validation/service.json": "c7d85147a5e59f1393ba509fe55d148c6a7d8a6c4fdb540a9201444cc65c9137",
+    "docs/evidence/milestone-5/m5d/validation/typecheck.log": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92",
+    "docs/evidence/milestone-5/m5d/validation/wasm-build.log": "2623f84fab9065c2fc8f30ff5cf18b7930fde3a6b8b4745a672606c8817464d5",
+    "docs/milestone-5c-independent-implementation-rereview.md": "83fb55cc338f4aa461b23226cb95b0d7d891e4ac28313555c0bb5758f7a660f3",
+    "docs/milestone-5d-failure-recovery.md": "2ef637bc4fe3df1cc68d1e626c1f267ce0edc38fc05bcf74d140fe0c4a43acde",
+    "docs/milestone-5d-integration-test-results.md": "ea068da30ffe9dc2da66ae2897c83de4cdaadff2f6b364cbb219b0c3b269935f",
+    "docs/milestone-5d-migration-safety.md": "1e8131006e33f836dcbeb7efeb1a14697b35e846ae44dd4bd307fcc0ab538f07",
+    "docs/milestone-5d-postgres-persistence.md": "e1a5a40ad490af45446bc6f69d9cd280608d00ce25530a30978550c07e66fbc6",
+    "docs/milestone-5d-receipt-evidence-verification.md": "d21c156ca2f33196a7fa3b8d8bcac977b4f6d3c16fdbfa47d985735c999d1430",
+    "docs/milestone-5d-reconciliation-architecture.md": "0192df7db46343f4b21dbaac552f44c1dbff0b2e55495529596a117ebf012ce9",
+    "execution-service/sql/migrations/0004_native_reconciliation.sql": "32c762ce113981691c849ab148dbdb3d5d2ad698a2c61cb7330f2dce16f871f4",
+    "execution-service/src/persistence/postgres-migrations.ts": "42a4d1f1cf9f15e75c72d5331d0a4664388603486d32516fed5d47415ad27efc",
+    "execution-service/src/reconciliation/discovery.ts": "24b6345b77cc1411e8949042f2a66b4e9e873b6b8af230c04064c6f55a34856a",
+    "execution-service/src/reconciliation/evidence.ts": "ca02bfdcfc95b34383ed4318f7a82e0ffbb901b24895eeab698aee164f4e413b",
+    "execution-service/src/reconciliation/postgres.ts": "8b675de8af381035de3e5f8833f74f229312d8a28dc798eede851dbf82a7525a",
+    "execution-service/src/reconciliation/rpc.ts": "7ec7496bde3f8e04c25280824604710fee0276ca3c3e9a57ce2e3db1a52e24ea",
+    "execution-service/src/reconciliation/verifier.ts": "1468198609692cb18c62cc45742ab0a3ba1c2dc3b20043d222a74ccf7313b1fa",
+    "execution-service/src/reconciliation/worker.ts": "258963a95bacec3fe47542856ae40e8eee319375ad5d3740a4dec68998375970",
+    "execution-service/tests/integration/native-capture.ts": "59c6aec6f80e364738c68008574e763e4b272b1b31ab73fe6c7ab482389fc67f",
+    "execution-service/tests/integration/native-live.test.ts": "6a307b055dc79f660a97d40a9b241b5c4c4976fee1a4de191695de61526e84e1",
+    "execution-service/tests/integration/native-race-observer.ts": "46e3c6f827c2cf9e94650e7090889614fcf22966d0911b8882724ff408c4c55b",
+    "execution-service/tests/integration/native-restart-child.ts": "7ec404b789470d215c9944cd57874b4350a6010f80262418f62d8ce02e6503ee",
+    "execution-service/tests/integration/postgres-jobs.test.ts": "419ab00f9ca7519dd9f0656ce820b73736c58ac0a0ac16edbd86fa20c5e88946",
+    "execution-service/tests/integration/postgres-native-reconciliation.test.ts": "fd4557eaeb5b6e4b88afa382b5aa6085702c52d64b662ab7ae6082a963b8043c",
+    "execution-service/tests/native-reconciliation.test.ts": "a323cbf149029d0a050f6811318007470a4e9adb9e6ad4b2096f96ab7dc20211",
+    "execution-service/tests/support/native-reconciliation.ts": "ff579a1661aff7fd64b16cb251ad2ae4367f949038b4ee7c94f7f69c5884c0e3",
+    "tests/sandbox/RECONCILIATION.md": "89f18a1b8101a78c4e33f6faceacdc859fc48f4c039b592772aa649fb85a2e7b",
+    "tests/sandbox/native_reconciliation_race.py": "e142cee325de455d88b4e126c749210456de2815e86a504b84fa5fb6ba941e23",
+    "tests/sandbox/run_reconciliation.py": "1f1b55a09eaed2b28538225bfa5d790e49e09b935dabfff7aa79615742b5d32e"
+  }
+}

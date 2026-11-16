@@ -1,0 +1,16 @@
+synthetic sandbox home /tmp/disburse-m5c-local-ly0x67dy
+PASS historical deployed WASM migration
+PASS successful-transfer Succeeded {'campaign_id': 1, 'budget': '1000000', 'funded': '1000000', 'reserved': '0', 'spent': '100000', 'available': '900000'}
+PASS stale/duplicate callbacks
+PASS missing-recipient-storage AttemptFailed {'campaign_id': 2, 'budget': '1000000', 'funded': '1000000', 'reserved': '100000', 'spent': '0', 'available': '900000'}
+PASS definitive-token-failure AttemptFailed {'campaign_id': 3, 'budget': '1000000', 'funded': '1000000', 'reserved': '100000', 'spent': '0', 'available': '900000'}
+PASS concurrent-duplicate-execution Succeeded {'campaign_id': 4, 'budget': '1000000', 'funded': '1000000', 'reserved': '0', 'spent': '100000', 'available': '900000'}
+PASS concurrent-payout-one Succeeded {'campaign_id': 5, 'budget': '1000000', 'funded': '1000000', 'reserved': '0', 'spent': '100000', 'available': '900000'}
+PASS concurrent-payout-two Succeeded {'campaign_id': 6, 'budget': '1000000', 'funded': '1000000', 'reserved': '0', 'spent': '100000', 'available': '900000'}
+PASS same-campaign-concurrent-payouts Succeeded {'campaign_id': 7, 'budget': '1000000', 'funded': '1000000', 'reserved': '0', 'spent': '200000', 'available': '800000'}
+PASS minimum-gas-and-low-gas-rejection Succeeded {'campaign_id': 8, 'budget': '1000000', 'funded': '1000000', 'reserved': '0', 'spent': '100000', 'available': '900000'}
+PASS native-near-headroom Succeeded {'campaign_id': 9, 'budget': '1000000', 'funded': '1000000', 'reserved': '0', 'spent': '100000', 'available': '900000'}
+PASS external callback wrapper authentication
+PASS external-callback-payout-success Succeeded {'campaign_id': 10, 'budget': '1000000', 'funded': '1000000', 'reserved': '0', 'spent': '100000', 'available': '900000'}
+PASS restart/uncertain-response model
+MAIN SCENARIOS COMPLETE

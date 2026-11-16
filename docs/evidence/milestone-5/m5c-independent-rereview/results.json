@@ -1,0 +1,72 @@
+{
+  "verdict": "PASS",
+  "scope": "LOCAL M5-C IMPLEMENTATION SECURITY RE-REVIEW; NOT LIVE READINESS",
+  "reviewed_at_utc": "2026-11-16T06:27:36.519923+00:00",
+  "revision": "0006f76160a3e23e9870e4349636c7814bb9a7b3",
+  "source_sha256": {
+    "src/native.rs": "e1a0b937f97a60d6d5dd397c1c030ace150daa7fa610029eee2d8c2769ce8633",
+    "src/native/execution.rs": "0a665cd72c334c630dad7e6f5d4d48f1cdf5e684a1f9492b85b238d9d50b8bc2",
+    "src/native/execution_tests.rs": "7a7e55fb7f5054828ca3b15f1c6a152dc64203d252586677dac2a56659fa5486",
+    "src/native/tests.rs": "e25b7897f169517150bb5921201800e4eadd73fadff148838865db0c37f48f83",
+    "src/state/mod.rs": "b5705d2071e26c232010b8412e26acbb6cf1fabde62e0f0ffe6abc8e27d8f939",
+    "src/state/native.rs": "dc8c7ec4c02e677993f680d9bd92cdae5429f0185b7508b631afd424f4ca5190",
+    "src/state/native_execution.rs": "5bdddce38b8722fd1718a76c2ee2ff162605b44f702b01d661b75c958ec1fd9a"
+  },
+  "wasm_sha256": "37e432600c43d5fc7d44b2d81bc9a852d5e120a7dc043c7f06f83d1e62a24ea9",
+  "reviewer_independence": "Separate adversarial audit pass by the same assistant that implemented C, not a third-party or separately staffed audit. No implementation code changed during review.",
+  "unresolved_critical_implementation_findings": 0,
+  "unresolved_high_implementation_findings": 0,
+  "validation": {
+    "fmt": 0,
+    "clippy_warnings_denied": 0,
+    "cargo_test": {
+      "passed": 146,
+      "failed": 0,
+      "ignored": 0
+    },
+    "wasm_build": 0,
+    "fresh_sandbox_phases": [
+      "main",
+      "faults",
+      "b-migration"
+    ],
+    "fresh_real_receipt_scenario_groups": 20,
+    "abi_methods": 52,
+    "private_callbacks": 2
+  },
+  "reviewed_properties": [
+    "Explicit Approver/Executor and original reservation-actor separation",
+    "Full binding/current attempt/phase validation before dispatch and callbacks",
+    "Atomic durable lock with ft_transfer+callback scheduling; 1yocto fixed immutable arguments",
+    "Private runtime callback and bounded result read",
+    "Current campaign checked reserved-to-spent transition exactly once",
+    "No retry/release/manual success; failed callbacks preserve earlier lock",
+    "All eight legacy mutation guards and private release helper retained",
+    "Legacy and native V1 Borsh unchanged; real historical and B WASM migration",
+    "Configured child budgets fit parent and observed gas; storage headroom guards"
+  ],
+  "nonblocking_findings": [
+    {
+      "id": "R-C01",
+      "severity": "MEDIUM",
+      "finding": "Uncertain/lost callbacks and old-B orphan attempts remain permanently locked without separately reviewed reconciliation.",
+      "reason_nonblocking": "Intentional no-resend safety; M5-D scope, no unsupported recovery claim."
+    },
+    {
+      "id": "R-C02",
+      "severity": "MEDIUM",
+      "finding": "Token implementation, token/root governance and real recipient control remain unverified for live use.",
+      "reason_nonblocking": "Explicit external trust and deployment gates; no live readiness approval."
+    },
+    {
+      "id": "R-C03",
+      "severity": "LOW",
+      "finding": "Sandbox fault artifacts cover rollback/OOG but not physical disk exhaustion, distributed consensus faults or real service/DB restart.",
+      "reason_nonblocking": "Limits are explicit; no weakened lock or observed accounting violation."
+    }
+  ],
+  "prior_review": "Historical BLOCKED review remains unchanged; concerned absent C at f37893e7, not this implementation.",
+  "m5d_prerequisite": "SATISFIED for this local source/WASM under the authorized audit scope; no live permission.",
+  "live_transactions": 0,
+  "implementation_changes_during_review": []
+}

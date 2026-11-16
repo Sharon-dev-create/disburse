@@ -1,0 +1,264 @@
+{
+  "scope": "Read-only RPC against real synthetic receipts; two aliases of same node, not independent operators",
+  "records": [
+    {
+      "name": "successful-transfer",
+      "result": "PASS",
+      "classification": "ObservedSucceededSettled",
+      "transferReceiptId": "6wDoL9hXu6MLdKTerTzDpzzoXDdyRqRqFSti5gmEok4a",
+      "callbackReceiptId": "AmdzbGrEjnrd5dEoSaGYJTa8yxMhpc36X8dWuSBcV1Px",
+      "unchangedAccounting": {
+        "campaign_id": 1,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "0",
+        "spent": "100000",
+        "available": "900000"
+      },
+      "jobKey": "ff328aea77b41b4648cc7532d3402d3a515d12b66d492ce76b2a57079f3ec753",
+      "evidenceDigest": "012e46a874cffa72b6b2ef4279f0a9b7fb14dd5c7690e66e7ab8d78dae2d0516",
+      "newBlockchainTransactions": 0
+    },
+    {
+      "name": "panic-callback",
+      "result": "PASS",
+      "classification": "ObservedSucceededSettlementPending",
+      "transferReceiptId": "aVGzKnfbyMKZ4jmdCaCFbagZFzJMrdFt4HFdN3dkrwq",
+      "callbackReceiptId": "AAqUahTmsuEztHxx2c24z4GPikhFTUUwaHeNRiBEW9Wv",
+      "unchangedAccounting": {
+        "campaign_id": 13,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "100000",
+        "spent": "0",
+        "available": "900000"
+      },
+      "jobKey": "b322ee0076a5105460d5891975c6367dedd1e3652379a5dcc73223e5866ee93c",
+      "evidenceDigest": "e10d6b901a6ed276a2c4706db2a46df1abcf3349e964079a53a7e12f10513d3d",
+      "newBlockchainTransactions": 0
+    },
+    {
+      "name": "oog-callback",
+      "result": "PASS",
+      "classification": "ObservedSucceededSettlementPending",
+      "transferReceiptId": "FkAwt8BMVewSgapqKUxDz8TSD1QFGzmB5ofRNSA5ai5Y",
+      "callbackReceiptId": "Fggg7J2eWh7PnKCPeQcu5hV4Mgoq9vCGNWGmSeYHu7Z6",
+      "unchangedAccounting": {
+        "campaign_id": 14,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "100000",
+        "spent": "0",
+        "available": "900000"
+      },
+      "jobKey": "9c835289beed483f600cd9a942e4d4ae628998b9733b3fcc4a2660eb71152268",
+      "evidenceDigest": "7ca5c067d780d9bc3f683bf26fbe7a9f3771f4135fa99ff428663bc21e04660b",
+      "newBlockchainTransactions": 0
+    },
+    {
+      "name": "definitive-token-failure",
+      "result": "PASS",
+      "classification": "ObservedTransferFailed",
+      "transferReceiptId": "CRmv4BFQrwm8YAdBCa2sfQsy4seegJoui1iikNsbTNy9",
+      "callbackReceiptId": "GX93wTq1Z6tqhnNNgfuj3QqYDxZtNztqDSwpfmuAdaFr",
+      "unchangedAccounting": {
+        "campaign_id": 3,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "100000",
+        "spent": "0",
+        "available": "900000"
+      },
+      "jobKey": "45a53638b7df6b43df7dbaf095cc5b3086e02260c0583b86fc61bb9504762f69",
+      "evidenceDigest": "8850da9ac15d07094c20166785d5e0e77e0f513c3f71830f4d0aac2065480552",
+      "newBlockchainTransactions": 0
+    },
+    {
+      "name": "insufficient-token-balance",
+      "result": "PASS",
+      "classification": "ObservedTransferFailed",
+      "transferReceiptId": "6TbP2CV6EFmTAA6vChAxtWULAASTrfXhiLP69HhDQFc5",
+      "callbackReceiptId": "6J8QJquoS4hEJx9GpdLoHoZPrZx5Ho6JkF5obgVckmqB",
+      "unchangedAccounting": {
+        "campaign_id": 17,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "100000",
+        "spent": "0",
+        "available": "900000"
+      },
+      "jobKey": "6a138b23eeb9638da868a55984fbdcb178f4c29e50ad43f97418a323b4ad9354",
+      "evidenceDigest": "6cbeeb08a9f79bc5de929492b40ad829665941535c561eb8eb0414353bc94db6",
+      "newBlockchainTransactions": 0
+    },
+    {
+      "name": "delivered-but-unexpected-result",
+      "result": "PASS",
+      "classification": "ManualReview",
+      "transferReceiptId": null,
+      "callbackReceiptId": null,
+      "unchangedAccounting": {
+        "campaign_id": 16,
+        "budget": "1000000",
+        "funded": "1000000",
+        "reserved": "100000",
+        "spent": "0",
+        "available": "900000"
+      },
+      "jobKey": "33ea43145c9df30a90132a12a95d4a363ed6e7b60fa486221c9b911aef0d9cf0",
+      "evidenceDigest": "dcde33e235a89b05b9bc3f62301f74aa2fb289b836c7df1d757861dc1c7571a6",
+      "newBlockchainTransactions": 0
+    },
+    {
+      "name": "finalized-discovery",
+      "result": "PASS",
+      "blockHash": "HKxS5cezu6vnCPeKGMaHniYZwaA9rvPDz5r8K3m7H8r4",
+      "nextPayoutId": "100",
+      "scanned": 100,
+      "attempts": [
+        {
+          "identity": {
+            "chainId": "disburse-m5c-local",
+            "contractId": "disburse-test-contract.testnet",
+            "campaignId": "2",
+            "payoutId": "3",
+            "attemptId": "1",
+            "authorizationId": "sandbox-auth:3",
+            "bindingHash": "700184020fb917e03fa835c69279d1c358ff9e704cd4dac7dd3b8ebaa7337d5a",
+            "tokenId": "usdc.tidepool-sandbox.testnet",
+            "recipientId": "unregistered.testnet",
+            "amount": "100000",
+            "executorId": "executor.testnet"
+          },
+          "status": "AttemptFailed",
+          "locatorRequired": true
+        },
+        {
+          "identity": {
+            "chainId": "disburse-m5c-local",
+            "contractId": "disburse-test-contract.testnet",
+            "campaignId": "3",
+            "payoutId": "4",
+            "attemptId": "1",
+            "authorizationId": "sandbox-auth:4",
+            "bindingHash": "f32bd8a47c8a915baa07a61ffa88fdabd698184a2e1e0674bd3023459968b45b",
+            "tokenId": "usdc.tidepool-sandbox.testnet",
+            "recipientId": "recipient.testnet",
+            "amount": "100000",
+            "executorId": "executor.testnet"
+          },
+          "status": "AttemptFailed",
+          "locatorRequired": true
+        },
+        {
+          "identity": {
+            "chainId": "disburse-m5c-local",
+            "contractId": "disburse-test-contract.testnet",
+            "campaignId": "12",
+            "payoutId": "14",
+            "attemptId": "1",
+            "authorizationId": "sandbox-auth:14",
+            "bindingHash": "c24dc8b3e428a063b6da31dd0d325688464d9dde397ab1bbf65ba2d69bd09846",
+            "tokenId": "usdc.tidepool-sandbox.testnet",
+            "recipientId": "recipient.testnet",
+            "amount": "100000",
+            "executorId": "executor.testnet"
+          },
+          "status": "PreflightPending",
+          "locatorRequired": true
+        },
+        {
+          "identity": {
+            "chainId": "disburse-m5c-local",
+            "contractId": "disburse-test-contract.testnet",
+            "campaignId": "13",
+            "payoutId": "15",
+            "attemptId": "1",
+            "authorizationId": "sandbox-auth:15",
+            "bindingHash": "2889aedc435108412b155d8f8ad11a3e2b4eb387b44cb2710e4bce0cbc0a94b5",
+            "tokenId": "usdc.tidepool-sandbox.testnet",
+            "recipientId": "recipient.testnet",
+            "amount": "100000",
+            "executorId": "executor.testnet"
+          },
+          "status": "TransferPending",
+          "locatorRequired": true
+        },
+        {
+          "identity": {
+            "chainId": "disburse-m5c-local",
+            "contractId": "disburse-test-contract.testnet",
+            "campaignId": "14",
+            "payoutId": "16",
+            "attemptId": "1",
+            "authorizationId": "sandbox-auth:16",
+            "bindingHash": "9f905127193d8bb6b14a25d328dae8c0690d9e5f7d7b0f810dae6f3575146950",
+            "tokenId": "usdc.tidepool-sandbox.testnet",
+            "recipientId": "recipient.testnet",
+            "amount": "100000",
+            "executorId": "executor.testnet"
+          },
+          "status": "TransferPending",
+          "locatorRequired": true
+        },
+        {
+          "identity": {
+            "chainId": "disburse-m5c-local",
+            "contractId": "disburse-test-contract.testnet",
+            "campaignId": "15",
+            "payoutId": "17",
+            "attemptId": "1",
+            "authorizationId": "sandbox-auth:17",
+            "bindingHash": "13a335018dfc1649edc601b68d9ad3f2019ec5fc528387f90612daa8ff639796",
+            "tokenId": "usdc.tidepool-sandbox.testnet",
+            "recipientId": "recipient.testnet",
+            "amount": "100000",
+            "executorId": "executor.testnet"
+          },
+          "status": "TransferPending",
+          "locatorRequired": true
+        },
+        {
+          "identity": {
+            "chainId": "disburse-m5c-local",
+            "contractId": "disburse-test-contract.testnet",
+            "campaignId": "16",
+            "payoutId": "18",
+            "attemptId": "1",
+            "authorizationId": "sandbox-auth:18",
+            "bindingHash": "18a19e2a6bc720b81f2860f224168b346bf7a86311fbe504bd7aad9aa39a59e3",
+            "tokenId": "usdc.tidepool-sandbox.testnet",
+            "recipientId": "recipient.testnet",
+            "amount": "100000",
+            "executorId": "executor.testnet"
+          },
+          "status": "ManualReview",
+          "locatorRequired": true
+        },
+        {
+          "identity": {
+            "chainId": "disburse-m5c-local",
+            "contractId": "disburse-test-contract.testnet",
+            "campaignId": "17",
+            "payoutId": "19",
+            "attemptId": "1",
+            "authorizationId": "sandbox-auth:19",
+            "bindingHash": "13f6ba42ecf19d2d5722e9bf542528b6aaa08e4aa54c1de63a31878b2221b186",
+            "tokenId": "usdc.tidepool-sandbox.testnet",
+            "recipientId": "recipient.testnet",
+            "amount": "100000",
+            "executorId": "executor.testnet"
+          },
+          "status": "AttemptFailed",
+          "locatorRequired": true
+        }
+      ]
+    },
+    {
+      "name": "missing-receipt",
+      "result": "PASS",
+      "injection": "Missing receipt response over live local RPC; no real receipt deleted",
+      "classification": "ManualReview"
+    }
+  ]
+}

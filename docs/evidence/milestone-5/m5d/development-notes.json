@@ -1,0 +1,30 @@
+{
+  "resolved_during_implementation": [
+    {
+      "issue": "Older non-archival local transaction history unavailable/timeout",
+      "response": "Unknown; no retry/release. Regenerated synthetic receipts with extended GC retention."
+    },
+    {
+      "issue": "nearcore archive=true startup assertion",
+      "response": "Discarded only failed temporary node; used high GC retention in a fresh node, not a production archival configuration."
+    },
+    {
+      "issue": "Node strip-only runtime rejects TypeScript parameter properties",
+      "response": "Replaced with explicit class fields; actual Node integration then ran."
+    },
+    {
+      "issue": "PostgreSQL inet text includes address mask",
+      "response": "Used host(inet_server_addr()) while retaining dedicated DB/role/loopback guard."
+    },
+    {
+      "issue": "Assumed payout-count endpoint is absent from actual ABI; leftover count return failed typecheck",
+      "response": "Removed nonexistent call and fixed return; added exact-u64 bounded-range discovery regression test and documented indexing/locator limitations."
+    },
+    {
+      "issue": "Restricted test runner yielded file-wrapper counts instead of individual subtests",
+      "response": "Final authorized local tests ran with required local process/network access; reports use134/27/8 actual subtest counts, not per-file wrapper counts."
+    }
+  ],
+  "unresolved_capability": "Authenticated on-chain recovery is intentionally not implemented; no proof verifier or approved attestation model.",
+  "reproduction_wrapper": "Python syntax checked; constituent suite/capture/service/Postgres/live/race commands were executed. Newly assembled convenience wrapper was not rerun end-to-end solely to repeat those completed checks."
+}

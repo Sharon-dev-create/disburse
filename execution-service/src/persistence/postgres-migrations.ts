@@ -38,6 +38,14 @@ const migrations: readonly MigrationFile[] = [
       import.meta.url,
     ),
   },
+  {
+    version: "0004",
+    name: "native_reconciliation",
+    url: new URL(
+      "../../sql/migrations/0004_native_reconciliation.sql",
+      import.meta.url,
+    ),
+  },
 ];
 
 const migrationTable = "public.disburse_schema_migrations";
