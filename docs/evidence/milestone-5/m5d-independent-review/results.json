@@ -1,0 +1,34 @@
+{
+  "verdict": "PARTIAL",
+  "scope": "Local read-only security review; same assistant separate adversarial pass, not third-party certification",
+  "revision": "f618b0db70326a8e9e860b6fa78a38c4efc07720",
+  "implementation_hashes_match": true,
+  "critical_findings": 0,
+  "high_findings": 0,
+  "findings": [
+    {
+      "id": "M5D-R01",
+      "severity": "MEDIUM",
+      "file": "execution-service/src/reconciliation/postgres.ts",
+      "method": "complete",
+      "finding": "Lease validity evaluated before row-lock acquisition can remain true after lock wait exceeds expiry.",
+      "reproduction": "500ms lease; independent transaction locks job row; complete begins while lease valid; release row after900ms. Completion accepted after expiry.",
+      "observed": {
+        "accepted": true
+      },
+      "impact": "Expired worker can persist a reconciliation decision without rechecking the deadline after lock acquisition. No second owner/fence takeover or token movement demonstrated.",
+      "remediation": "Acquire row lock first, then evaluate expiry with a fresh database clock; preserve worker/fence checks and add lock-contention regression.",
+      "status": "UNFIXED_REVIEW_ONLY"
+    }
+  ],
+  "tests": {
+    "rust_passed": 146,
+    "service_passed": 134,
+    "postgres_passed": 27,
+    "new_adversarial_reproduction": "CONFIRMED_EXPIRED_COMPLETION_ACCEPTED",
+    "live_rpc_rerun": "Not completed after interruption; no fresh live-RPC certification claimed"
+  },
+  "implementation_changes": [],
+  "onchain_recovery": "Still BLOCKED; no authenticated mutation or transfer capability",
+  "next_gate": "Separately approve local remediation and repeat review; no deployment approval"
+}

@@ -1,0 +1,38 @@
+$ node --experimental-strip-types --test tests/integration/postgres-*.test.ts
+✔ job migrations apply idempotently and record version 0004 (316.062646ms)
+✔ creation is durable, idempotent, payout-unique, and preserves exact amounts (65.608621ms)
+✔ campaign job listing is scoped to the configured contract and campaign (24.350471ms)
+✔ same idempotency key or payout identity rejects conflicting protected payloads (17.331052ms)
+✔ concurrent job creation on independent connections has one database winner (34.305343ms)
+✔ concurrent workers claim one queued job and stale lease writes are fenced (74.922591ms)
+✔ lease renewal, expiry replacement, and fencing counters survive repository restart (2164.180665ms)
+✔ attempts and safe failures are atomic and duplicate attempt idempotency rolls back (58.422967ms)
+✔ expired ambiguous submission moves to manual review without releasing payout state (1161.964778ms)
+✔ snapshot identity cannot be changed and job creation never mutates payout accounting (23.280105ms)
+✔ M5-D migrations are checksum-protected and idempotent (333.738655ms)
+✔ concurrent enqueue/claims have one immutable attempt and one lease (78.834133ms)
+(node:294137) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ duplicate observations are idempotent; historical evidence cannot update/delete (53.142292ms)
+✔ expired fences cannot persist; transaction rollback leaves no partial observation (174.980611ms)
+✔ reused receipt or transaction and conflicting finalized evidence become sticky ManualReview (66.465929ms)
+✔ real SIGKILL and fresh worker process recover same PostgreSQL job and evidence (931.567963ms)
+✔ restricted pool enforces PostgreSQL read-only sessions even when URL requests read-write (68.296611ms)
+✔ persists complete authorization payload and safely parameterizes lookups (148.45163ms)
+✔ concurrent discovery is idempotent and conflicting protected data is rejected (29.140571ms)
+✔ database arbitrates concurrent one-time authorization consumption (29.956382ms)
+✔ database statement time expires an authorization after its deadline (12.793032ms)
+✔ revocation and consumption race has exactly one terminal winner (38.873743ms)
+✔ refund policy binds once, survives concurrent duplicate approval, and is immutable (64.445635ms)
+✔ concurrent conflicting refund bindings retain one authoritative policy (10.09111ms)
+✔ a fresh process can read and consume durable authorization state (911.658276ms)
+✔ transaction rollback removes writes and leaves the pooled connection usable (33.515927ms)
+✔ separate pool connections observe shared committed state (16.859706ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6727.435345
