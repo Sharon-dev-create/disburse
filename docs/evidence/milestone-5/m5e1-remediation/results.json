@@ -1,0 +1,118 @@
+{
+  "milestone": "M5-E.1 scoped remediation",
+  "date": "2026-11-17",
+  "verdict": "PASS",
+  "reviewed_revision": "b7e466df0c5a18bf15b38b0fa79ff3dc317958f8",
+  "finding_status": {
+    "M5E1-01": "CLOSED for reviewed host startup, direct network mismatch, API/readiness and structured monitoring paths",
+    "M5E1-02": "CLOSED; actual HTTP default depth 64 boundary verified for array/object/mixed nesting, configured depth 4 boundary covered by independently rerun new tests"
+  },
+  "source_files": [
+    "execution-service/src/host/server.ts",
+    "execution-service/src/near/recipient-preflight.ts",
+    "execution-service/src/near/rpc.ts"
+  ],
+  "new_test_file": "execution-service/tests/operational-audit-regressions.test.ts",
+  "tests": {
+    "Rust": {
+      "pass": 146,
+      "fail": 0,
+      "ignored": 0,
+      "fmt": "PASS",
+      "Clippy": "PASS",
+      "locked_WASM_build": "PASS"
+    },
+    "service": {
+      "pass": 186,
+      "baseline_preserved": 175,
+      "new_regressions": 11,
+      "fail": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "typecheck_lint_format": "PASS"
+    },
+    "PostgreSQL": {
+      "pass": 46,
+      "fail": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "isolated_database": "postgresql://disburse_test@127.0.0.1:19550/disburse_test"
+    },
+    "local_RPC": {
+      "pass": 8,
+      "fail": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "sandbox": {
+      "groups": 20,
+      "main": 10,
+      "fault": 7,
+      "migration": 2,
+      "callback_observer_overlap": 1,
+      "completion": {
+        "result": "PASS",
+        "chain_id": "disburse-m5c-local",
+        "suite_work": "/tmp/disburse-m5d-retained-nfcm5hz9",
+        "gc_num_epochs_to_keep": 100000,
+        "new_public_transactions": 0,
+        "production_workers_started": 0,
+        "local_fixture_transfers_only": true
+      }
+    },
+    "separate_reviewer": {
+      "focused": 11,
+      "additional_probe_groups": 7,
+      "verdict": "PASS",
+      "new_findings": []
+    }
+  },
+  "failed_attempts": [
+    "Initial test creation used incorrect relative path; no file created.",
+    "First service run: 185 passed, 1 failed on fixed paused-contract diagnostic; restored safe literal, final 186 passed.",
+    "Sandbox source copy initially targeted itself; copied final server file from absolute root before TypeScript phase; final source and test hashes match."
+  ],
+  "integrity": "integrity.json; source hashes independently match separate review; all other tracked baseline files unchanged",
+  "scope_preserved": {
+    "Rust_contract": true,
+    "schema_migrations": true,
+    "lease_fencing": true,
+    "authorization_refund": true,
+    "live_execution": true,
+    "configuration": true,
+    "prior_review_evidence": true
+  },
+  "public_transactions": 0,
+  "public_RPC_queries": 0,
+  "live_workers_started": 0,
+  "git_mutations": 0,
+  "separate_review": "../m5e1-remediation-review/results.json",
+  "controlled_testnet": "NOT READY; original operational prerequisites persist",
+  "remaining_limitations": [
+    "No cryptographic recipient ownership verifier or live recipient was established.",
+    "No actual Tidepool transfer compatibility evidence or Testnet execution approval.",
+    "Monitoring remains partial and policies dormant.",
+    "Read-only API exposes generic near_rpc_failure with 502/503 classification; startup preserves ten RPC kinds/retryability while intentionally dropping raw status/cause/provider details.",
+    "NearRpcError itself is not a universal sanitizer; arbitrary future raw error logging must continue to use a safe diagnostic boundary."
+  ],
+  "commands": {
+    "Rust": [
+      "cargo fmt --all -- --check",
+      "cargo clippy --locked --all-targets -- -D warnings",
+      "cargo test --locked",
+      "cargo near build non-reproducible-wasm --locked"
+    ],
+    "service": "pnpm check (execution-service)",
+    "sandbox": "DISBURSE_TEST_DATABASE_URL=postgresql://disburse_test@127.0.0.1:19550/disburse_test python3 tests/sandbox/run_reconciliation.py (isolated /tmp/m5e1fix-sandbox)",
+    "PostgreSQL": "pnpm db:migrate:test; pnpm test:postgres (inside isolated wrapper)",
+    "local_RPC": "node --experimental-strip-types --test tests/integration/native-live.test.ts (wrapper local sandbox)"
+  },
+  "final_observed_revision": "542cc71044531fce2aa940b2c21f64f663ef7e53",
+  "external_revision_note": "HEAD advanced externally to 542cc71 during work, committing reviewed source/evidence. No agent Git mutations. All reviewed/tested source hashes still match.",
+  "cleanup": {
+    "temporary_database_stopped": true,
+    "port": 19550,
+    "sandbox_stopped_by_wrapper": true,
+    "live_processes_unchanged": true
+  }
+}

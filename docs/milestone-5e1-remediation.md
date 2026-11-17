@@ -13,11 +13,16 @@ Existing API diagnostics already replace RPC exception text with a fixed near_rp
 
 ## Validation and preservation
 
+**PASS for the scoped implementation and separate review.** Fresh completed results: 146 Rust, 186 service (175 baseline + 11 regressions), 46 PostgreSQL, eight local RPC and all 20 sandbox receipt groups; zero failures/skips in final runs. Formatting, Clippy, TypeScript typecheck/lint and locked WASM build pass. The separate reviewer independently passed 11 tests and seven additional probe groups, closing both original findings within scope. Controlled Testnet remains NOT READY.
+
+
 The first service run exposed an existing assertion requiring the exact paused-contract message. The implementation was corrected to retain that safe fixed diagnostic; no existing test was weakened. The failed run is retained as service-check.log; the completed rerun is service-check-final.log. An initial test-file creation used an incorrect relative working path and created no file; the corrected absolute path was used. An initial sandbox-copy command addressed itself; the final server file was copied from the repository before the TypeScript phase and source/test hashes match. These setup errors are not counted as passing validation.
 
 [Structured results](evidence/milestone-5/m5e1-remediation/results.json) records completed counts, commands, limitations and separate-review outcome. [Integrity evidence](evidence/milestone-5/m5e1-remediation/integrity.json) records all changed file hashes and the identical tested sandbox source snapshot. [Separate reviewer report](milestone-5e1-remediation-review.md) assesses the fixes independently; this is separate-agent review, not third-party certification.
 
 Only three application files and one new regression-test file were changed. Rust contract, migrations, lease repositories/fencing, authorization/refund logic, frontend, live configuration and execution composition remain unchanged. Candidate WASM remains 410611 bytes with SHA-256 `37e432600c43d5fc7d44b2d81bc9a852d5e120a7dc043c7f06f83d1e62a24ea9`. Earlier review evidence is unchanged. No public RPC or transactions, deployment, signer/worker enablement, live database writes, commit or push occurred.
+
+HEAD advanced externally to `542cc71044531fce2aa940b2c21f64f663ef7e53` during validation and committed the reviewed patch/evidence. No agent Git mutation occurred. All four reviewed source/test hashes still match; the original-baseline-to-current source diff contains only the intended changes.
 
 ## Remaining boundaries
 
