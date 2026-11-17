@@ -1,0 +1,43 @@
+{
+  "results": [
+    {
+      "name": "all ten RPC startup kinds retain classification and remove URL/cause/stack canary",
+      "status": "PASS",
+      "detail": {
+        "variants": 10
+      }
+    },
+    {
+      "name": "generic startup exceptions never copy provider URL including database-labelled URLs",
+      "status": "PASS",
+      "detail": {
+        "variants": 5
+      }
+    },
+    {
+      "name": "direct network mismatch diagnostic omits hostile returned chain_id",
+      "status": "PASS"
+    },
+    {
+      "name": "dependency readiness hides raw DB/RPC error URLs",
+      "status": "PASS"
+    },
+    {
+      "name": "monitor drops exception and URL credentials from diagnostic events",
+      "status": "PASS"
+    },
+    {
+      "name": "actual HTTP default decoded limit rejects 65 array/object/mixed levels and accepts 64",
+      "status": "PASS",
+      "detail": {
+        "cases": 6
+      }
+    },
+    {
+      "name": "invalid UTF8 and malformed JSON reject safely; valid exact integer and escaped metadata survive",
+      "status": "PASS"
+    }
+  ],
+  "pass": 7,
+  "fail": 0
+}

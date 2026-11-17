@@ -1,0 +1,322 @@
+{
+  "milestone": "M5-E.1",
+  "date": "2026-11-17",
+  "review_type": "Separate adversarial review pass by the same assistant; not third-party certification",
+  "verdict": "PARTIAL",
+  "verdict_reason": "Core bounded transport, lease and payment safety regressions pass. Two confirmed low-severity coverage gaps remain in startup redaction and decoded inspector JSON nesting; monitoring/integration remains explicitly partial. No critical, high or medium payment-safety defect was confirmed.",
+  "controlled_testnet_decision": "NOT READY",
+  "production_decision": "NOT READY",
+  "reviewed_revision": "b7e466df0c5a18bf15b38b0fa79ff3dc317958f8",
+  "initial_worktree_status": "clean main tracking origin/main",
+  "source_integrity": {
+    "verified": true,
+    "020cb7f_to_840c87f": "D.4 documentation and evidence additions only",
+    "840c87f_to_current": "M5-E implementation/tests/reports/evidence committed; no unrelated Rust, lease, auth, schema or frontend edits",
+    "prior_M5E_inventory_mismatches": [],
+    "D4_applicability": "Preserved for unchanged Rust, native/legacy persistence, authorization and schema. Reconciliation transport/verifier/worker, discovery and host/API changes reviewed separately.",
+    "source_hashes_file": "baseline.json",
+    "comparison_file": "source-comparison.json",
+    "security_file_hashes": "security-file-hashes.json",
+    "security_file_count": 136,
+    "final_integrity": "final-integrity.json",
+    "final_source_unchanged": true,
+    "isolated_snapshot_matches": true
+  },
+  "RPC_resource_safety": {
+    "verdict": "PARTIAL",
+    "streaming_deadlines_queue_retries_receipt_limits": "PASS",
+    "gap": "M5E1-02: decoded inspector JSON lacks depth check",
+    "HTTP_defaults": {
+      "bytes": 4194304,
+      "attempt_timeout_ms": 10000,
+      "total_ms": 15000,
+      "attempts": 2,
+      "active": 4,
+      "queue": 32,
+      "backoff_ms": 100,
+      "json_depth": 64
+    },
+    "graph_defaults": {
+      "nodes": 256,
+      "depth": 32,
+      "logical_calls": 800,
+      "duration_ms": 15000,
+      "concurrency": 4,
+      "aggregate_bytes_per_source": 2097152
+    },
+    "bounds_scope": "Per reused HTTP client; graph calls are logical reads, so default retries permit up to 1600 wire attempts within traversal deadline. Two observation sources each get a budget. Archive may configure 1-5 attempts. No global process-wide per-client cap.",
+    "error_bodies": "Cancelled without materializing or JSON parsing; real streaming 429 tested",
+    "alternate_paths": "All contract, reconciliation and archive RPC/HTTP reads use bounded client. Existing dormant 1Click quote client is not an NEAR RPC path and still has separate legacy response handling; not certified by M5-E bounds.",
+    "shutdown": "Host starts no payout/reconciliation background workers. HTTP total deadlines eventually cancel in-flight reads; reconcileOnce lacks exposed shutdown signal and finishes one bounded observation. No stronger immediate drain guarantee claimed."
+  },
+  "recipient": {
+    "ownership": "RECIPIENT_OWNERSHIP_NOT_VERIFIED",
+    "technical_live_recipient": "NOT VERIFIED",
+    "execution_ready": false,
+    "binding_status": "Approved recipient/token equality locally checked, but advisory result not bound to payout/attempt or durable verification freshness; no active execution consumer"
+  },
+  "Tidepool": {
+    "result": "PASS_READ_ONLY_INSPECTION",
+    "snapshot": {
+      "hash": "Bf1xdBxiAh8MqrMTcN9p5bJXAREfogcVnJZnwx65onmm",
+      "height": "278122198",
+      "network": "testnet"
+    },
+    "token": {
+      "amount": "2415864902976716900002340",
+      "block_hash": "Bf1xdBxiAh8MqrMTcN9p5bJXAREfogcVnJZnwx65onmm",
+      "block_height": 278122198,
+      "code_hash": "DgV3WsKJsGtCjNWxYzFvi599szo7oojkKXWCoGBBAHwj",
+      "locked": "0",
+      "storage_paid_at": 0,
+      "storage_usage": 187329
+    },
+    "metadata": {
+      "spec": "ft-1.0.0",
+      "name": "Tidepool Testnet USDC (no value)",
+      "symbol": "USDC",
+      "icon": null,
+      "reference": null,
+      "reference_hash": null,
+      "decimals": 6
+    },
+    "bounds": {
+      "min": "1250000000000000000000",
+      "max": "1250000000000000000000"
+    },
+    "accounts": [
+      {
+        "id": "disburse-test-contract.testnet",
+        "account": {
+          "amount": "9997589250750002699999999",
+          "block_hash": "Bf1xdBxiAh8MqrMTcN9p5bJXAREfogcVnJZnwx65onmm",
+          "block_height": 278122198,
+          "code_hash": "CJUcu5UqBYA4ZV47TJMABQJWc7MdvdaYYMNdDeB1mxcf",
+          "locked": "0",
+          "storage_paid_at": 0,
+          "storage_usage": 299843
+        },
+        "storage": {
+          "total": "1250000000000000000000",
+          "available": "0"
+        },
+        "balance": "1000000"
+      },
+      {
+        "id": "disburse-op-b966e36d.testnet",
+        "account": {
+          "amount": "9997509459348787899999999",
+          "block_hash": "Bf1xdBxiAh8MqrMTcN9p5bJXAREfogcVnJZnwx65onmm",
+          "block_height": 278122198,
+          "code_hash": "11111111111111111111111111111111",
+          "locked": "0",
+          "storage_paid_at": 0,
+          "storage_usage": 182
+        },
+        "storage": {
+          "total": "1250000000000000000000",
+          "available": "0"
+        },
+        "balance": "99000000"
+      }
+    ],
+    "recipient": "RECIPIENT_OWNERSHIP_NOT_VERIFIED",
+    "transferCompatibility": "NOT VERIFIED"
+  },
+  "execution_safeguards": {
+    "host_execution": "Disabled structurally; no worker, signer or mutation route composed",
+    "active_restricted_mode": "Explicit true mode pins old deployed code/owner/token/operator, loopback/local DB configuration and read-only DB sessions; malformed/conflicting identity rejected. Missing flag does not automatically enforce read-only DB: generic paused host may apply migrations, but still composes no execution.",
+    "policy": "Dormant pure checks; always executionEnabled false; not live spending/rate/emergency enforcement",
+    "signer_custody": "Not inspected/unlocked; live signing identities remain separate prerequisite",
+    "restart_tests": "Host/dependency fixture tests, PostgreSQL worker-process SIGKILL/restart regression, synthetic sandbox observer restart. No actual PostgreSQL server restart or live worker restart performed; no live worker exists.",
+    "network_reconnect": "Readiness rechecks network and reports false on failure; RPC cannot activate execution"
+  },
+  "monitoring": {
+    "verdict": "PARTIAL",
+    "implemented": "Fixed event schema/cardinality counters; terminal HTTP errors; authenticated dependency readiness; unauthenticated process liveness",
+    "missing": "Most lifecycle event wiring, global exporter, latency/request counts, durable gauges/alerts",
+    "redaction": "Structured monitor passes; startup exception path has M5E1-01",
+    "incident_procedures": "All requested incident categories documented; pause/write procedures grant no execution authority"
+  },
+  "payment_safety": {
+    "verdict": "PASS_FOR_REVIEWED_LOCAL_SCOPE",
+    "lease_recheck": "lease-recheck.json: 6 cases PASS",
+    "native_candidate_SHA256": "37e432600c43d5fc7d44b2d81bc9a852d5e120a7dc043c7f06f83d1e62a24ea9",
+    "native_candidate_code_hash": "4mBF2J6mE22XrTrSNo8x7xSLhzUSfNS9HkzHJeaxqwk4",
+    "candidate_bytes": 410611,
+    "authenticated_recovery": "Unresolved; no implementation introduced",
+    "trust": "Read-only trusted RPC observations, not authenticated on-chain proof; two local RPC aliases are one validator, not independent operators"
+  },
+  "tests": {
+    "Rust": {
+      "passed": 146,
+      "failed": 0,
+      "ignored": 0,
+      "doctests": 0,
+      "fmt": "PASS",
+      "clippy": "PASS",
+      "locked_WASM_build": "PASS"
+    },
+    "service": {
+      "passed": 175,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "format_typecheck_lint": "PASS",
+      "runs": "Root pnpm check and fresh isolated sandbox suite both pass; not 350 distinct tests"
+    },
+    "PostgreSQL": {
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "database": "loopback:19549/disburse_test role disburse_test"
+    },
+    "local_RPC": {
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "sandbox": {
+      "groups": 20,
+      "passed": 20,
+      "main": 10,
+      "fault": 7,
+      "migration": 2,
+      "callback_observer_overlap": 1,
+      "result_file": "sandbox/reproduction-result.json"
+    },
+    "focused_operational": {
+      "cases": 18,
+      "failed": 0,
+      "note": "Reproduction success includes two confirmed defects, not 18 safety guarantees passing"
+    },
+    "adversarial_lease_recheck": {
+      "cases": 6,
+      "result": "PASS",
+      "method": "Fresh rerun of preserved D.4 adversarial fixture against current unchanged repositories; six additional cases, not included in PG 46 count"
+    },
+    "public_RPC": {
+      "Node_direct": "unavailable; retained tidepool-readonly.json",
+      "Node_env_proxy": "unavailable; retained tidepool-proxy-readonly.json",
+      "Python_proxy_aware": "PASS; tidepool-python-readonly.json",
+      "interruptions": "No fresh required regression run interrupted; both Node public-read probes failed cleanly before evidence. No skipped tests counted as pass."
+    }
+  },
+  "findings": [
+    {
+      "id": "M5E1-01",
+      "severity": "LOW",
+      "title": "Startup error sanitization echoes untrusted RPC text and reflected URL credentials",
+      "file": "execution-service/src/host/server.ts",
+      "line": 233,
+      "related": [
+        "execution-service/src/near/rpc.ts:270",
+        "execution-service/src/host.ts:13"
+      ],
+      "expected": "Startup diagnostics exclude endpoint secrets and arbitrary provider text.",
+      "observed": "A real local status endpoint reflects a synthetic URL-path token as chain_id. NearContractReader includes it in its network-mismatch message; sanitizeHostStartupError preserves that entire message. The normal CLI prints the returned message.",
+      "reproduction": "adversarial.mjs: startup exception redaction adversarial reproduction; adversarial-results.json contains the synthetic canary only, no real secret.",
+      "impact": "Potential credential disclosure/log injection into startup log readers. The provider already sees its URL token; no private key or unrelated database secret was recovered. Startup still fails closed. Existing sanitizer behavior predates M5-E.",
+      "remediation": "Use a fixed allowlist of safe startup error codes/messages; never copy provider-controlled chain_id or raw error messages into logs. Add adversarial exception/URL-reflection regression coverage.",
+      "blocks_local_acceptance": false,
+      "blocks_controlled_testnet": true,
+      "blocks_production": true,
+      "gate_reason": "Resolve before credential-bearing operational startup; this gate does not assert a token-transfer or authorization bypass."
+    },
+    {
+      "id": "M5E1-02",
+      "severity": "LOW",
+      "title": "Recipient token inspector omits decoded JSON depth guard",
+      "file": "execution-service/src/near/recipient-preflight.ts",
+      "line": 117,
+      "expected": "Decoded token-view JSON receives the same nesting cap before parsing as other NEAR view clients.",
+      "observed": "A real HTTP query response with shallow outer JSON and byte-encoded 100-level nested JSON is accepted by TestnetInspector.view despite the shared default JSON depth of 64. The other generic and reconciliation view clients check decoded depth.",
+      "reproduction": "adversarial.mjs: actual bounded transport still accepts deeply nested encoded token JSON; adversarial-results.json records depth 100.",
+      "impact": "Declared JSON-nesting protection is incomplete on this inspection path. The 4 MiB outer streaming byte limit and request deadlines still apply; no unbounded response allocation, stack crash, false technical readiness or payment authorization was demonstrated. nativeRecipientPreflight metadata shape validation rejects this array.",
+      "remediation": "Apply decoded UTF-8/depth validation consistently before exactJson in TestnetInspector.view, with actual-transport encoded-payload tests.",
+      "blocks_local_acceptance": false,
+      "blocks_controlled_testnet": true,
+      "blocks_production": true,
+      "gate_reason": "Close the claimed resource-hardening coverage gap before integrating this preflight into an approved experiment."
+    }
+  ],
+  "unresolved_prerequisites": [
+    {
+      "id": "RECIPIENT_OWNERSHIP_NOT_VERIFIED",
+      "kind": "operational prerequisite",
+      "details": "No controlled recipient supplied; advisory claims never become cryptographically verified. No nonce/session/FullAccess-key verification is integrated."
+    },
+    {
+      "id": "PREFLIGHT_NOT_EXECUTION_AUTHORITY",
+      "kind": "integration prerequisite",
+      "details": "Result lacks payout/attempt binding, freshness expiry and reusable authenticated attestation. executionReady is always false and there is no authorizing consumer. Future execution must independently bind and refresh all observations."
+    },
+    {
+      "id": "DORMANT_POLICY",
+      "kind": "integration prerequisite",
+      "details": "Safeguards are a pure inactive local assessment, not wired dispatch controls. No worker/signer exists in host."
+    },
+    {
+      "id": "TOKEN_TRANSFER_UNPROVEN",
+      "kind": "experiment objective",
+      "details": "Tidepool metadata/storage match. Real transfer/callback compatibility must be measured in a separately approved isolated experiment; proven compatibility is not a prerequisite to proposing that experiment."
+    },
+    {
+      "id": "MONITORING_PARTIAL",
+      "kind": "operational prerequisite",
+      "details": "No global exporter, latency histograms, backlog/lease/TransferPending gauges or automated alerts. Manual evidence capture and named stop owner could suffice for a one-attempt isolated experiment."
+    },
+    {
+      "id": "AUTHENTICATED_RECOVERY_UNRESOLVED",
+      "kind": "known design boundary",
+      "details": "No off-chain decision can settle or release on-chain funds. Unknown outcome must remain locked; no automatic resend."
+    }
+  ],
+  "next_milestone": "Small local-only remediation of startup sanitization and inspector decoded JSON guard, focused independent recheck, then separate controlled-experiment plan with verified recipient/custody/limits/monitoring and explicit per-transaction approval.",
+  "restrictions": {
+    "application_source_modified": false,
+    "schema_modified": false,
+    "configuration_modified": false,
+    "public_transactions": 0,
+    "live_workers_started": 0,
+    "git_mutations": 0
+  },
+  "evidence_files": [
+    "baseline.json",
+    "source-comparison.json",
+    "adversarial.mjs",
+    "adversarial-results.json",
+    "lease-recheck.mjs",
+    "lease-recheck.json",
+    "rust.log",
+    "service-check.log",
+    "migrations.log",
+    "sandbox/",
+    "inspect-token.py",
+    "tidepool-python-readonly.json",
+    "tidepool-readonly.json",
+    "tidepool-proxy-readonly.json"
+  ],
+  "cleanup": {
+    "temporary_PostgreSQL_stopped": true,
+    "port": 19549,
+    "sandbox_stopped_by_wrapper_finally": true,
+    "production_processes_changed": false
+  },
+  "reproduction_commands": {
+    "rust": [
+      "cargo fmt --all -- --check",
+      "cargo clippy --locked --all-targets -- -D warnings",
+      "cargo test --locked",
+      "cargo near build non-reproducible-wasm --locked"
+    ],
+    "service": "pnpm check (cwd execution-service)",
+    "local_database": "python3 /tmp/m5e1-db.py (preserved template docs/evidence/milestone-5/m5d2/start-test-db.py; substitute m5e1 and 19549)",
+    "sandbox": "DISBURSE_TEST_DATABASE_URL=postgresql://disburse_test@127.0.0.1:19549/disburse_test python3 tests/sandbox/run_reconciliation.py (cwd /tmp/m5e1-sandbox)",
+    "focused": "node docs/evidence/milestone-5/m5e1-independent-review/adversarial.mjs",
+    "lease": "node docs/evidence/milestone-5/m5e1-independent-review/lease-recheck.mjs",
+    "public_readonly": "python3 docs/evidence/milestone-5/m5e1-independent-review/inspect-token.py"
+  }
+}

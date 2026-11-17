@@ -1,0 +1,199 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.60s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.33s
+     Running unittests src/lib.rs (target/debug/build/disburse-contract/cc42c154f6e1dbb1/out/disburse_contract-cc42c154f6e1dbb1)
+
+running 146 tests
+test native::tests::authentic_deployed_bytes_deserialize_and_bootstrap_preserves_every_legacy_entry ... ok
+test native::tests::bootstrap_rejects_structurally_valid_but_changed_legacy_prefixes ... ok
+test native::tests::bootstrap_rejects_malformed_state_unpaused_and_wrong_deployment_identity ... ok
+test native::tests::bootstrap_rejects_unauthorized_repeat_incompatible_hash_and_bounds ... ok
+test native::tests::duplicate_pending_attempts_unknown_payout_and_cross_payout_auth_reject ... ok
+test native::tests::execution_tests::callback_after_failed_attempt_cannot_later_settle ... ok
+test native::tests::altered_binding_and_detached_sidecar_fail_closed ... ok
+test native::tests::execution_tests::duplicate_storage_callback_cannot_schedule_a_second_token_call ... ok
+test native::tests::execution_tests::cancelling_campaign_does_not_block_a_dispatched_success_or_release_other_reservations ... ok
+test native::tests::execution_tests::definite_transfer_failure_retains_reservation_and_cannot_retry_or_release ... ok
+test native::tests::all_legacy_native_mutation_bypasses_are_rejected ... ok
+test native::tests::execution_tests::exact_storage_and_token_promises_bind_deposit_gas_recipient_amount ... ok
+test native::tests::accounting_boundary_overflow_counter_overflow_and_multiple_payouts ... ok
+test native::tests::execution_tests::expired_authorization_is_rechecked_after_storage_query ... ok
+test native::tests::execution_tests::low_prepaid_gas_or_native_balance_fails_before_consumption ... ok
+test native::tests::execution_tests::insufficient_storage_callback_gas_does_not_persist_transfer_pending ... ok
+test native::tests::execution_tests::large_payout_id_is_preserved_in_binding_memo_and_callback ... ok
+test native::tests::execution_tests::successful_unit_result_has_no_fabricated_receipt_hash_and_failure_clears_storage_hash ... ok
+test native::tests::execution_tests::legacy_guards_hold_after_transfer_and_all_native_outcomes ... ok
+test native::tests::execution_tests::malformed_or_oversized_storage_result_goes_to_locked_manual_review ... ok
+test native::tests::execution_tests::successful_callback_settles_once_and_keeps_actual_runtime_evidence ... ok
+test native::tests::execution_tests::private_storage_and_transfer_callbacks_reject_all_foreign_predecessors ... ok
+test native::tests::execution_tests::stale_callback_identities_and_binding_corruption_preserve_lock ... ok
+test native::tests::execution_tests::pause_expiry_or_role_revocation_blocks_dispatch_but_not_committed_transfer_completion ... ok
+test native::tests::explicit_executor_can_be_reserver_with_independent_approval_only ... ok
+test native::tests::expiry_and_invalid_ttl_reject_without_consumption ... ok
+test native::tests::execution_tests::two_callbacks_reload_same_campaign_accounting_instead_of_overwriting ... ok
+test native::tests::explicit_native_binding_and_attempt_records_reject_corruption ... ok
+test native::tests::execution_tests::missing_or_multiple_storage_results_and_invalid_balance_keep_review_locked ... ok
+test native::tests::execution_tests::unregistered_storage_and_failed_query_never_schedule_transfer ... ok
+test native::tests::identical_approval_is_idempotent_conflicting_approval_is_rejected ... ok
+test native::tests::independent_approval_preflight_schedules_only_storage_without_accounting_change ... ok
+test native::tests::json_binding_schema_uses_decimal_strings_and_no_public_success_override ... ok
+test native::tests::native_and_legacy_idempotency_cannot_convert_modes ... ok
+test native::tests::immutable_recipient_amount_network_token_decimals_and_campaign_are_validated ... ok
+test native::tests::nonempty_legacy_payout_indexes_failure_settlement_and_resolution_survive_bootstrap ... ok
+test native::tests::storage_prefixes_are_unique_and_legacy_borsh_layout_is_unchanged ... ok
+test native::tests::recipient_allowlist_exclusions_and_evidence_immutability ... ok
+test native::tests::pause_campaign_cancel_and_token_removal_cannot_free_native_reservation ... ok
+test native::tests::revocation_is_safe_and_new_approval_has_fresh_identity ... ok
+test native::tests::root_self_and_dual_native_role_grants_reject ... ok
+test native::tests::role_revocation_blocks_approved_attempt_and_owner_can_revoke_while_paused ... ok
+test native::tests::pending_manual_review_and_terminal_states_cannot_approve_revoke_or_restart ... ok
+test native::tests::uninitialized_and_unknown_schema_fail_closed ... ok
+test native::tests::unknown_config_version_and_new_id_collisions_fail_before_reservation ... ok
+test native::tests::execution_tests::unexpected_transfer_return_or_result_count_is_uncertain_never_spent ... ok
+test native::tests::two_campaigns_share_token_but_not_reservation_or_authorization ... ok
+test tests::accounting_underflow_and_overflow_reject_settlement_without_partial_writes ... ok
+test tests::campaign_ids_are_unique_and_incrementing ... ok
+test tests::campaign_creator_does_not_receive_privileged_roles_automatically ... ok
+test tests::administrator_approves_draft_and_owner_is_implicit_administrator ... ok
+test tests::administrator_and_owner_can_create_payouts ... ok
+test native::tests::unauthorized_owner_admin_operator_and_self_approval_are_denied ... ok
+test tests::cannot_create_campaign_while_contract_is_paused - should panic ... ok
+test tests::creates_campaign_with_zero_initial_funding ... ok
+test tests::approved_campaign_accepts_multiple_deposits_and_reports_atomic_balances ... ok
+test tests::duplicate_role_grants_are_idempotent_and_absent_revocations_fail ... ok
+test tests::administrator_can_cancel_active_and_paused_campaigns ... ok
+test tests::deposits_exceeding_budget_or_overflowing_funded_are_rejected_unchanged ... ok
+test tests::definitive_failure_from_executing_and_pending_retains_reservation_and_reason ... ok
+test tests::completed_and_cancelled_campaigns_cannot_transition ... ok
+test tests::creator_can_cancel_draft_and_approved_campaigns ... ok
+test tests::creator_cannot_cancel_active_or_paused_campaigns ... ok
+test tests::duplicate_evidence_reference_is_rejected_and_does_not_consume_execution_key ... ok
+test tests::every_non_active_campaign_status_rejects_payout_creation ... ok
+test tests::exact_available_balance_can_be_reserved_and_spent_is_counted ... ok
+test tests::failure_evidence_persists_all_fields_and_is_scoped_to_its_payout ... ok
+test tests::global_pause_blocks_lifecycle_and_unpause_preserves_campaign_status ... ok
+test tests::failure_and_manual_review_are_available_during_pause_but_submission_is_blocked ... ok
+test tests::execution_reference_validation_is_strictly_unique_even_for_same_payout ... ok
+test tests::global_pause_returns_funding_without_changing_campaign_accounting ... ok
+test tests::initializes_with_caller_as_owner ... ok
+test tests::failed_payout_release_requires_verifier_and_failure_evidence ... ok
+test tests::global_pause_blocks_reservations_without_mutation ... ok
+test tests::global_pause_blocks_starting_execution_and_nonexistent_payouts_fail ... ok
+test tests::identical_idempotent_retry_does_not_reserve_or_emit_again ... ok
+test tests::idempotency_rejects_each_changed_request_field_and_blank_keys ... ok
+test tests::idempotency_key_payload_mismatch_and_campaign_scope ... ok
+test tests::invalid_lifecycle_reasons_and_terminal_restarts_are_rejected_without_events ... ok
+test tests::invalid_campaign_amount_token_and_balance_are_rejected ... ok
+test tests::malformed_zero_and_nonexistent_campaign_deposits_return_all_tokens ... ok
+test tests::malformed_recovery_evidence_and_accounting_leave_state_unchanged ... ok
+test tests::funding_message_rejects_ambiguous_invalid_and_trailing_json_without_side_effects ... ok
+test tests::manual_review_from_execution_states_keeps_reservation_and_reference ... ok
+test tests::manual_review_execution_confirmation_preserves_reservation_then_settles_normally ... ok
+test tests::non_administrator_cannot_approve_and_campaign_remains_draft ... ok
+test tests::non_owner_cannot_change_token_allowlist ... ok
+test tests::non_operator_cannot_activate_campaign ... ok
+test tests::non_owner_cannot_grant_or_revoke_roles ... ok
+test tests::non_owner_cannot_pause - should panic ... ok
+test tests::multiple_recoveries_preserve_aggregate_accounting_and_view_history ... ok
+test tests::non_owner_cannot_unpause_contract ... ok
+test tests::nonexistent_campaign_and_invalid_transition_fail_without_state_changes ... ok
+test tests::manual_review_non_settlement_releases_only_reserved_funds ... ok
+test tests::nonexistent_campaign_and_available_balance_underflow_are_rejected ... ok
+test tests::only_approved_campaigns_accept_funding ... ok
+test tests::only_executing_payout_can_be_marked_pending_verification ... ok
+test tests::operator_activates_approved_campaign_but_not_draft ... ok
+test tests::owner_administrative_authority_cannot_be_revoked ... ok
+test tests::only_pending_verification_can_settle_and_failed_manual_review_keep_reservations ... ok
+test tests::owner_can_pause_and_unpause ... ok
+test tests::owner_manages_persistent_token_allowlist_and_duplicate_add_is_idempotent ... ok
+test tests::owner_role_cannot_be_granted_and_owner_cannot_self_grant ... ok
+test tests::operator_or_administrator_can_pause_and_resume_active_campaign ... ok
+test tests::operator_reserves_exact_input_and_views_use_u128_strings ... ok
+test tests::owner_can_grant_administrator_operator_and_verifier_roles ... ok
+test tests::operator_admin_and_owner_can_transition_but_verifier_cannot ... ok
+test tests::rejects_empty_campaign_title - should panic ... ok
+test tests::only_explicit_verifiers_can_settle ... ok
+test tests::rejects_zero_campaign_budget - should panic ... ok
+test tests::payout_id_overflow_fails_before_any_persistent_write ... ok
+test tests::role_and_campaign_events_follow_nep297_envelope ... ok
+test tests::rejected_non_active_campaign_and_malformed_accounting_do_not_create_payout ... ok
+test tests::recovery_evidence_and_nonsettlement_execution_identity_share_settlement_replay_indexes ... ok
+test tests::reserved_payout_starts_execution_with_unique_reference_and_event ... ok
+test tests::removing_token_preserves_historical_funding_and_blocks_future_deposits ... ok
+test tests::payout_rejections_preserve_campaign_ids_records_and_events ... ok
+test tests::prior_execution_confirmation_cannot_later_be_released_as_non_settlement ... ok
+test tests::wrong_campaign_token_contract_is_rejected ... ok
+test types::tests::campaign_round_trips_borsh_and_json ... ok
+test types::tests::campaign_status_round_trips_borsh_and_json ... ok
+test types::tests::chain_id_deserialization_rejects_empty_identifiers ... ok
+test types::tests::chain_identifiers_reject_empty_and_whitespace ... ok
+test types::tests::destination_represents_an_evm_recipient_without_assuming_support ... ok
+test types::tests::external_token_identifiers_reject_empty_and_whitespace ... ok
+test types::tests::near_token_identity_uses_validated_account_id ... ok
+test types::tests::payout_destination_rejects_blank_recipient_during_json_deserialization ... ok
+test types::tests::payout_round_trips_borsh_and_json ... ok
+test types::tests::payout_status_round_trips_borsh_and_json ... ok
+test types::tests::recipient_address_constructor_preserves_nonblank_opaque_value ... ok
+test types::tests::recipient_address_rejects_empty_values_during_json_and_borsh_deserialization ... ok
+test types::tests::recipient_address_round_trips_json_and_borsh ... ok
+test types::tests::recipient_round_trips_borsh_and_json ... ok
+test tests::unsupported_predecessor_cannot_spoof_allowlisted_token_in_message ... ok
+test types::tests::settlement_evidence_records_verifier_assertion ... ok
+test types::tests::token_amount_deserialization_rejects_invalid_nested_token_id ... ok
+test types::tests::token_amount_keeps_atomic_value_decimals_and_token_identity ... ok
+test types::tests::reservation_released_status_appends_without_reordering_borsh_variants ... ok
+test types::tests::token_id_deserialization_rejects_empty_external_identifiers ... ok
+test types::tests::user_role_round_trips_borsh_and_json ... ok
+test tests::verifier_cannot_self_grant_verifier_role ... ok
+test tests::settlement_accepts_any_matching_execution_confirmed_record_in_payout_history ... ok
+test tests::settlement_replay_is_global_and_event_index_distinguishes_logs ... ok
+test tests::settlement_reference_cannot_be_reused_for_recovery_and_recovery_identity_is_not_consumed_on_failure ... ok
+test tests::verifier_settlement_matches_payout_and_moves_reserved_input_to_spent ... ok
+test tests::settlement_rejects_mismatched_or_malformed_evidence_without_consuming_it ... ok
+
+test result: ok. 146 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.40s
+
+   Doc-tests disburse_contract
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+• Collecting cargo project metadata...
+• done
+
+• Checking rustc version...
+INFO: contract's near-sdk targets protocol version 85; rustc 1.100.0 accepted (bulk-memory opcodes supported by nearcore VM)
+• done
+
+• Checking the host environment...
+• done
+
+• Generating ABI
+ │     Finished `dev` profile [unoptimized] target(s) in 0.20s
+• Extracting ABI...
+• done
+
+• Compressing ABI to be embedded..
+• done
+
+• Building contract
+ │     Finished `release` profile [optimized] target(s) in 0.36s
+
+Modification timestamps of:
+ |    "/home/topg/disburse/target/wasm32-unknown-unknown/release/disburse_contract.wasm" = SystemTime { tv_sec: 1794804420, tv_nsec: 221775698 }
+ |    "/home/topg/disburse/target/near/disburse_contract.wasm" = SystemTime { tv_sec: 1794803354, tv_nsec: 116060165 }
+
+• Running an optimize for size post-step with wasm-opt --enable-nontrapping-float-to-int --enable-bulk-memory...
+    Finished wasm-opt -O in 1s 496ms
+• done
+
+✓ Contract successfully built! (in CARGO_NEAR_BUILD_ENVIRONMENT=host)
+     -                Binary: /home/topg/disburse/target/near/disburse_contract.wasm
+     -                  Size: 410.6 KB (410611 bytes)
+     - SHA-256 checksum hex : 37e432600c43d5fc7d44b2d81bc9a852d5e120a7dc043c7f06f83d1e62a24ea9
+     - SHA-256 checksum bs58: 4mBF2J6mE22XrTrSNo8x7xSLhzUSfNS9HkzHJeaxqwk4
+     -                   ABI: /home/topg/disburse/target/near/disburse_contract_abi.json
+     -          Embedded ABI: /home/topg/disburse/target/near/disburse_contract_abi.zst
+    Finished cargo near build in 3s
+Here is the console command if you ever need to re-run it again:
+cargo near build non-reproducible-wasm --locked

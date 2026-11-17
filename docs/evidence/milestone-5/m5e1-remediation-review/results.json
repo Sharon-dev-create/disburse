@@ -1,0 +1,37 @@
+{
+  "verdict": "PASS",
+  "scope": "Two M5-E.1 fixes only; separate-agent review, not third-party certification",
+  "date": "2026-11-17",
+  "revision": "b7e466df0c5a18bf15b38b0fa79ff3dc317958f8",
+  "inspected_sha256": {
+    "execution-service/src/host/server.ts": "71c7ffde40b3889a1d644c6fe3f8da5b78af46f7f52daf1c9e3f14198a5c87d6",
+    "execution-service/src/near/rpc.ts": "0a7d4993b4b3799f446fc7014fca9a0ed1d2bce9b731bb7359d5b7f0990dfff3",
+    "execution-service/src/near/recipient-preflight.ts": "e575254cbd85283a3981ead9c3bde862f363195690a5c8ea08c9824b250bed0d",
+    "execution-service/tests/operational-audit-regressions.test.ts": "4dd216be23bbe1361a858377452b18bda018d79a8a11da0a0f8f06165f602830"
+  },
+  "changed_tracked_files": [
+    "execution-service/src/host/server.ts",
+    "execution-service/src/near/recipient-preflight.ts",
+    "execution-service/src/near/rpc.ts"
+  ],
+  "unexpected_tracked_changes": [],
+  "new_focused_test_count": 11,
+  "focused_rerun": "11 pass, 0 fail/skipped/cancelled",
+  "independent_probe_groups": 7,
+  "independent_probe_failures": 0,
+  "findings": {
+    "M5E1-01": "CLOSED for reviewed host startup, direct network mismatch, API/readiness and structured monitoring paths",
+    "M5E1-02": "CLOSED; actual HTTP default depth 64 boundary verified for array/object/mixed nesting, configured depth 4 boundary covered by independently rerun new tests"
+  },
+  "new_findings": [],
+  "remaining_impact": [
+    "No cryptographic recipient ownership verifier or live recipient was established.",
+    "No actual Tidepool transfer compatibility evidence or Testnet execution approval.",
+    "Monitoring remains partial and policies dormant.",
+    "Read-only API exposes generic near_rpc_failure with 502/503 classification; startup preserves ten RPC kinds/retryability while intentionally dropping raw status/cause/provider details.",
+    "NearRpcError itself is not a universal sanitizer; arbitrary future raw error logging must continue to use a safe diagnostic boundary.",
+    "No independent claim of completed full suites until root fixture finishes; test counts reported by root are separately referenced, not invented by reviewer."
+  ],
+  "payment_safety": "Only three permitted source files changed; Rust, migrations, lease repositories, authorization and execution composition unchanged.",
+  "controlled_testnet_decision": "NOT READY; existing separate operational prerequisites remain"
+}

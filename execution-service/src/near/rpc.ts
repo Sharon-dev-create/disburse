@@ -22,6 +22,7 @@ export { NearRpcError } from "./errors.ts";
 
 /** Read-only NEAR JSON-RPC transport. No broadcast or signer interface. */
 export class HttpNearRpcTransport implements NearRpcTransport {
+  readonly jsonDepthLimit: number;
   private requestId = 0;
   private readonly endpoint: string;
   private readonly http: BoundedReadHttp;
@@ -42,6 +43,7 @@ export class HttpNearRpcTransport implements NearRpcTransport {
       );
     this.endpoint = url.toString();
     this.http = new BoundedReadHttp(fetchImpl, { ...limits, timeoutMs });
+    this.jsonDepthLimit = this.http.limits.jsonDepth;
   }
   async read(
     method: "status" | "query" | "block",
@@ -266,7 +268,7 @@ export class NearContractReader implements ContractReader {
     if (actual !== this.config.networkId) {
       throw new NearRpcError(
         "network-mismatch",
-        `Configured NEAR network ${this.config.networkId} does not match RPC network ${actual}`,
+        "Configured NEAR network does not match RPC network",
       );
     }
   }

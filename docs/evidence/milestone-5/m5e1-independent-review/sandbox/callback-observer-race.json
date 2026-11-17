@@ -1,0 +1,57 @@
+{
+  "result": "PASS",
+  "actual_receipts_executed": true,
+  "observerBeforeFinality": "PreflightPending",
+  "optimisticBefore": {
+    "binding": {
+      "version": 1,
+      "domain": "disburse/native-nep141/v1",
+      "contract_id": "disburse-test-contract.testnet",
+      "network": "near:testnet",
+      "campaign_id": 18,
+      "payout_id": 20,
+      "token_id": "usdc.tidepool-sandbox.testnet",
+      "recipient_id": "recipient.testnet",
+      "amount": "100000",
+      "decimals": 6,
+      "reservation_actor": "operator.testnet",
+      "reserved_at_ns": "1794934651200248300",
+      "recipient_evidence_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "binding_hash": "ebdc9bf7f0e0371537554b88445a09da82737dc2d83e4a2088c4dc39befd5802",
+    "status": "TransferPending",
+    "next_attempt_id": 2,
+    "current_authorization_id": "m5d-race:20",
+    "current_attempt_id": 1,
+    "updated_at_ns": "1794934661088766590"
+  },
+  "classification": "ObservedSucceededSettled",
+  "identity": {
+    "chainId": "disburse-m5c-local",
+    "contractId": "disburse-test-contract.testnet",
+    "campaignId": "18",
+    "payoutId": "20",
+    "attemptId": "1",
+    "authorizationId": "m5d-race:20",
+    "bindingHash": "ebdc9bf7f0e0371537554b88445a09da82737dc2d83e4a2088c4dc39befd5802",
+    "tokenId": "usdc.tidepool-sandbox.testnet",
+    "recipientId": "recipient.testnet",
+    "amount": "100000",
+    "executorId": "executor.testnet"
+  },
+  "locator": {
+    "transactionHash": "CoogK3VnsPqkyow6cxsB2WghZ8uTgtfy52CCSN89mehZ",
+    "senderId": "executor.testnet"
+  },
+  "transferReceiptId": "6N7HNRdNRCaB2CcYnTChtNjoAwfNo7dXSVLebz5kf3tC",
+  "callbackReceiptId": "9GHdZjHPrjDztwUv2FZ7jtSSLYeW4xagB6VeU6Ls4TYE",
+  "accounting": {
+    "campaign_id": 18,
+    "budget": "1000000",
+    "funded": "1000000",
+    "reserved": "0",
+    "spent": "100000",
+    "available": "900000"
+  },
+  "limitation": "Only C callback mutates chain accounting. Observer begins before settlement and waits FINAL; no recovery mutation exists to race."
+}

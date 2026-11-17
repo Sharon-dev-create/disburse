@@ -1,0 +1,124 @@
+diff --git a/execution-service/src/host/server.ts b/execution-service/src/host/server.ts
+index c74ad94..e0da745 100644
+--- a/execution-service/src/host/server.ts
++++ b/execution-service/src/host/server.ts
+@@ -1,3 +1,4 @@
++import { NearRpcError } from "../near/errors.ts";
+ import { operationalReadiness } from "../operations/monitoring.ts";
+ import type { Server } from "node:http";
+ import type { Pool } from "pg";
+@@ -216,6 +217,13 @@ function boundPort(server: Server): number {
+ }
+ 
+ function sanitizeHostStartupError(error: unknown): Error {
++  if (error instanceof NearRpcError) {
++    // Preserve classification, never provider text, endpoint credentials or causes.
++    return new NearRpcError(
++      error.kind,
++      `NEAR RPC startup failed (${error.kind}).`,
++    );
++  }
+   if (error instanceof Error) {
+     const message = error.message;
+     const rawCode = (error as { code?: unknown }).code;
+@@ -230,8 +238,16 @@ function sanitizeHostStartupError(error: unknown): Error {
+         "PostgreSQL startup failed; connection details are redacted.",
+       );
+     }
++    if (
++      message ===
++      "Configured contract must be paused for read-only host startup."
++    ) {
++      return new Error(
++        "Configured contract must be paused for read-only host startup.",
++      );
++    }
+     if (/near|rpc|network-mismatch|paused|contract/i.test(message)) {
+-      return new Error(message);
++      return new Error("NEAR RPC or contract startup verification failed.");
+     }
+     return new Error("Execution service startup failed.");
+   }
+diff --git a/execution-service/src/near/recipient-preflight.ts b/execution-service/src/near/recipient-preflight.ts
+index b666afc..d9e0b46 100644
+--- a/execution-service/src/near/recipient-preflight.ts
++++ b/execution-service/src/near/recipient-preflight.ts
+@@ -1,9 +1,11 @@
++import { assertJsonDepth, httpLimits } from "./http.ts";
+ import { HttpNearRpcTransport } from "./rpc.ts";
+ import { NearRpcError } from "./errors.ts";
+ import { validateRecipient } from "../providers/recipient.ts";
+ import { object, uint, exactJson } from "../reconciliation/evidence.ts";
+ export const TIDEPOOL = "usdc.tidepool-sandbox.testnet";
+ export interface InspectionRpc {
++  readonly jsonDepthLimit?: number;
+   read(
+     method: "status" | "query" | "block",
+     params: Readonly<Record<string, unknown>> | readonly unknown[],
+@@ -30,6 +32,7 @@ export interface ReadEvidence {
+ export class TestnetInspector {
+   readonly evidence: ReadEvidence[] = [];
+   private readonly rpc: InspectionRpc;
++  private readonly jsonDepthLimit: number;
+   private readonly endpoint: string;
+   constructor(
+     endpoint: string,
+@@ -40,6 +43,9 @@ export class TestnetInspector {
+       throw new Error("Invalid inspection endpoint");
+     this.endpoint = url.origin;
+     this.rpc = rpc;
++    this.jsonDepthLimit = httpLimits({
++      jsonDepth: rpc.jsonDepthLimit ?? 64,
++    }).jsonDepth;
+   }
+   async snapshot(): Promise<Snapshot> {
+     const status = object(await this.rpc.read("status", []));
+@@ -112,9 +118,18 @@ export class TestnetInspector {
+       !result.result.every((x) => Number.isInteger(x) && x >= 0 && x <= 255)
+     )
+       throw new NearRpcError("malformed", "Invalid token view bytes");
++    let decoded: string;
++    try {
++      decoded = new TextDecoder("utf-8", { fatal: true }).decode(
++        Buffer.from(result.result),
++      );
++    } catch {
++      throw new NearRpcError("malformed", "Invalid token view encoding");
++    }
++    assertJsonDepth(decoded, this.jsonDepthLimit);
+     let value: unknown;
+     try {
+-      value = exactJson(Buffer.from(result.result).toString("utf8"));
++      value = exactJson(decoded);
+     } catch {
+       throw new NearRpcError("malformed", "Invalid token view JSON");
+     }
+diff --git a/execution-service/src/near/rpc.ts b/execution-service/src/near/rpc.ts
+index 5e3cf70..675751b 100644
+--- a/execution-service/src/near/rpc.ts
++++ b/execution-service/src/near/rpc.ts
+@@ -22,6 +22,7 @@ export { NearRpcError } from "./errors.ts";
+ 
+ /** Read-only NEAR JSON-RPC transport. No broadcast or signer interface. */
+ export class HttpNearRpcTransport implements NearRpcTransport {
++  readonly jsonDepthLimit: number;
+   private requestId = 0;
+   private readonly endpoint: string;
+   private readonly http: BoundedReadHttp;
+@@ -42,6 +43,7 @@ export class HttpNearRpcTransport implements NearRpcTransport {
+       );
+     this.endpoint = url.toString();
+     this.http = new BoundedReadHttp(fetchImpl, { ...limits, timeoutMs });
++    this.jsonDepthLimit = this.http.limits.jsonDepth;
+   }
+   async read(
+     method: "status" | "query" | "block",
+@@ -266,7 +268,7 @@ export class NearContractReader implements ContractReader {
+     if (actual !== this.config.networkId) {
+       throw new NearRpcError(
+         "network-mismatch",
+-        `Configured NEAR network ${this.config.networkId} does not match RPC network ${actual}`,
++        "Configured NEAR network does not match RPC network",
+       );
+     }
+   }

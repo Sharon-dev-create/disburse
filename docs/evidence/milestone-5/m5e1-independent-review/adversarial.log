@@ -1,0 +1,111 @@
+[
+  {
+    "name": "real contract and evidence transports reject decompressed/chunked oversized responses",
+    "status": "PASS",
+    "evidence": {
+      "variants": 4
+    }
+  },
+  {
+    "name": "real slow stream deadline aborts connection and releases permit",
+    "status": "PASS",
+    "evidence": {
+      "elapsedMs": 107.27032099999997
+    }
+  },
+  {
+    "name": "queue cancellation saturation and reuse with real HTTP",
+    "status": "PASS",
+    "evidence": null
+  },
+  {
+    "name": "real 429 retry budget and unread error body cancellation",
+    "status": "PASS",
+    "evidence": {
+      "wireRequests": 3
+    }
+  },
+  {
+    "name": "state changing RPC cannot enter either retry transport",
+    "status": "PASS",
+    "evidence": null
+  },
+  {
+    "name": "receipt node depth duplicate missing references and incomplete evidence fail closed",
+    "status": "PASS",
+    "evidence": null
+  },
+  {
+    "name": "graph call byte duration limits and observer cancellation",
+    "status": "PASS",
+    "evidence": null
+  },
+  {
+    "name": "wrong recipient network fails before readiness",
+    "status": "PASS",
+    "evidence": null
+  },
+  {
+    "name": "token identity and approved recipient mismatch fail closed",
+    "status": "PASS",
+    "evidence": null
+  },
+  {
+    "name": "missing storage and RPC outage fail closed",
+    "status": "PASS",
+    "evidence": null
+  },
+  {
+    "name": "positive technical results and stale advisory ownership cannot authorize cross payout execution",
+    "status": "PASS",
+    "evidence": {
+      "bindingLimitation": "No payout ID, expiry or authenticated ownership result; advisory only; no execution consumer"
+    }
+  },
+  {
+    "name": "missing and malformed startup configuration fails closed",
+    "status": "PASS",
+    "evidence": null
+  },
+  {
+    "name": "authenticated readiness degrades dependencies and mutation routes reject",
+    "status": "PASS",
+    "evidence": null
+  },
+  {
+    "name": "monitor structured schema discards bearer key database and exception canaries",
+    "status": "PASS",
+    "evidence": null
+  },
+  {
+    "name": "startup exception redaction adversarial reproduction",
+    "status": "PASS",
+    "evidence": {
+      "confirmedFinding": "M5E1-01",
+      "syntheticCanaryReflected": true,
+      "observed": "Configured NEAR network testnet does not match RPC network AUDIT_URL_TOKEN_CANARY"
+    }
+  },
+  {
+    "name": "JSON nesting bypass in inspector inner token payload reproduction",
+    "status": "PASS",
+    "evidence": {
+      "observed": "100 decoded JSON levels accepted; outer byte-array depth remains small",
+      "confirmedFinding": "M5E1-02"
+    }
+  },
+  {
+    "name": "actual bounded transport still accepts deeply nested encoded token JSON",
+    "status": "PASS",
+    "evidence": {
+      "confirmedFinding": "M5E1-02",
+      "realHTTP": true,
+      "depth": 100
+    }
+  },
+  {
+    "name": "forged execution authorization cannot produce positive reconciliation evidence",
+    "status": "PASS",
+    "evidence": null
+  }
+]

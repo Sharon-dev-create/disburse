@@ -1,3 +1,4 @@
+import { NearRpcError } from "../near/errors.ts";
 import { operationalReadiness } from "../operations/monitoring.ts";
 import type { Server } from "node:http";
 import type { Pool } from "pg";
@@ -216,6 +217,13 @@ function boundPort(server: Server): number {
 }
 
 function sanitizeHostStartupError(error: unknown): Error {
+  if (error instanceof NearRpcError) {
+    // Preserve classification, never provider text, endpoint credentials or causes.
+    return new NearRpcError(
+      error.kind,
+      `NEAR RPC startup failed (${error.kind}).`,
+    );
+  }
   if (error instanceof Error) {
     const message = error.message;
     const rawCode = (error as { code?: unknown }).code;
@@ -230,8 +238,16 @@ function sanitizeHostStartupError(error: unknown): Error {
         "PostgreSQL startup failed; connection details are redacted.",
       );
     }
+    if (
+      message ===
+      "Configured contract must be paused for read-only host startup."
+    ) {
+      return new Error(
+        "Configured contract must be paused for read-only host startup.",
+      );
+    }
     if (/near|rpc|network-mismatch|paused|contract/i.test(message)) {
-      return new Error(message);
+      return new Error("NEAR RPC or contract startup verification failed.");
     }
     return new Error("Execution service startup failed.");
   }

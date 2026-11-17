@@ -1,9 +1,11 @@
+import { assertJsonDepth, httpLimits } from "./http.ts";
 import { HttpNearRpcTransport } from "./rpc.ts";
 import { NearRpcError } from "./errors.ts";
 import { validateRecipient } from "../providers/recipient.ts";
 import { object, uint, exactJson } from "../reconciliation/evidence.ts";
 export const TIDEPOOL = "usdc.tidepool-sandbox.testnet";
 export interface InspectionRpc {
+  readonly jsonDepthLimit?: number;
   read(
     method: "status" | "query" | "block",
     params: Readonly<Record<string, unknown>> | readonly unknown[],
@@ -30,6 +32,7 @@ export interface ReadEvidence {
 export class TestnetInspector {
   readonly evidence: ReadEvidence[] = [];
   private readonly rpc: InspectionRpc;
+  private readonly jsonDepthLimit: number;
   private readonly endpoint: string;
   constructor(
     endpoint: string,
@@ -40,6 +43,9 @@ export class TestnetInspector {
       throw new Error("Invalid inspection endpoint");
     this.endpoint = url.origin;
     this.rpc = rpc;
+    this.jsonDepthLimit = httpLimits({
+      jsonDepth: rpc.jsonDepthLimit ?? 64,
+    }).jsonDepth;
   }
   async snapshot(): Promise<Snapshot> {
     const status = object(await this.rpc.read("status", []));
@@ -112,9 +118,18 @@ export class TestnetInspector {
       !result.result.every((x) => Number.isInteger(x) && x >= 0 && x <= 255)
     )
       throw new NearRpcError("malformed", "Invalid token view bytes");
+    let decoded: string;
+    try {
+      decoded = new TextDecoder("utf-8", { fatal: true }).decode(
+        Buffer.from(result.result),
+      );
+    } catch {
+      throw new NearRpcError("malformed", "Invalid token view encoding");
+    }
+    assertJsonDepth(decoded, this.jsonDepthLimit);
     let value: unknown;
     try {
-      value = exactJson(Buffer.from(result.result).toString("utf8"));
+      value = exactJson(decoded);
     } catch {
       throw new NearRpcError("malformed", "Invalid token view JSON");
     }
