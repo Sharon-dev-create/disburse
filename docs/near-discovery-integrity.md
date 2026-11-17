@@ -98,8 +98,8 @@ FastNear's public documentation describes finalized block queries and sequential
 but no formal retention SLA was found. Endpoint responses may indicate missing old data; no retention
 duration is assumed. Testnet and mainnet may have different practical availability, and matching
 receipt outcomes/logs are part of the returned block object but have no separately documented
-retention guarantee. Consult [provider evaluation](near-event-provider-evaluation.md) for source
-classifications and references. Local archiving improves investigation/replay of previously seen
+retention guarantee. See the [provider integration guide](near-event-provider-integration.md) for configuration
+and provider boundaries. Local archiving improves investigation/replay of previously seen
 events; it cannot fill an unobserved gap or prove provider authenticity.
 
 Contract-view reconciliation preserves the last valid observation if RPC is unavailable. A missing

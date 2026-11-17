@@ -167,7 +167,7 @@ DISBURSE_TEST_DATABASE_URL=postgresql://disburse_test:...@127.0.0.1:5432/disburs
 - No standalone production deployment artifacts, TLS termination, rate limiting, or audit-grade auth policy in this package.
 - Real-money/mainnet payout execution is explicitly out of scope.
 
-See also: `docs/execution-service-api.md`, `docs/execution-service-development.md`, and related docs in `../docs/`.
+See also: [API guide](../docs/execution-service-api.md), [PostgreSQL guide](../docs/postgres-execution-service.md), and [documentation index](../docs/README.md).
 
 ## Active Testnet read-only integration
 
@@ -277,4 +277,4 @@ the contract's monotonic campaign counter; numeric detail URLs select that ID.
 This is not a paginated campaign directory. API credentials stay server-side;
 creation, funding, execution, retry and refund routes remain denied.
 
-See [M3-C execution evidence](../docs/milestone-3-gate-c-execution.md).
+Historical Testnet execution evidence remains under [docs/evidence](../docs/evidence/).

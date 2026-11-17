@@ -1,7 +1,9 @@
 # Milestone 5-A — Migration and custody safety
 
+For current implementation findings and readiness, see the [latest security review](milestone-5d2-independent-security-review.md). Historical milestone statements below describe their original scope and do not authorize execution.
+
 Design only, revision `913ae89e627c287af176aa9b0e6f9e4091d68ab7`, 2026-11-15.
-[Architecture and live baseline](milestone-5-native-payout-architecture.md).
+[Architecture and live baseline](native-payout-architecture.md).
 No deploy, migration, state mutation, key import/export or signing occurred.
 
 ## Actual persisted layout

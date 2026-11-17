@@ -1,6 +1,8 @@
 # M5-D — Native payout reconciliation architecture
 
-Local implementation, 2026-11-16. **Read-only reconciliation only; authenticated on-chain recovery is BLOCKED.** The authorized [M5-C implementation re-review](milestone-5c-independent-implementation-rereview.md) passed with zero unresolved critical/high implementation findings for the pinned C source/WASM. Earlier historical review evidence is unchanged.
+For current implementation findings and readiness, see the [latest security review](milestone-5d2-independent-security-review.md). Historical milestone statements below describe their original scope and do not authorize execution.
+
+Local implementation, 2026-11-16. **Read-only reconciliation only; authenticated on-chain recovery is BLOCKED.** The authorized M5-C implementation re-review (historical report in Git history) passed with zero unresolved critical/high implementation findings for the pinned C source/WASM. Earlier historical review evidence is unchanged.
 
 ## Capability and state boundaries
 
@@ -31,7 +33,7 @@ New modules: `evidence.ts` (exact integers/canonical hashing/Borsh identity), `r
 
 Rust/WASM and legacy/native serialized layouts are unchanged from reviewed C. Production DBs have not been migrated. This package's migration registry now knows0004; any future deployment/restart using migration-current checks must separately approve/apply that schema change. The current running mode was not touched.
 
-See [receipt boundary](milestone-5d-receipt-evidence-verification.md), [persistence](milestone-5d-postgres-persistence.md), [test results](milestone-5d-integration-test-results.md) and [structured evidence](evidence/milestone-5/m5d-implementation-results.json).
+See [receipt boundary](native-receipt-evidence-verification.md), [persistence](native-reconciliation-postgres.md), test results (historical report in Git history) and [structured evidence](evidence/milestone-5/m5d-implementation-results.json).
 
 ## Revision observation
 

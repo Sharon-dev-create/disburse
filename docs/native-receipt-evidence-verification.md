@@ -1,5 +1,7 @@
 # M5-D — Finalized receipt evidence verification
 
+For current implementation findings and readiness, see the [latest security review](milestone-5d2-independent-security-review.md). Historical milestone statements below describe their original scope and do not authorize execution.
+
 **Trusted read-only RPC verification; not trustless on-chain receipt verification.** No live RPC or signing is needed by the local tests.
 
 ## Exact checks

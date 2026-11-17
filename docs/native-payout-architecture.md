@@ -1,5 +1,7 @@
 # Milestone 5-A — Native NEAR Testnet payout architecture
 
+For current implementation findings and readiness, see the [latest security review](milestone-5d2-independent-security-review.md). Historical milestone statements below describe their original scope and do not authorize execution.
+
 **DESIGN READY FOR REVIEW. Design only; no native execution exists yet.**
 Revision `913ae89e627c287af176aa9b0e6f9e4091d68ab7`, inspected 2026-11-15 UTC.
 Existing M4 working-tree changes were preserved. This document proposes future
@@ -36,8 +38,8 @@ The source-aware STATE decoder and checks are in
 [structured review](evidence/milestone-5/native-payout-design-review.json).
 Code equality connects this review to the existing artifact and recorded M2 build;
 it is not an independent reproducible-build attestation. The source has no native
-transfer promise. See [M4 activation](milestone-4-gate-a-execution.md) and
-[M4 routing feasibility](milestone-4-gate-b-routing-feasibility.md).
+transfer promise. See M4 activation (historical report in Git history) and
+M4 routing feasibility (historical report in Git history).
 
 ## Existing implementation, not inferred capabilities
 
@@ -411,6 +413,6 @@ listing integration exists. Display reservation/approval/pending/delivery/settle
 separately and show evidence provenance, including DB lag. Do not display Reserved
 as paid. No architecture/source changes are made in M5-A.
 
-See [migration safety](milestone-5-migration-safety.md),
-[threat model](milestone-5-security-threat-model.md) and
-[implementation/test plan](milestone-5-implementation-plan.md).
+See [migration safety](native-payout-migration-safety.md),
+[threat model](native-payout-threat-model.md) and
+implementation/test plan (historical report in Git history).

@@ -1,8 +1,10 @@
 # Milestone 5-A — Security threat model
 
+For current implementation findings and readiness, see the [latest security review](milestone-5d2-independent-security-review.md). Historical milestone statements below describe their original scope and do not authorize execution.
+
 **Design only, 2026-11-15; no mitigations are claimed implemented.**
 
-Scope and baseline: [architecture](milestone-5-native-payout-architecture.md).
+Scope and baseline: [architecture](native-payout-architecture.md).
 Critical controls protect custody and exactly-once spending; high risks block deployment
 until implemented and tested. Residual root/token/recovery trust requires explicit acceptance.
 

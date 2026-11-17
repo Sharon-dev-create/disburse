@@ -8,10 +8,8 @@ historical receipt logs; a normal view call is not an event history API.
 
 Milestone 10 adds `FastNearNearDataEventSource` behind the Milestone 9 `NearEventSource` interface.
 It walks provider finalized blocks from an inclusive block-height start point, filters execution
-outcomes by the configured contract account, and emits receipt-level log identities. Provider
-evaluation, finality policy, and cursor details are documented in
-[`near-event-provider-evaluation.md`](near-event-provider-evaluation.md) and
-[`near-event-provider-integration.md`](near-event-provider-integration.md).
+outcomes by the configured contract account, and emits receipt-level log identities. Finality policy and cursor details are documented in the
+[provider integration guide](near-event-provider-integration.md).
 
 ## Event identity and cursor rules
 

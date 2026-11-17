@@ -208,39 +208,12 @@ No browser end-to-end suite or all-in-one runtime command is currently included.
 
 ## Documentation
 
-### Architecture and security
+See the [documentation index](docs/README.md) for setup, architecture, security and audit evidence.
 
-- [Execution-service architecture](docs/execution-service-architecture.md) — component boundaries and data flow
-- [Execution-service API](docs/execution-service-api.md) — authenticated read-only HTTP surface
-- [Execution security and threat model](docs/execution-security.md) — security model and trust boundaries
-- [Execution-service threat model](docs/execution-service-threat-model.md) — assets, abuse cases, and mitigations
-- [PostgreSQL setup and schema boundaries](docs/postgres-execution-service.md) — migrations, repositories, and local databases
-- [Payout settlement and verifier trust model](docs/payout-settlement.md) — settlement states and attestation limits
-
-### NEAR and settlement
-
-- [NEAR Intents integration boundary](docs/near-intents-integration.md) — dry 1Click quote previews
-- [NEAR payout discovery](docs/near-payout-discovery.md) — payout views and event discovery
-- [NEAR event indexing](docs/near-event-indexing.md) — indexing boundary and available strategy
-- [NEAR discovery integrity](docs/near-discovery-integrity.md) — recovery and integrity checks
-- [Event provider evaluation](docs/near-event-provider-evaluation.md) — provider criteria and findings
-- [Event provider integration](docs/near-event-provider-integration.md) — integration notes and constraints
-
-### Development and validation
-
-- [Execution service development environment](docs/execution-service-development.md) — local setup and PostgreSQL 18 workflow
-- [Testnet deployment readiness](docs/testnet-deployment.md) — deployment prerequisites and gates
-- [Milestone 11 testnet validation](docs/testnet-validation.md) — validation record and current blockers
-- [Execution service guide](execution-service/README.md) — service-specific setup and commands
-- [Frontend guide](frontend/README.md) — dashboard setup and demo limitations
-
-### Architecture decision records
-
-- [ADR-001: Refund custody](docs/decisions/ADR-001-refund-custody.md)
-- [ADR-002: Recipient validation](docs/decisions/ADR-002-recipient-validation.md)
-- [ADR-003: Exact-output settlement](docs/decisions/ADR-003-exact-output-settlement.md)
-- [ADR-004: Signing authority](docs/decisions/ADR-004-signing-authority.md)
-- [ADR-005: Destination verification](docs/decisions/ADR-005-destination-verification.md)
+- [Execution service guide](execution-service/README.md)
+- [Frontend guide](frontend/README.md)
+- [Latest security review](docs/milestone-5d2-independent-security-review.md)
+- [Current Testnet readiness](docs/milestone-5d2-testnet-readiness.md)
 
 ## License
 

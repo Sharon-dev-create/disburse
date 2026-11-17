@@ -1,5 +1,7 @@
 # M5-D — PostgreSQL evidence persistence
 
+For current implementation findings and readiness, see the [latest security review](milestone-5d2-independent-security-review.md). Historical milestone statements below describe their original scope and do not authorize execution.
+
 Migration0004 is additive and uses the existing checksum/advisory-lock migration runner. Earlier migration files, tables, jobs, authorizations and refund policies are unchanged. Only a newly initialized PostgreSQL17 cluster under /tmp, listening on127.0.0.1:19543, was used. Repository operations verify current database/role are both disburse_test and server address is local. There is no production repository composition or running-host import.
 
 Tables added:

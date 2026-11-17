@@ -1,5 +1,7 @@
 # M5-D — Failure recovery boundary
 
+For current implementation findings and readiness, see the [latest security review](milestone-5d2-independent-security-review.md). Historical milestone statements below describe their original scope and do not authorize execution.
+
 **Read-only diagnosis implemented. On-chain accounting recovery, retry and release are BLOCKED.**
 
 For standard-token success followed by callback panic/OOG, independent read-only graph inspection identifies successful token delivery with settlement pending. The native payout remains TransferPending/Executing, reserved100000/spent0 in its reference campaign. No transaction is sent. Missing callback event, timeout, absent job, service restart or unsuccessful completion cannot clear the C attempt lock.
