@@ -1,0 +1,75 @@
+{
+  "mode": "release",
+  "lease": {
+    "workerId": "legacy-audit",
+    "fencingToken": "1",
+    "stateVersion": 2,
+    "expiresAtMs": 1794900327470
+  },
+  "timing": {
+    "blocked": true,
+    "rowCount": 0,
+    "elapsedMs": 909.793997,
+    "dbTime": "2026-11-17T07:25:27.889Z"
+  },
+  "result": {
+    "jobId": "20",
+    "idempotencyKey": "39152fe9-8c65-4cf7-a3fb-eefd5468f41c",
+    "snapshotDigest": "1782762d4875a563149b211fe8a626b2d75ea5b127102d915027938f94ec1bf4",
+    "fencingCounter": "1",
+    "attemptCount": 0,
+    "nextEligibleAtMs": 1794900326947,
+    "failure": null,
+    "key": {
+      "networkId": "near:testnet",
+      "contractId": "disburse.testnet",
+      "payoutId": "1794900326936000"
+    },
+    "payout": {
+      "payoutId": "1794900326936000",
+      "campaignId": "7",
+      "inputAmount": {
+        "tokenId": "near",
+        "decimals": 24,
+        "atomicAmount": "100000"
+      },
+      "contractStatus": "Reserved",
+      "expectedOutput": {
+        "tokenId": "wrap.near",
+        "decimals": 24,
+        "atomicAmount": "100000"
+      },
+      "recipientAddress": "recipient.near",
+      "destinationChainId": "near:testnet",
+      "executionReference": null,
+      "settlementEvidenceReference": null
+    },
+    "discoveryEvent": {
+      "networkId": "near:testnet",
+      "contractId": "disburse.testnet",
+      "transactionHash": "39152fe9-8c65-4cf7-a3fb-eefd5468f41ctx",
+      "blockHash": "39152fe9-8c65-4cf7-a3fb-eefd5468f41cblock",
+      "receiptId": "39152fe9-8c65-4cf7-a3fb-eefd5468f41creceipt",
+      "eventIndex": 0,
+      "blockHeight": "123456"
+    },
+    "state": "Leased",
+    "version": 3,
+    "createdAtMs": 1794900326947,
+    "updatedAtMs": 1794900327891,
+    "lease": {
+      "workerId": "legacy-audit",
+      "fencingToken": "1",
+      "stateVersion": 3,
+      "expiresAtMs": 1794900327470
+    },
+    "attempts": []
+  },
+  "accepted": true,
+  "state": "Leased",
+  "version": 3,
+  "persisted": {
+    "state": "Leased",
+    "state_version": 3
+  }
+}

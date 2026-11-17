@@ -1,0 +1,45 @@
+$ node --experimental-strip-types --test tests/integration/postgres-*.test.ts
+✔ job migrations apply idempotently and record version 0004 (164.360169ms)
+✔ creation is durable, idempotent, payout-unique, and preserves exact amounts (26.794651ms)
+✔ campaign job listing is scoped to the configured contract and campaign (13.960159ms)
+✔ same idempotency key or payout identity rejects conflicting protected payloads (8.45356ms)
+✔ concurrent job creation on independent connections has one database winner (12.388278ms)
+✔ concurrent workers claim one queued job and stale lease writes are fenced (33.654202ms)
+✔ lease renewal, expiry replacement, and fencing counters survive repository restart (2145.423569ms)
+✔ attempts and safe failures are atomic and duplicate attempt idempotency rolls back (101.731214ms)
+✔ expired ambiguous submission moves to manual review without releasing payout state (1147.479321ms)
+✔ snapshot identity cannot be changed and job creation never mutates payout accounting (8.546952ms)
+(node:63066) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ expired after row lock (1028.898795ms)
+✔ valid after short row lock (87.739884ms)
+✔ wrong owner and fence reject without changing current owner's ability to complete (32.113808ms)
+✔ database fixture renewal preserves owner and generation; no renewal API is invented (619.131224ms)
+✔ expiry during evidence-claim lock wait rolls back observations and decision (929.214088ms)
+✔ M5-D migrations are checksum-protected and idempotent (185.953342ms)
+✔ concurrent enqueue/claims have one immutable attempt and one lease (33.38454ms)
+(node:63072) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ duplicate observations are idempotent; historical evidence cannot update/delete (30.568343ms)
+✔ expired fences cannot persist; transaction rollback leaves no partial observation (128.28588ms)
+✔ reused receipt or transaction and conflicting finalized evidence become sticky ManualReview (38.129277ms)
+✔ real SIGKILL and fresh worker process recover same PostgreSQL job and evidence (503.576726ms)
+✔ restricted pool enforces PostgreSQL read-only sessions even when URL requests read-write (52.662375ms)
+✔ persists complete authorization payload and safely parameterizes lookups (84.144909ms)
+✔ concurrent discovery is idempotent and conflicting protected data is rejected (17.117756ms)
+✔ database arbitrates concurrent one-time authorization consumption (13.406075ms)
+✔ database statement time expires an authorization after its deadline (6.510485ms)
+✔ revocation and consumption race has exactly one terminal winner (13.979152ms)
+✔ refund policy binds once, survives concurrent duplicate approval, and is immutable (25.329861ms)
+✔ concurrent conflicting refund bindings retain one authoritative policy (3.382813ms)
+✔ a fresh process can read and consume durable authorization state (365.021096ms)
+✔ transaction rollback removes writes and leaves the pooled connection usable (10.858444ms)
+✔ separate pool connections observe shared committed state (6.490483ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6007.401885

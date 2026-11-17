@@ -1,0 +1,74 @@
+{
+  "mode": "release",
+  "lease": {
+    "workerId": "legacy-audit",
+    "fencingToken": "1",
+    "stateVersion": 2,
+    "expiresAtMs": 1794899796023
+  },
+  "timing": {
+    "blocked": true,
+    "elapsedMs": 909.8446409999999,
+    "dbTime": "2026-11-17T07:16:36.444Z"
+  },
+  "result": {
+    "jobId": "4",
+    "idempotencyKey": "545be799-c3d1-4ea3-bac1-e9b6bb4672e1",
+    "snapshotDigest": "98be75f1809dbbf231847b2f3ca0f6fb9291f2dc15e24424164226403201927f",
+    "fencingCounter": "1",
+    "attemptCount": 0,
+    "nextEligibleAtMs": 1794899795501,
+    "failure": null,
+    "key": {
+      "networkId": "near:testnet",
+      "contractId": "disburse.testnet",
+      "payoutId": "1794899795491000"
+    },
+    "payout": {
+      "payoutId": "1794899795491000",
+      "campaignId": "7",
+      "inputAmount": {
+        "tokenId": "near",
+        "decimals": 24,
+        "atomicAmount": "100000"
+      },
+      "contractStatus": "Reserved",
+      "expectedOutput": {
+        "tokenId": "wrap.near",
+        "decimals": 24,
+        "atomicAmount": "100000"
+      },
+      "recipientAddress": "recipient.near",
+      "destinationChainId": "near:testnet",
+      "executionReference": null,
+      "settlementEvidenceReference": null
+    },
+    "discoveryEvent": {
+      "networkId": "near:testnet",
+      "contractId": "disburse.testnet",
+      "transactionHash": "545be799-c3d1-4ea3-bac1-e9b6bb4672e1tx",
+      "blockHash": "545be799-c3d1-4ea3-bac1-e9b6bb4672e1block",
+      "receiptId": "545be799-c3d1-4ea3-bac1-e9b6bb4672e1receipt",
+      "eventIndex": 0,
+      "blockHeight": "123456"
+    },
+    "state": "Leased",
+    "version": 3,
+    "createdAtMs": 1794899795501,
+    "updatedAtMs": 1794899796445,
+    "lease": {
+      "workerId": "legacy-audit",
+      "fencingToken": "1",
+      "stateVersion": 3,
+      "expiresAtMs": 1794899796023
+    },
+    "attempts": []
+  },
+  "accepted": true,
+  "state": "Leased",
+  "version": 3,
+  "persisted": {
+    "state": "Leased",
+    "state_version": 3
+  }
+}

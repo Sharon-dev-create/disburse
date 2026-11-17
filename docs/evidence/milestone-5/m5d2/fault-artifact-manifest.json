@@ -1,0 +1,42 @@
+[
+  {
+    "name": "panic-callback",
+    "source_copy": "/tmp/disburse-m5c-panic-callback",
+    "artifact": "/tmp/disburse-m5c-artifacts/panic-callback/disburse_contract.wasm",
+    "sha256": "30a40b563a27aa920636ea377784f435909c7470168375776a0eb49c6bebc222",
+    "patch": "Panic after successful settlement writes/events, testing receipt rollback",
+    "production_has_fault_hooks": false
+  },
+  {
+    "name": "oog-callback",
+    "source_copy": "/tmp/disburse-m5c-oog-callback",
+    "artifact": "/tmp/disburse-m5c-artifacts/oog-callback/disburse_contract.wasm",
+    "sha256": "440a5860409ab9bf67e4840c5a1683a523d6660c84ca14b749e09b2a06fd9ca5",
+    "patch": "Final callback gas1",
+    "production_has_fault_hooks": false
+  },
+  {
+    "name": "schedule-panic",
+    "source_copy": "/tmp/disburse-m5c-schedule-panic",
+    "artifact": "/tmp/disburse-m5c-artifacts/schedule-panic/disburse_contract.wasm",
+    "sha256": "5c9fea9fb3a007a7f3d77023d60260413bedd13f41e19a637e9d2d4597422270",
+    "patch": "Panic after TransferPending writes but before promise scheduling",
+    "production_has_fault_hooks": false
+  },
+  {
+    "name": "missing-callback",
+    "source_copy": "/tmp/disburse-m5c-missing-callback",
+    "artifact": "/tmp/disburse-m5c-artifacts/missing-callback/disburse_contract.wasm",
+    "sha256": "0b41a05e0e9b10b455a0e1e6c7aa9ebf858debef959ca22afbb97cd677eb2d2a",
+    "patch": "Renamed final callback for local incompatible-upgrade simulation",
+    "production_has_fault_hooks": false
+  },
+  {
+    "name": "old-b",
+    "source_copy": "/tmp/disburse-m5c-old-b",
+    "artifact": "/tmp/disburse-m5c-artifacts/old-b/disburse_contract.wasm",
+    "sha256": "ad51f8bc061138013ff33620d33adff8dffacb4eaf1c06b09853c79b92c58e94",
+    "patch": "Unmodified git fdd8b48 M5-B source",
+    "production_has_fault_hooks": false
+  }
+]

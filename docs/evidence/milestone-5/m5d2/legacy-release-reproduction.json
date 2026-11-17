@@ -1,0 +1,74 @@
+{
+  "mode": "release",
+  "lease": {
+    "workerId": "legacy-audit",
+    "fencingToken": "2",
+    "stateVersion": 4,
+    "expiresAtMs": 1794899680579
+  },
+  "timing": {
+    "blocked": true,
+    "elapsedMs": 912.104941,
+    "dbTime": "2026-11-17T07:14:41.002Z"
+  },
+  "result": {
+    "jobId": "2",
+    "idempotencyKey": "50ce0fc2-ed89-4b4a-9d56-495dfcf673d3",
+    "snapshotDigest": "b082ab590fa6daf2cd37abb6349c77d326e73eb1da95d00d2f099bd523bd02cd",
+    "fencingCounter": "2",
+    "attemptCount": 0,
+    "nextEligibleAtMs": 1794899678858,
+    "failure": null,
+    "key": {
+      "networkId": "near:testnet",
+      "contractId": "disburse.testnet",
+      "payoutId": "1794899678825000"
+    },
+    "payout": {
+      "payoutId": "1794899678825000",
+      "campaignId": "7",
+      "inputAmount": {
+        "tokenId": "near",
+        "decimals": 24,
+        "atomicAmount": "100000"
+      },
+      "contractStatus": "Reserved",
+      "expectedOutput": {
+        "tokenId": "wrap.near",
+        "decimals": 24,
+        "atomicAmount": "100000"
+      },
+      "recipientAddress": "recipient.near",
+      "destinationChainId": "near:testnet",
+      "executionReference": null,
+      "settlementEvidenceReference": null
+    },
+    "discoveryEvent": {
+      "networkId": "near:testnet",
+      "contractId": "disburse.testnet",
+      "transactionHash": "50ce0fc2-ed89-4b4a-9d56-495dfcf673d3tx",
+      "blockHash": "50ce0fc2-ed89-4b4a-9d56-495dfcf673d3block",
+      "receiptId": "50ce0fc2-ed89-4b4a-9d56-495dfcf673d3receipt",
+      "eventIndex": 0,
+      "blockHeight": "123456"
+    },
+    "state": "Leased",
+    "version": 5,
+    "createdAtMs": 1794899678858,
+    "updatedAtMs": 1794899681003,
+    "lease": {
+      "workerId": "legacy-audit",
+      "fencingToken": "2",
+      "stateVersion": 5,
+      "expiresAtMs": 1794899680579
+    },
+    "attempts": []
+  },
+  "accepted": true,
+  "state": "Leased",
+  "version": 5,
+  "persisted": {
+    "state": "Queued",
+    "state_version": 1
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "a": {
+    "key": "de622656022c017095504624156cddd25775cd5dc3acf1f6bf940599e09f46e6",
+    "workerId": "old-A",
+    "fence": "1",
+    "identity": {
+      "amount": "100000",
+      "chainId": "concurrent-dc8ff653-b9b7-4655-9144-1d9c1b524577",
+      "tokenId": "usdc.tidepool-sandbox.testnet",
+      "payoutId": "2",
+      "attemptId": "1",
+      "campaignId": "1",
+      "contractId": "disburse-test-contract.testnet",
+      "executorId": "executor.testnet",
+      "bindingHash": "5cf45e6a7146d8c568338fab9c1097c80036fdf084271cb7adb17fc639961285",
+      "recipientId": "recipient.testnet",
+      "authorizationId": "sandbox-auth:2"
+    },
+    "locator": {
+      "senderId": "executor.testnet",
+      "transactionHash": "44aWSBd8EHDcZcD1767Bs1H4JUCd15mSDtywitsbHYg1"
+    }
+  },
+  "b": {
+    "key": "de622656022c017095504624156cddd25775cd5dc3acf1f6bf940599e09f46e6",
+    "workerId": "new-B",
+    "fence": "2",
+    "identity": {
+      "amount": "100000",
+      "chainId": "concurrent-dc8ff653-b9b7-4655-9144-1d9c1b524577",
+      "tokenId": "usdc.tidepool-sandbox.testnet",
+      "payoutId": "2",
+      "attemptId": "1",
+      "campaignId": "1",
+      "contractId": "disburse-test-contract.testnet",
+      "executorId": "executor.testnet",
+      "bindingHash": "5cf45e6a7146d8c568338fab9c1097c80036fdf084271cb7adb17fc639961285",
+      "recipientId": "recipient.testnet",
+      "authorizationId": "sandbox-auth:2"
+    },
+    "locator": {
+      "senderId": "executor.testnet",
+      "transactionHash": "44aWSBd8EHDcZcD1767Bs1H4JUCd15mSDtywitsbHYg1"
+    }
+  },
+  "results": [
+    {
+      "worker": "old-A",
+      "accepted": false,
+      "error": "Stale reconciliation fence/lease"
+    },
+    {
+      "worker": "new-B",
+      "accepted": true
+    }
+  ],
+  "decisions": [
+    {
+      "fence": "2",
+      "decision": {
+        "trust": "TRUSTED_RPC_OBSERVATION_NOT_ON_CHAIN_PROOF",
+        "reason": "new-B",
+        "workerId": "new-B",
+        "conflicting": false,
+        "observations": [],
+        "classification": "ManualReview",
+        "semanticDigest": null,
+        "callbackReceiptId": null,
+        "transferReceiptId": null
+      }
+    }
+  ],
+  "state": "ManualReview"
+}
