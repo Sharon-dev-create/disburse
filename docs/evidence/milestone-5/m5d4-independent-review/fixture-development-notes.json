@@ -1,0 +1,5 @@
+{
+  "first_attempt": "Five preceding safety checks completed before acquisition fixture timed out; no overall PASS claimed for interrupted fixture run",
+  "cause": "Fixture requested SHARE on job_leases after claimNext already acquired ROW EXCLUSIVE for its cleanup DELETE. Blocker could not acquire its lock.",
+  "correction": "Acquisition case now explicitly models scheduling delay after successful INSERT; it verifies a delayed already-expired returned lease cannot authorize a protected transition. No application source or schema changed."
+}

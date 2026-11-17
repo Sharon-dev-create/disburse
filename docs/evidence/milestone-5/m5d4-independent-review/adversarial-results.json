@@ -1,0 +1,746 @@
+{
+  "result": "PASS",
+  "database": {
+    "db": "disburse_test",
+    "role": "disburse_test",
+    "host": "127.0.0.1"
+  },
+  "cases": [
+    {
+      "case": "native-expired-row-contention",
+      "claim": {
+        "key": "fad6d34a3dbd17a94b9d3c3af59343035ae6e47bde1c7840190d0e01ecdd0a25",
+        "workerId": "native-auditor",
+        "fence": "1",
+        "identity": {
+          "amount": "100000",
+          "chainId": "independent-eedfa53c-4306-46ee-b338-16a02be834ba",
+          "tokenId": "usdc.tidepool-sandbox.testnet",
+          "payoutId": "2",
+          "attemptId": "1",
+          "campaignId": "1",
+          "contractId": "disburse-test-contract.testnet",
+          "executorId": "executor.testnet",
+          "bindingHash": "5cf45e6a7146d8c568338fab9c1097c80036fdf084271cb7adb17fc639961285",
+          "recipientId": "recipient.testnet",
+          "authorizationId": "sandbox-auth:2"
+        },
+        "locator": {
+          "senderId": "executor.testnet",
+          "transactionHash": "44aWSBd8EHDcZcD1767Bs1H4JUCd15mSDtywitsbHYg1"
+        }
+      },
+      "before": {
+        "state": "Processing",
+        "fence": "1",
+        "worker_id": "native-auditor",
+        "lease_until": "2026-11-17T08:48:36.857Z"
+      },
+      "outcome": {
+        "value": null,
+        "error": "Stale reconciliation fence/lease",
+        "blocked": true,
+        "waitMs": 909.4692889999999,
+        "databaseTime": "2026-11-17T08:48:37.272Z"
+      },
+      "after": {
+        "job": {
+          "job_key": "fad6d34a3dbd17a94b9d3c3af59343035ae6e47bde1c7840190d0e01ecdd0a25",
+          "identity": {
+            "amount": "100000",
+            "chainId": "independent-eedfa53c-4306-46ee-b338-16a02be834ba",
+            "tokenId": "usdc.tidepool-sandbox.testnet",
+            "payoutId": "2",
+            "attemptId": "1",
+            "campaignId": "1",
+            "contractId": "disburse-test-contract.testnet",
+            "executorId": "executor.testnet",
+            "bindingHash": "5cf45e6a7146d8c568338fab9c1097c80036fdf084271cb7adb17fc639961285",
+            "recipientId": "recipient.testnet",
+            "authorizationId": "sandbox-auth:2"
+          },
+          "locator": {
+            "senderId": "executor.testnet",
+            "transactionHash": "44aWSBd8EHDcZcD1767Bs1H4JUCd15mSDtywitsbHYg1"
+          },
+          "state": "Processing",
+          "fence": "1",
+          "worker_id": "native-auditor",
+          "lease_until": "2026-11-17T08:48:36.857Z",
+          "semantic_digest": null,
+          "conflicted": false,
+          "created_at": "2026-11-17T08:48:36.354Z",
+          "updated_at": "2026-11-17T08:48:36.357Z"
+        },
+        "observations": [],
+        "decisions": []
+      }
+    },
+    {
+      "case": "native-valid-short-contention",
+      "claim": {
+        "key": "2a95bd70313d10abb38050ee0be43af756076861373b86cffa9cee15fcd0f8d5",
+        "workerId": "native-auditor",
+        "fence": "1",
+        "identity": {
+          "amount": "100000",
+          "chainId": "independent-5ecf3776-f767-46f6-95a4-e427d0451ede",
+          "tokenId": "usdc.tidepool-sandbox.testnet",
+          "payoutId": "2",
+          "attemptId": "1",
+          "campaignId": "1",
+          "contractId": "disburse-test-contract.testnet",
+          "executorId": "executor.testnet",
+          "bindingHash": "5cf45e6a7146d8c568338fab9c1097c80036fdf084271cb7adb17fc639961285",
+          "recipientId": "recipient.testnet",
+          "authorizationId": "sandbox-auth:2"
+        },
+        "locator": {
+          "senderId": "executor.testnet",
+          "transactionHash": "44aWSBd8EHDcZcD1767Bs1H4JUCd15mSDtywitsbHYg1"
+        }
+      },
+      "before": {
+        "state": "Processing",
+        "fence": "1",
+        "worker_id": "native-auditor",
+        "lease_until": "2026-11-17T08:48:42.283Z"
+      },
+      "outcome": {
+        "value": {
+          "classification": "ManualReview",
+          "reason": "Independent audit fixture, not payment evidence",
+          "transferReceiptId": null,
+          "callbackReceiptId": null,
+          "semanticDigest": null,
+          "trust": "TRUSTED_RPC_OBSERVATION_NOT_ON_CHAIN_PROOF",
+          "conflicting": false,
+          "observations": []
+        },
+        "error": null,
+        "blocked": true,
+        "waitMs": 55.26184799999987,
+        "databaseTime": "2026-11-17T08:48:37.340Z"
+      },
+      "after": {
+        "job": {
+          "job_key": "2a95bd70313d10abb38050ee0be43af756076861373b86cffa9cee15fcd0f8d5",
+          "identity": {
+            "amount": "100000",
+            "chainId": "independent-5ecf3776-f767-46f6-95a4-e427d0451ede",
+            "tokenId": "usdc.tidepool-sandbox.testnet",
+            "payoutId": "2",
+            "attemptId": "1",
+            "campaignId": "1",
+            "contractId": "disburse-test-contract.testnet",
+            "executorId": "executor.testnet",
+            "bindingHash": "5cf45e6a7146d8c568338fab9c1097c80036fdf084271cb7adb17fc639961285",
+            "recipientId": "recipient.testnet",
+            "authorizationId": "sandbox-auth:2"
+          },
+          "locator": {
+            "senderId": "executor.testnet",
+            "transactionHash": "44aWSBd8EHDcZcD1767Bs1H4JUCd15mSDtywitsbHYg1"
+          },
+          "state": "ManualReview",
+          "fence": "1",
+          "worker_id": null,
+          "lease_until": null,
+          "semantic_digest": null,
+          "conflicted": false,
+          "created_at": "2026-11-17T08:48:37.281Z",
+          "updated_at": "2026-11-17T08:48:37.339Z"
+        },
+        "observations": [],
+        "decisions": [
+          {
+            "fence": "1",
+            "decision": {
+              "trust": "TRUSTED_RPC_OBSERVATION_NOT_ON_CHAIN_PROOF",
+              "reason": "Independent audit fixture, not payment evidence",
+              "workerId": "native-auditor",
+              "conflicting": false,
+              "observations": [],
+              "classification": "ManualReview",
+              "semanticDigest": null,
+              "callbackReceiptId": null,
+              "transferReceiptId": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case": "native-expiry-after-decision-insert",
+      "timing": {
+        "value": {
+          "command": "UPDATE",
+          "rowCount": 0,
+          "oid": null,
+          "rows": [],
+          "fields": [],
+          "_types": {
+            "_types": {
+              "arrayParser": {},
+              "builtins": {
+                "BOOL": 16,
+                "BYTEA": 17,
+                "CHAR": 18,
+                "INT8": 20,
+                "INT2": 21,
+                "INT4": 23,
+                "REGPROC": 24,
+                "TEXT": 25,
+                "OID": 26,
+                "TID": 27,
+                "XID": 28,
+                "CID": 29,
+                "JSON": 114,
+                "XML": 142,
+                "PG_NODE_TREE": 194,
+                "SMGR": 210,
+                "PATH": 602,
+                "POLYGON": 604,
+                "CIDR": 650,
+                "FLOAT4": 700,
+                "FLOAT8": 701,
+                "ABSTIME": 702,
+                "RELTIME": 703,
+                "TINTERVAL": 704,
+                "CIRCLE": 718,
+                "MACADDR8": 774,
+                "MONEY": 790,
+                "MACADDR": 829,
+                "INET": 869,
+                "ACLITEM": 1033,
+                "BPCHAR": 1042,
+                "VARCHAR": 1043,
+                "DATE": 1082,
+                "TIME": 1083,
+                "TIMESTAMP": 1114,
+                "TIMESTAMPTZ": 1184,
+                "INTERVAL": 1186,
+                "TIMETZ": 1266,
+                "BIT": 1560,
+                "VARBIT": 1562,
+                "NUMERIC": 1700,
+                "REFCURSOR": 1790,
+                "REGPROCEDURE": 2202,
+                "REGOPER": 2203,
+                "REGOPERATOR": 2204,
+                "REGCLASS": 2205,
+                "REGTYPE": 2206,
+                "UUID": 2950,
+                "TXID_SNAPSHOT": 2970,
+                "PG_LSN": 3220,
+                "PG_NDISTINCT": 3361,
+                "PG_DEPENDENCIES": 3402,
+                "TSVECTOR": 3614,
+                "TSQUERY": 3615,
+                "GTSVECTOR": 3642,
+                "REGCONFIG": 3734,
+                "REGDICTIONARY": 3769,
+                "JSONB": 3802,
+                "REGNAMESPACE": 4089,
+                "REGROLE": 4096
+              }
+            },
+            "text": {},
+            "binary": {}
+          },
+          "RowCtor": null,
+          "rowAsArray": false,
+          "_prebuiltEmptyResultObject": null
+        },
+        "error": null,
+        "blocked": true,
+        "waitMs": 902.4787699999999,
+        "databaseTime": "2026-11-17T08:48:38.254Z"
+      },
+      "error": "Stale reconciliation fence/lease",
+      "after": {
+        "job": {
+          "job_key": "a2e07c4835e1428fad70e30f2db67c7091d9effbac547b5da8cc5264941f38ac",
+          "identity": {
+            "amount": "100000",
+            "chainId": "last-write-88fc31c2-e36c-45a5-b1d6-3230f5527ad9",
+            "tokenId": "usdc.tidepool-sandbox.testnet",
+            "payoutId": "2",
+            "attemptId": "1",
+            "campaignId": "1",
+            "contractId": "disburse-test-contract.testnet",
+            "executorId": "executor.testnet",
+            "bindingHash": "5cf45e6a7146d8c568338fab9c1097c80036fdf084271cb7adb17fc639961285",
+            "recipientId": "recipient.testnet",
+            "authorizationId": "sandbox-auth:2"
+          },
+          "locator": {
+            "senderId": "executor.testnet",
+            "transactionHash": "44aWSBd8EHDcZcD1767Bs1H4JUCd15mSDtywitsbHYg1"
+          },
+          "state": "Processing",
+          "fence": "1",
+          "worker_id": "last-write",
+          "lease_until": "2026-11-17T08:48:37.848Z",
+          "semantic_digest": null,
+          "conflicted": false,
+          "created_at": "2026-11-17T08:48:37.345Z",
+          "updated_at": "2026-11-17T08:48:37.348Z"
+        },
+        "observations": [],
+        "decisions": []
+      }
+    },
+    {
+      "case": "legacy-transition-expiry",
+      "before": {
+        "jobId": "33",
+        "idempotencyKey": "68b0ecb7-0887-4e61-99c5-5f668bc53f3d",
+        "snapshotDigest": "32bf3b3c48d86f3ccc92e826a7f1655ffadd72e5016a3797b0b3a1e430782717",
+        "fencingCounter": "1",
+        "attemptCount": 0,
+        "nextEligibleAtMs": 1794905318259,
+        "failure": null,
+        "key": {
+          "networkId": "near:testnet",
+          "contractId": "disburse.testnet",
+          "payoutId": "1794905318257228702"
+        },
+        "payout": {
+          "payoutId": "1794905318257228702",
+          "campaignId": "7",
+          "inputAmount": {
+            "tokenId": "near",
+            "decimals": 24,
+            "atomicAmount": "100000"
+          },
+          "contractStatus": "Reserved",
+          "expectedOutput": {
+            "tokenId": "wrap.near",
+            "decimals": 24,
+            "atomicAmount": "100000"
+          },
+          "recipientAddress": "recipient.near",
+          "destinationChainId": "near:testnet",
+          "executionReference": null,
+          "settlementEvidenceReference": null
+        },
+        "discoveryEvent": {
+          "networkId": "near:testnet",
+          "contractId": "disburse.testnet",
+          "transactionHash": "68b0ecb7-0887-4e61-99c5-5f668bc53f3dtx",
+          "blockHash": "68b0ecb7-0887-4e61-99c5-5f668bc53f3dblock",
+          "receiptId": "68b0ecb7-0887-4e61-99c5-5f668bc53f3dreceipt",
+          "eventIndex": 0,
+          "blockHeight": "1234"
+        },
+        "state": "Leased",
+        "version": 2,
+        "createdAtMs": 1794905318259,
+        "updatedAtMs": 1794905318273,
+        "lease": {
+          "workerId": "legacy-auditor",
+          "fencingToken": "1",
+          "stateVersion": 2,
+          "expiresAtMs": 1794905318774
+        },
+        "attempts": []
+      },
+      "timing": {
+        "value": {
+          "command": "UPDATE",
+          "rowCount": 0,
+          "oid": null,
+          "rows": [],
+          "fields": [],
+          "_types": {
+            "_types": {
+              "arrayParser": {},
+              "builtins": {
+                "BOOL": 16,
+                "BYTEA": 17,
+                "CHAR": 18,
+                "INT8": 20,
+                "INT2": 21,
+                "INT4": 23,
+                "REGPROC": 24,
+                "TEXT": 25,
+                "OID": 26,
+                "TID": 27,
+                "XID": 28,
+                "CID": 29,
+                "JSON": 114,
+                "XML": 142,
+                "PG_NODE_TREE": 194,
+                "SMGR": 210,
+                "PATH": 602,
+                "POLYGON": 604,
+                "CIDR": 650,
+                "FLOAT4": 700,
+                "FLOAT8": 701,
+                "ABSTIME": 702,
+                "RELTIME": 703,
+                "TINTERVAL": 704,
+                "CIRCLE": 718,
+                "MACADDR8": 774,
+                "MONEY": 790,
+                "MACADDR": 829,
+                "INET": 869,
+                "ACLITEM": 1033,
+                "BPCHAR": 1042,
+                "VARCHAR": 1043,
+                "DATE": 1082,
+                "TIME": 1083,
+                "TIMESTAMP": 1114,
+                "TIMESTAMPTZ": 1184,
+                "INTERVAL": 1186,
+                "TIMETZ": 1266,
+                "BIT": 1560,
+                "VARBIT": 1562,
+                "NUMERIC": 1700,
+                "REFCURSOR": 1790,
+                "REGPROCEDURE": 2202,
+                "REGOPER": 2203,
+                "REGOPERATOR": 2204,
+                "REGCLASS": 2205,
+                "REGTYPE": 2206,
+                "UUID": 2950,
+                "TXID_SNAPSHOT": 2970,
+                "PG_LSN": 3220,
+                "PG_NDISTINCT": 3361,
+                "PG_DEPENDENCIES": 3402,
+                "TSVECTOR": 3614,
+                "TSQUERY": 3615,
+                "GTSVECTOR": 3642,
+                "REGCONFIG": 3734,
+                "REGDICTIONARY": 3769,
+                "JSONB": 3802,
+                "REGNAMESPACE": 4089,
+                "REGROLE": 4096
+              }
+            },
+            "text": {},
+            "binary": {}
+          },
+          "RowCtor": null,
+          "rowAsArray": false,
+          "_prebuiltEmptyResultObject": null
+        },
+        "error": null,
+        "blocked": true,
+        "waitMs": 904.6277170000003,
+        "databaseTime": "2026-11-17T08:48:39.188Z"
+      },
+      "error": "Execution job version or lease is stale",
+      "after": {
+        "jobId": "33",
+        "idempotencyKey": "68b0ecb7-0887-4e61-99c5-5f668bc53f3d",
+        "snapshotDigest": "32bf3b3c48d86f3ccc92e826a7f1655ffadd72e5016a3797b0b3a1e430782717",
+        "fencingCounter": "1",
+        "attemptCount": 0,
+        "nextEligibleAtMs": 1794905318259,
+        "failure": null,
+        "key": {
+          "networkId": "near:testnet",
+          "contractId": "disburse.testnet",
+          "payoutId": "1794905318257228702"
+        },
+        "payout": {
+          "payoutId": "1794905318257228702",
+          "campaignId": "7",
+          "inputAmount": {
+            "tokenId": "near",
+            "decimals": 24,
+            "atomicAmount": "100000"
+          },
+          "contractStatus": "Reserved",
+          "expectedOutput": {
+            "tokenId": "wrap.near",
+            "decimals": 24,
+            "atomicAmount": "100000"
+          },
+          "recipientAddress": "recipient.near",
+          "destinationChainId": "near:testnet",
+          "executionReference": null,
+          "settlementEvidenceReference": null
+        },
+        "discoveryEvent": {
+          "networkId": "near:testnet",
+          "contractId": "disburse.testnet",
+          "transactionHash": "68b0ecb7-0887-4e61-99c5-5f668bc53f3dtx",
+          "blockHash": "68b0ecb7-0887-4e61-99c5-5f668bc53f3dblock",
+          "receiptId": "68b0ecb7-0887-4e61-99c5-5f668bc53f3dreceipt",
+          "eventIndex": 0,
+          "blockHeight": "1234"
+        },
+        "state": "Leased",
+        "version": 2,
+        "createdAtMs": 1794905318259,
+        "updatedAtMs": 1794905318273,
+        "lease": {
+          "workerId": "legacy-auditor",
+          "fencingToken": "1",
+          "stateVersion": 2,
+          "expiresAtMs": 1794905318774
+        },
+        "attempts": []
+      }
+    },
+    {
+      "case": "legacy-release-expiry",
+      "before": {
+        "jobId": "34",
+        "idempotencyKey": "9d6428ae-434a-447e-93f5-96f7fa90d2d6",
+        "snapshotDigest": "67434ccf1cbbd3a6f644d2f414a18c99945f864050ee06bb4e0c80be09a13754",
+        "fencingCounter": "1",
+        "attemptCount": 0,
+        "nextEligibleAtMs": 1794905319202,
+        "failure": null,
+        "key": {
+          "networkId": "near:testnet",
+          "contractId": "disburse.testnet",
+          "payoutId": "1794905319199608649"
+        },
+        "payout": {
+          "payoutId": "1794905319199608649",
+          "campaignId": "7",
+          "inputAmount": {
+            "tokenId": "near",
+            "decimals": 24,
+            "atomicAmount": "100000"
+          },
+          "contractStatus": "Reserved",
+          "expectedOutput": {
+            "tokenId": "wrap.near",
+            "decimals": 24,
+            "atomicAmount": "100000"
+          },
+          "recipientAddress": "recipient.near",
+          "destinationChainId": "near:testnet",
+          "executionReference": null,
+          "settlementEvidenceReference": null
+        },
+        "discoveryEvent": {
+          "networkId": "near:testnet",
+          "contractId": "disburse.testnet",
+          "transactionHash": "9d6428ae-434a-447e-93f5-96f7fa90d2d6tx",
+          "blockHash": "9d6428ae-434a-447e-93f5-96f7fa90d2d6block",
+          "receiptId": "9d6428ae-434a-447e-93f5-96f7fa90d2d6receipt",
+          "eventIndex": 0,
+          "blockHeight": "1234"
+        },
+        "state": "Leased",
+        "version": 2,
+        "createdAtMs": 1794905319202,
+        "updatedAtMs": 1794905319222,
+        "lease": {
+          "workerId": "legacy-auditor",
+          "fencingToken": "1",
+          "stateVersion": 2,
+          "expiresAtMs": 1794905319723
+        },
+        "attempts": []
+      },
+      "timing": {
+        "value": {
+          "command": "DELETE",
+          "rowCount": 0,
+          "oid": null,
+          "rows": [],
+          "fields": [],
+          "_types": {
+            "_types": {
+              "arrayParser": {},
+              "builtins": {
+                "BOOL": 16,
+                "BYTEA": 17,
+                "CHAR": 18,
+                "INT8": 20,
+                "INT2": 21,
+                "INT4": 23,
+                "REGPROC": 24,
+                "TEXT": 25,
+                "OID": 26,
+                "TID": 27,
+                "XID": 28,
+                "CID": 29,
+                "JSON": 114,
+                "XML": 142,
+                "PG_NODE_TREE": 194,
+                "SMGR": 210,
+                "PATH": 602,
+                "POLYGON": 604,
+                "CIDR": 650,
+                "FLOAT4": 700,
+                "FLOAT8": 701,
+                "ABSTIME": 702,
+                "RELTIME": 703,
+                "TINTERVAL": 704,
+                "CIRCLE": 718,
+                "MACADDR8": 774,
+                "MONEY": 790,
+                "MACADDR": 829,
+                "INET": 869,
+                "ACLITEM": 1033,
+                "BPCHAR": 1042,
+                "VARCHAR": 1043,
+                "DATE": 1082,
+                "TIME": 1083,
+                "TIMESTAMP": 1114,
+                "TIMESTAMPTZ": 1184,
+                "INTERVAL": 1186,
+                "TIMETZ": 1266,
+                "BIT": 1560,
+                "VARBIT": 1562,
+                "NUMERIC": 1700,
+                "REFCURSOR": 1790,
+                "REGPROCEDURE": 2202,
+                "REGOPER": 2203,
+                "REGOPERATOR": 2204,
+                "REGCLASS": 2205,
+                "REGTYPE": 2206,
+                "UUID": 2950,
+                "TXID_SNAPSHOT": 2970,
+                "PG_LSN": 3220,
+                "PG_NDISTINCT": 3361,
+                "PG_DEPENDENCIES": 3402,
+                "TSVECTOR": 3614,
+                "TSQUERY": 3615,
+                "GTSVECTOR": 3642,
+                "REGCONFIG": 3734,
+                "REGDICTIONARY": 3769,
+                "JSONB": 3802,
+                "REGNAMESPACE": 4089,
+                "REGROLE": 4096
+              }
+            },
+            "text": {},
+            "binary": {}
+          },
+          "RowCtor": null,
+          "rowAsArray": false,
+          "_prebuiltEmptyResultObject": null
+        },
+        "error": null,
+        "blocked": true,
+        "waitMs": 903.1126960000001,
+        "databaseTime": "2026-11-17T08:48:40.137Z"
+      },
+      "error": "Worker lease expired during transition",
+      "after": {
+        "jobId": "34",
+        "idempotencyKey": "9d6428ae-434a-447e-93f5-96f7fa90d2d6",
+        "snapshotDigest": "67434ccf1cbbd3a6f644d2f414a18c99945f864050ee06bb4e0c80be09a13754",
+        "fencingCounter": "1",
+        "attemptCount": 0,
+        "nextEligibleAtMs": 1794905319202,
+        "failure": null,
+        "key": {
+          "networkId": "near:testnet",
+          "contractId": "disburse.testnet",
+          "payoutId": "1794905319199608649"
+        },
+        "payout": {
+          "payoutId": "1794905319199608649",
+          "campaignId": "7",
+          "inputAmount": {
+            "tokenId": "near",
+            "decimals": 24,
+            "atomicAmount": "100000"
+          },
+          "contractStatus": "Reserved",
+          "expectedOutput": {
+            "tokenId": "wrap.near",
+            "decimals": 24,
+            "atomicAmount": "100000"
+          },
+          "recipientAddress": "recipient.near",
+          "destinationChainId": "near:testnet",
+          "executionReference": null,
+          "settlementEvidenceReference": null
+        },
+        "discoveryEvent": {
+          "networkId": "near:testnet",
+          "contractId": "disburse.testnet",
+          "transactionHash": "9d6428ae-434a-447e-93f5-96f7fa90d2d6tx",
+          "blockHash": "9d6428ae-434a-447e-93f5-96f7fa90d2d6block",
+          "receiptId": "9d6428ae-434a-447e-93f5-96f7fa90d2d6receipt",
+          "eventIndex": 0,
+          "blockHeight": "1234"
+        },
+        "state": "Leased",
+        "version": 2,
+        "createdAtMs": 1794905319202,
+        "updatedAtMs": 1794905319222,
+        "lease": {
+          "workerId": "legacy-auditor",
+          "fencingToken": "1",
+          "stateVersion": 2,
+          "expiresAtMs": 1794905319723
+        },
+        "attempts": []
+      }
+    },
+    {
+      "case": "acquisition-delayed-return-model",
+      "delayMs": 902.3289570000002,
+      "claim": {
+        "jobId": "35",
+        "idempotencyKey": "9cfe9c89-2fb2-46ce-a2d8-62a670ed43c5",
+        "snapshotDigest": "993af226c815e1e4bd6f356f199331210d35027816f0bf750d88106b3d219f6a",
+        "fencingCounter": "1",
+        "attemptCount": 0,
+        "nextEligibleAtMs": 1794905320142,
+        "failure": null,
+        "key": {
+          "networkId": "near:testnet",
+          "contractId": "disburse.testnet",
+          "payoutId": "1794905320141407767"
+        },
+        "payout": {
+          "payoutId": "1794905320141407767",
+          "campaignId": "7",
+          "inputAmount": {
+            "tokenId": "near",
+            "decimals": 24,
+            "atomicAmount": "100000"
+          },
+          "contractStatus": "Reserved",
+          "expectedOutput": {
+            "tokenId": "wrap.near",
+            "decimals": 24,
+            "atomicAmount": "100000"
+          },
+          "recipientAddress": "recipient.near",
+          "destinationChainId": "near:testnet",
+          "executionReference": null,
+          "settlementEvidenceReference": null
+        },
+        "discoveryEvent": {
+          "networkId": "near:testnet",
+          "contractId": "disburse.testnet",
+          "transactionHash": "9cfe9c89-2fb2-46ce-a2d8-62a670ed43c5tx",
+          "blockHash": "9cfe9c89-2fb2-46ce-a2d8-62a670ed43c5block",
+          "receiptId": "9cfe9c89-2fb2-46ce-a2d8-62a670ed43c5receipt",
+          "eventIndex": 0,
+          "blockHeight": "1234"
+        },
+        "state": "Leased",
+        "version": 2,
+        "createdAtMs": 1794905320142,
+        "updatedAtMs": 1794905320156,
+        "lease": {
+          "workerId": "acquisition-auditor",
+          "fencingToken": "1",
+          "stateVersion": 2,
+          "expiresAtMs": 1794905320657
+        },
+        "attempts": []
+      },
+      "databaseTime": "2026-11-17T08:48:41.066Z",
+      "returnedExpired": true,
+      "protectedTransitionError": "Worker lease is stale or expired",
+      "scope": "Controlled scheduling delay after successful lease insert; not a physical acquisition lock race or a new material finding"
+    }
+  ]
+}
