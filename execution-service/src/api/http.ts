@@ -1,3 +1,4 @@
+import { operationalReadiness } from "../operations/monitoring.ts";
 import {
   readContractStatus,
   verifyActiveTestnet,
@@ -12,6 +13,7 @@ import { NearRpcError, type NearContractReader } from "../near/rpc.ts";
 import type { PersistedExecutionJob } from "../persistence/repository.ts";
 
 const READ_ONLY_ROUTES = [
+  /^\/v1\/readiness$/,
   /^\/v1\/contract$/,
   /^\/v1\/campaigns\/[^/]+$/,
   /^\/v1\/payouts\/[^/]+$/,
@@ -73,6 +75,7 @@ const ATTEMPT_OUTCOMES = [
 ] as const;
 
 export interface ExecutionApiOptions {
+  readonly readiness?: () => Promise<ReturnType<typeof operationalReadiness>>;
   readonly reader: NearContractReader;
   readonly activeTestnetReadOnly?: boolean;
   readonly authorize: (request: IncomingMessage) => boolean | Promise<boolean>;
@@ -193,6 +196,19 @@ async function handleRequest(
       "invalid_request",
       "This endpoint does not accept a body or query parameters.",
     );
+    return;
+  }
+
+  if (pathname === "/v1/readiness") {
+    const value = options.readiness
+      ? await options.readiness()
+      : operationalReadiness({
+          database: false,
+          rpc: false,
+          discoveryFresh: false,
+          reconciliationFresh: false,
+        });
+    sendJson(response, 200, { data: value });
     return;
   }
 

@@ -1,3 +1,5 @@
+import { NearRpcError } from "./errors.ts";
+import { BoundedReadHttp, assertJsonDepth, type HttpLimits } from "./http.ts";
 import { Buffer } from "node:buffer";
 import type { PayoutId } from "../domain/payout.ts";
 import type {
@@ -16,259 +18,127 @@ export interface NearRpcTransport {
   getCodeHash?(contractId: string): Promise<string>;
 }
 
-export class NearRpcError extends Error {
-  readonly retryable: boolean;
-  readonly kind:
-    | "timeout"
-    | "unavailable"
-    | "rate-limited"
-    | "rpc"
-    | "network-mismatch"
-    | "malformed";
+export { NearRpcError } from "./errors.ts";
 
-  constructor(
-    kind:
-      | "timeout"
-      | "unavailable"
-      | "rate-limited"
-      | "rpc"
-      | "network-mismatch"
-      | "malformed",
-    message: string,
-    options?: { readonly cause?: unknown },
-  ) {
-    super(message, options);
-    this.name = "NearRpcError";
-    this.kind = kind;
-    this.retryable = ["timeout", "unavailable", "rate-limited"].includes(kind);
-  }
-}
-
-/** JSON-RPC transport for read-only NEAR `call_function` requests. */
+/** Read-only NEAR JSON-RPC transport. No broadcast or signer interface. */
 export class HttpNearRpcTransport implements NearRpcTransport {
   private requestId = 0;
   private readonly endpoint: string;
-  private readonly timeoutMs: number;
-  private readonly fetchImpl: typeof fetch;
-
+  private readonly http: BoundedReadHttp;
   constructor(
     endpoint: string,
-    timeoutMs = 10_000,
+    timeoutMs = 10000,
     fetchImpl: typeof fetch = fetch,
+    limits: Partial<HttpLimits> = {},
   ) {
-    this.endpoint = endpoint;
-    this.timeoutMs = timeoutMs;
-    this.fetchImpl = fetchImpl;
     const url = new URL(endpoint);
-    if (url.protocol !== "https:" && url.protocol !== "http:") {
-      throw new Error("NEAR RPC endpoint must use HTTP or HTTPS");
-    }
-    if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) {
-      throw new Error("RPC timeout must be a positive safe integer");
-    }
+    if (
+      !["https:", "http:"].includes(url.protocol) ||
+      url.username ||
+      url.password
+    )
+      throw new Error(
+        "NEAR RPC endpoint must use HTTP(S) without user credentials",
+      );
+    this.endpoint = url.toString();
+    this.http = new BoundedReadHttp(fetchImpl, { ...limits, timeoutMs });
   }
-
-  async getCodeHash(contractId: string): Promise<string> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
-    try {
-      const response = await this.fetchImpl(this.endpoint, {
+  async read(
+    method: "status" | "query" | "block",
+    params: Readonly<Record<string, unknown>> | readonly unknown[],
+    signal?: AbortSignal,
+  ): Promise<unknown> {
+    if (!["status", "query", "block"].includes(method))
+      throw new NearRpcError("rpc", "RPC mutation forbidden");
+    const raw = await this.http.text(
+      this.endpoint,
+      {
         method: "POST",
         headers: { "content-type": "application/json" },
-        signal: controller.signal,
         body: JSON.stringify({
           jsonrpc: "2.0",
           id: ++this.requestId,
-          method: "query",
-          params: {
-            request_type: "view_account",
-            finality: "final",
-            account_id: contractId,
-          },
+          method,
+          params,
         }),
-      });
-      if (response.status === 429)
-        throw new NearRpcError(
-          "rate-limited",
-          "NEAR RPC rate limit was reached",
-        );
-      if (!response.ok)
-        throw new NearRpcError("unavailable", "NEAR account query failed");
-      const body: unknown = await response.json();
-      if (
-        !isRecord(body) ||
-        "error" in body ||
-        !isRecord(body.result) ||
-        typeof body.result.code_hash !== "string" ||
-        !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(body.result.code_hash)
-      ) {
-        throw new NearRpcError(
-          "malformed",
-          "NEAR account query has no valid code hash",
-        );
-      }
-      return body.result.code_hash;
-    } catch (error) {
-      if (error instanceof NearRpcError) throw error;
-      throw new NearRpcError(
-        controller.signal.aborted ? "timeout" : "unavailable",
-        "NEAR account query failed",
-      );
-    } finally {
-      clearTimeout(timeout);
+      },
+      signal,
+    );
+    let body: unknown;
+    try {
+      body = JSON.parse(raw);
+    } catch {
+      throw new NearRpcError("malformed", "NEAR RPC returned invalid JSON");
     }
+    if (!isRecord(body))
+      throw new NearRpcError("malformed", "NEAR RPC response is not an object");
+    if ("error" in body)
+      throw new NearRpcError("rpc", "NEAR RPC returned a query error");
+    if (!("result" in body))
+      throw new NearRpcError("malformed", "NEAR RPC result missing");
+    return body.result;
   }
-
+  async getCodeHash(contractId: string): Promise<string> {
+    const result = await this.read("query", {
+      request_type: "view_account",
+      finality: "final",
+      account_id: contractId,
+    });
+    if (
+      !isRecord(result) ||
+      typeof result.code_hash !== "string" ||
+      !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(result.code_hash)
+    )
+      throw new NearRpcError(
+        "malformed",
+        "NEAR account query has no valid code hash",
+      );
+    return result.code_hash;
+  }
   async viewFunction(
     contractId: string,
     methodName: string,
     args: Readonly<Record<string, unknown>>,
   ): Promise<unknown> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    const result = await this.read("query", {
+      request_type: "call_function",
+      finality: "final",
+      account_id: contractId,
+      method_name: methodName,
+      args_base64: Buffer.from(serializeNearArgs(args)).toString("base64"),
+    });
+    if (
+      !isRecord(result) ||
+      !Array.isArray(result.result) ||
+      !result.result.every(
+        (b: unknown) =>
+          typeof b === "number" && Number.isInteger(b) && b >= 0 && b <= 255,
+      )
+    )
+      throw new NearRpcError(
+        "malformed",
+        "NEAR RPC result contains invalid bytes",
+      );
     try {
-      const response = await this.fetchImpl(this.endpoint, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: ++this.requestId,
-          method: "query",
-          params: {
-            request_type: "call_function",
-            finality: "final",
-            account_id: contractId,
-            method_name: methodName,
-            args_base64: Buffer.from(serializeNearArgs(args)).toString(
-              "base64",
-            ),
-          },
-        }),
-      });
-      if (response.status === 429) {
-        throw new NearRpcError(
-          "rate-limited",
-          "NEAR RPC rate limit was reached",
-        );
-      }
-      if (!response.ok) {
-        throw new NearRpcError(
-          "unavailable",
-          `NEAR RPC returned HTTP ${response.status}`,
-        );
-      }
-      let body: unknown;
-      try {
-        body = await response.json();
-      } catch {
-        throw new NearRpcError("malformed", "NEAR RPC returned invalid JSON");
-      }
-      if (!isRecord(body)) {
-        throw new NearRpcError(
-          "malformed",
-          "NEAR RPC response is not an object",
-        );
-      }
-      if ("error" in body) {
-        throw new NearRpcError("rpc", "NEAR RPC returned a query error");
-      }
-      const result = body.result;
-      if (!isRecord(result) || !Array.isArray(result.result)) {
-        throw new NearRpcError(
-          "malformed",
-          "NEAR RPC response has no result bytes",
-        );
-      }
-      const bytes = result.result;
-      if (
-        !bytes.every(
-          (byte) => Number.isInteger(byte) && byte >= 0 && byte <= 255,
-        )
-      ) {
-        throw new NearRpcError(
-          "malformed",
-          "NEAR RPC result contains invalid bytes",
-        );
-      }
-      const json = Buffer.from(bytes).toString("utf8");
-      try {
-        return JSON.parse(preserveU64Lexemes(json)) as unknown;
-      } catch {
-        throw new NearRpcError(
-          "malformed",
-          "Contract view returned malformed JSON",
-        );
-      }
+      const decoded = Buffer.from(result.result).toString("utf8");
+      assertJsonDepth(decoded, this.http.limits.jsonDepth);
+      return JSON.parse(preserveU64Lexemes(decoded)) as unknown;
     } catch (error) {
       if (error instanceof NearRpcError) throw error;
-      if (controller.signal.aborted) {
-        throw new NearRpcError("timeout", "NEAR RPC request timed out");
-      }
-      throw new NearRpcError("unavailable", "NEAR RPC request failed", {
-        cause: safeRpcCause(error),
-      });
-    } finally {
-      clearTimeout(timeout);
+      throw new NearRpcError(
+        "malformed",
+        "Contract view returned malformed JSON",
+      );
     }
   }
-
   async getNetworkId(): Promise<string> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
-    try {
-      const response = await this.fetchImpl(this.endpoint, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: ++this.requestId,
-          method: "status",
-          params: [],
-        }),
-      });
-      if (response.status === 429)
-        throw new NearRpcError(
-          "rate-limited",
-          "NEAR RPC rate limit was reached",
-        );
-      if (!response.ok)
-        throw new NearRpcError(
-          "unavailable",
-          `NEAR RPC returned HTTP ${response.status}`,
-        );
-      let body: unknown;
-      try {
-        body = await response.json();
-      } catch (error) {
-        throw new NearRpcError(
-          "malformed",
-          "NEAR status response returned invalid JSON",
-          { cause: safeRpcCause(error) },
-        );
-      }
-      if (
-        !isRecord(body) ||
-        !isRecord(body.result) ||
-        typeof body.result.chain_id !== "string"
-      ) {
-        throw new NearRpcError(
-          "malformed",
-          "NEAR status response has no chain ID",
-        );
-      }
-      return body.result.chain_id;
-    } catch (error) {
-      if (error instanceof NearRpcError) throw error;
-      if (controller.signal.aborted)
-        throw new NearRpcError("timeout", "NEAR status request timed out");
-      throw new NearRpcError("unavailable", "NEAR status request failed", {
-        cause: safeRpcCause(error),
-      });
-    } finally {
-      clearTimeout(timeout);
-    }
+    const result = await this.read("status", []);
+    if (!isRecord(result) || typeof result.chain_id !== "string")
+      throw new NearRpcError(
+        "malformed",
+        "NEAR status response has no chain ID",
+      );
+    return result.chain_id;
   }
 }
 
@@ -672,18 +542,6 @@ function nonEmptyString(value: unknown, label: string): string {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-
-function safeRpcCause(error: unknown): unknown {
-  if (!(error instanceof Error)) return undefined;
-  const code = (error as { code?: unknown }).code;
-  const name = error.name;
-  if (typeof code === "string") return { name, code };
-  if (typeof name === "string" && name.length > 0 && name !== "Error") {
-    return { name };
-  }
-  return undefined;
-}
-
 function malformed(message: string): NearRpcError {
   return new NearRpcError("malformed", message);
 }

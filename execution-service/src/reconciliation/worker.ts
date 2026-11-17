@@ -25,6 +25,7 @@ export async function observeAttempt(
   claim: Pick<Claim, "locator">,
   sources: readonly EvidenceRpc[],
   policy: EvidencePolicy,
+  signal?: AbortSignal,
 ): Promise<Decision> {
   if (
     sources.length !== 2 ||
@@ -36,7 +37,13 @@ export async function observeAttempt(
   const observations: Observation[] = await Promise.all(
     sources.map(async (source) => {
       try {
-        const bundle = await collectBundle(source, i, claim.locator);
+        const bundle = await collectBundle(
+          source,
+          i,
+          claim.locator,
+          policySnapshot.limits,
+          signal,
+        );
         return {
           sourceId: source.sourceId,
           endpoint: source.endpoint,
@@ -44,14 +51,16 @@ export async function observeAttempt(
           verificationPolicy: policySnapshot,
           verification: verifyBundle(i, bundle, policySnapshot),
         };
-      } catch {
+      } catch (error) {
         return {
           sourceId: source.sourceId,
           endpoint: source.endpoint,
           bundle: null,
           verificationPolicy: policySnapshot,
           verification: unknown(
-            "RPC timeout, incomplete or unavailable finalized evidence",
+            error instanceof Error && "kind" in error
+              ? `Incomplete observation: ${String(error.kind)}`
+              : "RPC timeout, incomplete or unavailable finalized evidence",
           ),
         };
       }

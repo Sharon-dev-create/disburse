@@ -1,0 +1,97 @@
+[
+  {
+    "capability": "M5-D.4 security review",
+    "status": "PASS",
+    "evidence_or_blocker": "Gate source inventory verified"
+  },
+  {
+    "capability": "RPC bounded streaming",
+    "status": "PASS",
+    "evidence_or_blocker": "Chunked, incorrect length and decompression tests"
+  },
+  {
+    "capability": "RPC timeouts",
+    "status": "PASS",
+    "evidence_or_blocker": "Request/body/total deadlines and cancellation tests"
+  },
+  {
+    "capability": "RPC concurrency limits",
+    "status": "PASS",
+    "evidence_or_blocker": "Active/queue saturation and cleanup tests"
+  },
+  {
+    "capability": "Retry budgets",
+    "status": "PASS",
+    "evidence_or_blocker": "Attempts/time and transient error tests"
+  },
+  {
+    "capability": "Receipt-graph limits",
+    "status": "PASS",
+    "evidence_or_blocker": "Nodes/depth/calls/bytes/deadline checks"
+  },
+  {
+    "capability": "PostgreSQL lease safety",
+    "status": "PASS",
+    "evidence_or_blocker": "46 tests; persistence source unchanged"
+  },
+  {
+    "capability": "Recipient address validation",
+    "status": "PASS",
+    "evidence_or_blocker": "Syntax/network/binding negative tests"
+  },
+  {
+    "capability": "Recipient technical readiness",
+    "status": "NOT VERIFIED",
+    "evidence_or_blocker": "No live recipient supplied; local checks pass"
+  },
+  {
+    "capability": "Recipient ownership verification",
+    "status": "BLOCKED",
+    "evidence_or_blocker": "No authenticated wallet/nonce workflow"
+  },
+  {
+    "capability": "Tidepool token identity",
+    "status": "PASS",
+    "evidence_or_blocker": "Fresh pinned metadata/code/storage evidence"
+  },
+  {
+    "capability": "Tidepool transfer compatibility",
+    "status": "NOT VERIFIED",
+    "evidence_or_blocker": "No live transfer authorized"
+  },
+  {
+    "capability": "Network isolation",
+    "status": "PASS",
+    "evidence_or_blocker": "Existing host checks and dormant policy tests"
+  },
+  {
+    "capability": "Execution authorization",
+    "status": "PASS",
+    "evidence_or_blocker": "Existing native Rust model unchanged; no operational authority added"
+  },
+  {
+    "capability": "Read-only default",
+    "status": "PASS",
+    "evidence_or_blocker": "No worker/signer; assessment always disabled"
+  },
+  {
+    "capability": "Monitoring",
+    "status": "PARTIAL",
+    "evidence_or_blocker": "RPC counters/readiness implemented; gauges need approved collector"
+  },
+  {
+    "capability": "Incident response",
+    "status": "PASS",
+    "evidence_or_blocker": "Documented containment/evidence/recovery prerequisites"
+  },
+  {
+    "capability": "Authenticated recovery",
+    "status": "BLOCKED",
+    "evidence_or_blocker": "No approved on-chain trust mechanism"
+  },
+  {
+    "capability": "Controlled Testnet payout readiness",
+    "status": "BLOCKED",
+    "evidence_or_blocker": "Recipient/token/deployment and independent review outstanding"
+  }
+]

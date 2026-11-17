@@ -1060,3 +1060,105 @@ function nearJsonPayout(payout: NearPayoutView): unknown {
     resolution_evidence: payout.resolutionEvidence,
   };
 }
+
+void test("recovery page cap preserves its committed checkpoint and resumes after restart", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "disburse-bounded-recovery-"));
+  try {
+    const path = join(directory, "index.json");
+    let calls = 0;
+    const empty = async () => ({
+      events: [],
+      blocks: [],
+      nextCursor: null,
+      hasMore: false,
+    });
+    const source = {
+      providerId: "deterministic-recovery",
+      readAfter: empty,
+      readFrom: empty,
+      readRange: async (
+        _start: string,
+        _end: string,
+        cursor: string | null,
+      ) => {
+        calls++;
+        return {
+          events: [],
+          blocks: [
+            blockObservation(
+              cursor === null ? "10" : "11",
+              cursor === null ? "hash-10" : "hash-11",
+              cursor === null ? "hash-9" : "hash-10",
+            ),
+          ],
+          nextCursor: cursor === null ? "bounded-1" : "bounded-2",
+          hasMore: cursor === null,
+        };
+      },
+    };
+    const repository = await DurableFileDiscoveryRepository.open(path);
+    await assert.rejects(
+      new PayoutDiscoveryProcessor(
+        { ...config, maxRecoveryPages: 1 },
+        source,
+        new MutableReader(makePayout()),
+        repository,
+      ).recoverRange("10", "11", 1000),
+      /page limit/,
+    );
+    assert.equal(calls, 1);
+    const failed = [...(await repository.getSnapshot()).recoveries.values()][0];
+    assert.equal(failed?.cursor, "bounded-1");
+    assert.equal((await repository.getSnapshot()).jobs.size, 0);
+    const restarted = await DurableFileDiscoveryRepository.open(path);
+    const result = await new PayoutDiscoveryProcessor(
+      { ...config, maxRecoveryPages: 1 },
+      source,
+      new MutableReader(makePayout()),
+      restarted,
+    ).recoverRange("10", "11", 1100);
+    assert.equal(result.cursor, "bounded-2");
+    assert.equal(result.jobsCreated, 0);
+    assert.equal(calls, 2);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+void test("stalled recovery stops at its deadline without promoting a checkpoint", async () => {
+  const directory = await mkdtemp(
+    join(tmpdir(), "disburse-recovery-deadline-"),
+  );
+  try {
+    const repository = await DurableFileDiscoveryRepository.open(
+      join(directory, "index.json"),
+    );
+    const empty = async () => ({
+      events: [],
+      blocks: [],
+      nextCursor: null,
+      hasMore: false,
+    });
+    const source = {
+      providerId: "stalled",
+      readAfter: empty,
+      readFrom: empty,
+      readRange: () =>
+        new Promise<Awaited<ReturnType<typeof empty>>>(() => undefined),
+    };
+    await assert.rejects(
+      new PayoutDiscoveryProcessor(
+        { ...config, maxRecoveryMs: 10 },
+        source,
+        new MutableReader(makePayout()),
+        repository,
+      ).recoverRange("10", "11", 1000),
+      /duration limit/,
+    );
+    const snapshot = await repository.getSnapshot();
+    assert.equal([...snapshot.recoveries.values()][0]?.cursor, null);
+    assert.equal(snapshot.events.size, 0);
+    assert.equal(snapshot.jobs.size, 0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});

@@ -1,3 +1,4 @@
+import { operationalReadiness } from "../operations/monitoring.ts";
 import type { Server } from "node:http";
 import type { Pool } from "pg";
 import { startExecutionApiServer } from "../api/http.ts";
@@ -130,6 +131,28 @@ export async function startExecutionHost(
     server = await startExecutionApiServer(
       {
         reader,
+        readiness: async () => {
+          let database = false,
+            rpc = false;
+          try {
+            await pool.query("SELECT 1");
+            database = true;
+          } catch {
+            /* No connection details exposed. */
+          }
+          try {
+            await reader.verifyNetwork();
+            rpc = true;
+          } catch {
+            /* Dependency unavailable or wrong network. */
+          }
+          return operationalReadiness({
+            database,
+            rpc,
+            discoveryFresh: false,
+            reconciliationFresh: false,
+          });
+        },
         // Pass only read capabilities; the host never composes a worker or signer.
         jobs: {
           getByPayout: (key) => jobs.getByPayout(key),

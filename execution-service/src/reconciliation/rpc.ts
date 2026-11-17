@@ -1,4 +1,9 @@
-import { NearRpcError } from "../near/rpc.ts";
+import { NearRpcError } from "../near/errors.ts";
+import {
+  BoundedReadHttp,
+  assertJsonDepth,
+  type HttpLimits,
+} from "../near/http.ts";
 import { exactJson, object, text, uint, type JsonRecord } from "./evidence.ts";
 
 export interface EvidenceRpc {
@@ -7,6 +12,7 @@ export interface EvidenceRpc {
   read(
     method: string,
     params: JsonRecord | readonly unknown[],
+    signal?: AbortSignal,
   ): Promise<unknown>;
 }
 const views = new Set([
@@ -21,21 +27,28 @@ const views = new Set([
 export class ReadOnlyEvidenceRpc implements EvidenceRpc {
   readonly sourceId: string;
   readonly endpoint: string;
-  private readonly fetchImpl: typeof fetch;
+  private readonly http: BoundedReadHttp;
+  private readonly requestEndpoint: string;
   constructor(
     sourceId: string,
     endpoint: string,
     fetchImpl: typeof fetch = fetch,
+    limits: Partial<HttpLimits> = {},
   ) {
-    this.fetchImpl = fetchImpl;
+    this.http = new BoundedReadHttp(fetchImpl, limits);
     this.sourceId = text(sourceId);
-    this.endpoint = new URL(endpoint).toString();
+    const url = new URL(endpoint);
+    if (url.username || url.password || url.hash)
+      throw new Error("Invalid RPC endpoint credentials");
+    this.requestEndpoint = url.toString();
+    this.endpoint = url.origin;
     if (!["http:", "https:"].includes(new URL(endpoint).protocol))
       throw new Error("Invalid RPC URL");
   }
   async read(
     method: string,
     params: JsonRecord | readonly unknown[],
+    signal?: AbortSignal,
   ): Promise<unknown> {
     if (
       ![
@@ -56,35 +69,31 @@ export class ReadOnlyEvidenceRpc implements EvidenceRpc {
       )
         throw new Error("Only pinned supported contract views allowed");
     }
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10000);
-    try {
-      const response = await this.fetchImpl(this.endpoint, {
+    const raw = await this.http.text(
+      this.requestEndpoint,
+      {
         method: "POST",
         headers: { "content-type": "application/json" },
-        signal: controller.signal,
         body: JSON.stringify({
           jsonrpc: "2.0",
           id: "native-reconciliation",
           method,
           params,
         }),
-      });
-      if (!response.ok) throw new Error("RPC unavailable");
-      const raw = await response.text();
-      if (Buffer.byteLength(raw) > 4 * 1024 * 1024)
-        throw new Error("Oversized RPC evidence");
-      const body = object(exactJson(raw));
-      if ("error" in body) throw new Error("RPC evidence unavailable");
-      return body.result;
+      },
+      signal,
+    );
+    let body: JsonRecord;
+    try {
+      body = object(exactJson(raw));
     } catch {
-      throw new NearRpcError(
-        controller.signal.aborted ? "timeout" : "unavailable",
-        "Read-only evidence lookup failed",
-      );
-    } finally {
-      clearTimeout(timer);
+      throw new NearRpcError("malformed", "Read-only evidence JSON invalid");
     }
+    if ("error" in body)
+      throw new NearRpcError("rpc", "Read-only evidence unavailable");
+    if (!("result" in body))
+      throw new NearRpcError("malformed", "Read-only evidence result missing");
+    return body.result;
   }
 }
 export async function viewAt(
@@ -116,5 +125,7 @@ export async function viewAt(
     )
   )
     throw new Error("Unpinned/invalid view");
-  return exactJson(Buffer.from(result.result as number[]).toString("utf8"));
+  const decoded = Buffer.from(result.result as number[]).toString("utf8");
+  assertJsonDepth(decoded, 64);
+  return exactJson(decoded);
 }

@@ -1,0 +1,550 @@
+{
+  "milestone": "M5-E",
+  "date": "2026-11-17",
+  "local_implementation_verdict": "PASS_FOR_VERIFIED_SCOPE",
+  "controlled_testnet_readiness": "NOT READY",
+  "production_readiness": "NOT READY",
+  "baseline_revision": "840c87f6d4a605b9dd70169133ee859e03af99fb",
+  "final_observed_HEAD": "840c87f6d4a605b9dd70169133ee859e03af99fb",
+  "revision_note": "HEAD advanced externally to 840c87f during work; no agent Git mutations. Relevant source stayed consistent and final isolated source/test hashes match.",
+  "initial_worktree_status": "## main...origin/main\n",
+  "D4_entry_gate": {
+    "verdict": "PASS",
+    "source_inventory_matched_before_changes": true,
+    "report": "docs/evidence/milestone-5/m5d4-independent-review/results.json",
+    "report_sha256": "eb4bbb0aad1127e81732918e7507a805f203fc9aac91e6d0592d290ff5ecdf89"
+  },
+  "implementation": {
+    "shared_bounded_HTTP": [
+      "stream cap on decompressed bytes",
+      "fixed-capacity buffer avoids chunk-array overhead",
+      "strict UTF8 and JSON nesting caps",
+      "request/total/monotonic deadlines",
+      "cancellation",
+      "bounded active and queued logical reads",
+      "bounded exponential retries with jitter for safe reads only"
+    ],
+    "clients": [
+      "near/rpc.ts",
+      "reconciliation/rpc.ts",
+      "near/providers/fastnear-neardata.ts"
+    ],
+    "http_defaults": {
+      "maxBytes": 4194304,
+      "timeoutMs": 10000,
+      "totalMs": 15000,
+      "maxAttempts": 2,
+      "concurrency": 4,
+      "maxQueue": 32,
+      "backoffMs": 100,
+      "jsonDepth": 64
+    },
+    "graph_defaults": {
+      "nodes": 256,
+      "depth": 32,
+      "calls": 800,
+      "durationMs": 15000,
+      "concurrency": 4,
+      "bytes": 2097152
+    },
+    "recovery_defaults": {
+      "pages": 100,
+      "durationMs": 30000,
+      "page_events_cap": 1000
+    },
+    "recipient_preflight": "Pinned network/account/token/code/metadata/storage/binding checks; executionReady always false; no positive ownership verification path",
+    "ownership": "BLOCKED; advisory claims never become Verified; NEP-413 wallet/session/durable nonce design documented only",
+    "execution_safeguards": "Dormant validated limits/allowlists/role separation/emergency stop; no route or worker; executionEnabled always false",
+    "monitoring": "Fixed safe schema/event counters, terminal RPC error instrumentation, authenticated /v1/readiness; liveness separated from execution readiness",
+    "monitoring_limitations": "Not every lifecycle category is wired to a live collector. Backlog/lease/TransferPending gauges and production telemetry remain planned and explicitly PARTIAL. No collector/worker enabled."
+  },
+  "token_verification": {
+    "result": "PASS_READ_ONLY_INSPECTION",
+    "snapshot": {
+      "hash": "6XuUGQqcKCq6c72d86RjkKSTqnmpxAZ2E4hADF3NvA3y",
+      "height": "278113745",
+      "network": "testnet"
+    },
+    "token_code_hash": "DgV3WsKJsGtCjNWxYzFvi599szo7oojkKXWCoGBBAHwj",
+    "metadata": {
+      "symbol": "USDC",
+      "decimals": 6,
+      "name": "Tidepool Testnet USDC (no value)",
+      "spec": "ft-1.0.0"
+    },
+    "storage_bounds": {
+      "min": "1250000000000000000000",
+      "max": "1250000000000000000000"
+    },
+    "custody_accounts": [
+      {
+        "id": "disburse-test-contract.testnet",
+        "balance": "1000000",
+        "storage": {
+          "total": "1250000000000000000000",
+          "available": "0"
+        }
+      },
+      {
+        "id": "disburse-op-b966e36d.testnet",
+        "balance": "99000000",
+        "storage": {
+          "total": "1250000000000000000000",
+          "available": "0"
+        }
+      }
+    ],
+    "recipient": "UNVERIFIED; no substitute used",
+    "transfer_compatibility": "NOT VERIFIED; metadata is not a transfer-semantics certification",
+    "raw_evidence": "m5e/tidepool-readonly.json"
+  },
+  "validation": {
+    "Rust": {
+      "passed": 146,
+      "failed": 0,
+      "ignored": 0,
+      "doctests": 0,
+      "fmt_clippy_locked_build": "PASS"
+    },
+    "service": {
+      "passed": 175,
+      "failed": 0,
+      "skipped": 0,
+      "format_typecheck_lint": "PASS",
+      "baseline": 134,
+      "added": 41
+    },
+    "PostgreSQL": {
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0
+    },
+    "local_RPC": {
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    "sandbox": {
+      "result": "PASS",
+      "receipt_groups": 20,
+      "definition": "10 main + 7 fault + 2 migrations + 1 callback/observer overlap",
+      "all_phases_completed": true,
+      "synthetic_private_chain_only": true,
+      "discarded_response_restart_case": "Model; separate PostgreSQL SIGKILL/fresh worker coverage remains real"
+    },
+    "source_snapshot": "Final source and tests match isolated completed suite; final HTTP hardening was copied before first TypeScript capture/test process started",
+    "test_development_failures": "Provider-ID mismatch and new readiness mock/type-import errors corrected in tests; interrupted WS2 command rerun; no incomplete run claimed PASS"
+  },
+  "scorecard": [
+    {
+      "capability": "M5-D.4 security review",
+      "status": "PASS",
+      "evidence_or_blocker": "Gate source inventory verified"
+    },
+    {
+      "capability": "RPC bounded streaming",
+      "status": "PASS",
+      "evidence_or_blocker": "Chunked, incorrect length and decompression tests"
+    },
+    {
+      "capability": "RPC timeouts",
+      "status": "PASS",
+      "evidence_or_blocker": "Request/body/total deadlines and cancellation tests"
+    },
+    {
+      "capability": "RPC concurrency limits",
+      "status": "PASS",
+      "evidence_or_blocker": "Active/queue saturation and cleanup tests"
+    },
+    {
+      "capability": "Retry budgets",
+      "status": "PASS",
+      "evidence_or_blocker": "Attempts/time and transient error tests"
+    },
+    {
+      "capability": "Receipt-graph limits",
+      "status": "PASS",
+      "evidence_or_blocker": "Nodes/depth/calls/bytes/deadline checks"
+    },
+    {
+      "capability": "PostgreSQL lease safety",
+      "status": "PASS",
+      "evidence_or_blocker": "46 tests; persistence source unchanged"
+    },
+    {
+      "capability": "Recipient address validation",
+      "status": "PASS",
+      "evidence_or_blocker": "Syntax/network/binding negative tests"
+    },
+    {
+      "capability": "Recipient technical readiness",
+      "status": "NOT VERIFIED",
+      "evidence_or_blocker": "No live recipient supplied; local checks pass"
+    },
+    {
+      "capability": "Recipient ownership verification",
+      "status": "BLOCKED",
+      "evidence_or_blocker": "No authenticated wallet/nonce workflow"
+    },
+    {
+      "capability": "Tidepool token identity",
+      "status": "PASS",
+      "evidence_or_blocker": "Fresh pinned metadata/code/storage evidence"
+    },
+    {
+      "capability": "Tidepool transfer compatibility",
+      "status": "NOT VERIFIED",
+      "evidence_or_blocker": "No live transfer authorized"
+    },
+    {
+      "capability": "Network isolation",
+      "status": "PASS",
+      "evidence_or_blocker": "Existing host checks and dormant policy tests"
+    },
+    {
+      "capability": "Execution authorization",
+      "status": "PASS",
+      "evidence_or_blocker": "Existing native Rust model unchanged; no operational authority added"
+    },
+    {
+      "capability": "Read-only default",
+      "status": "PASS",
+      "evidence_or_blocker": "No worker/signer; assessment always disabled"
+    },
+    {
+      "capability": "Monitoring",
+      "status": "PARTIAL",
+      "evidence_or_blocker": "RPC counters/readiness implemented; gauges need approved collector"
+    },
+    {
+      "capability": "Incident response",
+      "status": "PASS",
+      "evidence_or_blocker": "Documented containment/evidence/recovery prerequisites"
+    },
+    {
+      "capability": "Authenticated recovery",
+      "status": "BLOCKED",
+      "evidence_or_blocker": "No approved on-chain trust mechanism"
+    },
+    {
+      "capability": "Controlled Testnet payout readiness",
+      "status": "BLOCKED",
+      "evidence_or_blocker": "Recipient/token/deployment and independent review outstanding"
+    }
+  ],
+  "remaining_blockers": [
+    "Independent M5-E security and operational review",
+    "Verified intended recipient ownership and technical preflight",
+    "Actual Tidepool isolated transfer compatibility test under separate approval",
+    "Reviewed deployment/migration/role/key-custody/funding and emergency-stop approvals",
+    "Operational metrics/collector integration beyond current partial instrumentation",
+    "Authenticated on-chain recovery remains blocked"
+  ],
+  "preserved": {
+    "Rust_contract": true,
+    "candidate_WASM_SHA256": "37e432600c43d5fc7d44b2d81bc9a852d5e120a7dc043c7f06f83d1e62a24ea9",
+    "persistence_lease_implementations": true,
+    "SQL_migrations": true,
+    "authorization_roles_bindings_callbacks_accounting": true,
+    "earlier_evidence": true,
+    "read_only_execution": true
+  },
+  "actions": {
+    "live_database_writes": 0,
+    "public_transactions_signed_or_submitted": 0,
+    "deployments": 0,
+    "live_workers_enabled": 0,
+    "Git_mutations_issued": 0,
+    "private_local_sandbox_transactions_only": true,
+    "public_read_only_token_queries": true
+  },
+  "cleanup": {
+    "dedicated_database": {
+      "home": "/tmp/disburse-m5e-pg-bvz_8p8l",
+      "port": 19548
+    },
+    "stop_exit_code": 0,
+    "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+    "stderr": "",
+    "sandbox_wrapper_exit_code": 0
+  },
+  "changed_source_and_test_files": [
+    "execution-service/src/api/http.ts",
+    "execution-service/src/discovery/processor.ts",
+    "execution-service/src/host/server.ts",
+    "execution-service/src/near/errors.ts",
+    "execution-service/src/near/http.ts",
+    "execution-service/src/near/providers/fastnear-neardata.ts",
+    "execution-service/src/near/recipient-preflight.ts",
+    "execution-service/src/near/rpc.ts",
+    "execution-service/src/operations/monitoring.ts",
+    "execution-service/src/operations/safeguards.ts",
+    "execution-service/src/reconciliation/limits.ts",
+    "execution-service/src/reconciliation/rpc.ts",
+    "execution-service/src/reconciliation/verifier.ts",
+    "execution-service/src/reconciliation/worker.ts",
+    "execution-service/tests/discovery.test.ts",
+    "execution-service/tests/operational-monitoring.test.ts",
+    "execution-service/tests/operational-safeguards.test.ts",
+    "execution-service/tests/recipient-preflight.test.ts",
+    "execution-service/tests/rpc-resources.test.ts"
+  ],
+  "reports": [
+    "docs/milestone-5e-execution-safeguards.md",
+    "docs/milestone-5e-monitoring-and-incidents.md",
+    "docs/milestone-5e-operational-hardening.md",
+    "docs/milestone-5e-recipient-verification.md",
+    "docs/milestone-5e-rpc-resource-limits.md",
+    "docs/milestone-5e-testnet-readiness.md",
+    "docs/milestone-5e-tidepool-compatibility.md"
+  ],
+  "artifact_inventory": [
+    "docs/evidence/milestone-5/m5e/baseline.json",
+    "docs/evidence/milestone-5/m5e/buffer-format.log",
+    "docs/evidence/milestone-5/m5e/cleanup.json",
+    "docs/evidence/milestone-5/m5e/clippy.log",
+    "docs/evidence/milestone-5/m5e/final-format.log",
+    "docs/evidence/milestone-5/m5e/final-service-check.log",
+    "docs/evidence/milestone-5/m5e/inspect-token.mjs",
+    "docs/evidence/milestone-5/m5e/migrations.log",
+    "docs/evidence/milestone-5/m5e/monitor-integration-check.log",
+    "docs/evidence/milestone-5/m5e/monitor-integration-format.log",
+    "docs/evidence/milestone-5/m5e/parser-format.log",
+    "docs/evidence/milestone-5/m5e/postgres-tests.log",
+    "docs/evidence/milestone-5/m5e/progress.json",
+    "docs/evidence/milestone-5/m5e/readiness-fixture-format.log",
+    "docs/evidence/milestone-5/m5e/readiness-scorecard.json",
+    "docs/evidence/milestone-5/m5e/readiness-test-format.log",
+    "docs/evidence/milestone-5/m5e/rust-commands.json",
+    "docs/evidence/milestone-5/m5e/rust-fmt.log",
+    "docs/evidence/milestone-5/m5e/rust-tests.log",
+    "docs/evidence/milestone-5/m5e/sandbox/callback-observer-race.json",
+    "docs/evidence/milestone-5/m5e/sandbox/callback-observer-race.log",
+    "docs/evidence/milestone-5/m5e/sandbox/capture.log",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/all-sandbox-suites.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/node-b-migration.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/node-faults.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/node-main.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/b-to-c-wasm-migration.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/concurrent-duplicate-execution.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/concurrent-payout-one.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/concurrent-payout-two.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/definitive-token-failure.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/delivered-but-unexpected-result.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/external-callback-payout-success.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/external-callbacks-rejected.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/fault-suite-summary.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/historical-wasm-migration.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/index.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/insufficient-token-balance.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/minimum-gas-and-low-gas-rejection.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/missing-recipient-storage.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/native-near-headroom.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/oog-callback-duplicate-rejected.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/oog-callback.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/panic-callback-duplicate-rejected.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/panic-callback.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/pause-after-dispatch.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/restart-uncertain-response-model.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/same-campaign-concurrent-payouts.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/schedule-panic-duplicate-rejected.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/schedule-panic.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/stale-duplicate-self-callbacks.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/successful-transfer-duplicate-rejected.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/successful-transfer.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/suite-summary.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/upgrade-between-transfer-and-callback.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox-b-migration.log",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox-faults.log",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox-main.log",
+    "docs/evidence/milestone-5/m5e/sandbox/live-read-only-tests.log",
+    "docs/evidence/milestone-5/m5e/sandbox/live-reconciliation-tests.json",
+    "docs/evidence/milestone-5/m5e/sandbox/postgres-tests.log",
+    "docs/evidence/milestone-5/m5e/sandbox/read-only-node.log",
+    "docs/evidence/milestone-5/m5e/sandbox/reproduction-result.json",
+    "docs/evidence/milestone-5/m5e/sandbox/retained-receipt-suite.log",
+    "docs/evidence/milestone-5/m5e/sandbox/sandbox/definitive-token-failure.json",
+    "docs/evidence/milestone-5/m5e/sandbox/sandbox/delivered-but-unexpected-result.json",
+    "docs/evidence/milestone-5/m5e/sandbox/sandbox/insufficient-token-balance.json",
+    "docs/evidence/milestone-5/m5e/sandbox/sandbox/oog-callback.json",
+    "docs/evidence/milestone-5/m5e/sandbox/sandbox/panic-callback.json",
+    "docs/evidence/milestone-5/m5e/sandbox/sandbox/successful-transfer.json",
+    "docs/evidence/milestone-5/m5e/sandbox/service-tests.log",
+    "docs/evidence/milestone-5/m5e/sandbox/test-migrations.log",
+    "docs/evidence/milestone-5/m5e/sandbox-run.log",
+    "docs/evidence/milestone-5/m5e/tidepool-readonly.json",
+    "docs/evidence/milestone-5/m5e/wasm-build.log",
+    "docs/evidence/milestone-5/m5e/ws1-check.log",
+    "docs/evidence/milestone-5/m5e/ws1-final-check.log",
+    "docs/evidence/milestone-5/m5e/ws1-final-format.log",
+    "docs/evidence/milestone-5/m5e/ws1-format.log",
+    "docs/evidence/milestone-5/m5e/ws1-lint.log",
+    "docs/evidence/milestone-5/m5e/ws1-recheck-format.log",
+    "docs/evidence/milestone-5/m5e/ws1-tests.log",
+    "docs/evidence/milestone-5/m5e/ws1-typecheck.log",
+    "docs/evidence/milestone-5/m5e/ws2-check.log",
+    "docs/evidence/milestone-5/m5e/ws2-format.log",
+    "docs/evidence/milestone-5/m5e/ws3-check.log",
+    "docs/evidence/milestone-5/m5e/ws3-format.log",
+    "docs/evidence/milestone-5/m5e/ws4-check.log",
+    "docs/evidence/milestone-5/m5e/ws4-format.log"
+  ],
+  "integrity": {
+    "protected_Rust_persistence_migrations_prior_evidence_unchanged": true,
+    "final_source_and_tests_match_completed_isolated_suite": true,
+    "candidate_wasm_sha256": "37e432600c43d5fc7d44b2d81bc9a852d5e120a7dc043c7f06f83d1e62a24ea9",
+    "baseline_differences": [
+      "execution-service/src/reconciliation/verifier.ts",
+      "execution-service/src/reconciliation/worker.ts",
+      "execution-service/src/reconciliation/rpc.ts",
+      "execution-service/src/discovery/processor.ts",
+      "execution-service/src/api/http.ts",
+      "execution-service/src/near/rpc.ts",
+      "execution-service/src/host/server.ts",
+      "execution-service/src/near/providers/fastnear-neardata.ts",
+      "execution-service/tests/discovery.test.ts"
+    ],
+    "commands": {
+      "git diff --check": {
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "git diff --stat": {
+        "exit_code": 0,
+        "stdout": " execution-service/src/api/http.ts                  |  16 +\n execution-service/src/discovery/processor.ts       |  56 +++-\n execution-service/src/host/server.ts               |  23 ++\n .../src/near/providers/fastnear-neardata.ts        | 137 ++++-----\n execution-service/src/near/rpc.ts                  | 328 ++++++---------------\n execution-service/src/reconciliation/rpc.ts        |  59 ++--\n execution-service/src/reconciliation/verifier.ts   | 190 ++++++++----\n execution-service/src/reconciliation/worker.ts     |  15 +-\n execution-service/tests/discovery.test.ts          | 102 +++++++\n 9 files changed, 526 insertions(+), 400 deletions(-)\n",
+        "stderr": ""
+      },
+      "git status --short": {
+        "exit_code": 0,
+        "stdout": " M execution-service/src/api/http.ts\n M execution-service/src/discovery/processor.ts\n M execution-service/src/host/server.ts\n M execution-service/src/near/providers/fastnear-neardata.ts\n M execution-service/src/near/rpc.ts\n M execution-service/src/reconciliation/rpc.ts\n M execution-service/src/reconciliation/verifier.ts\n M execution-service/src/reconciliation/worker.ts\n M execution-service/tests/discovery.test.ts\n?? docs/evidence/milestone-5/m5e-implementation-results.json\n?? docs/evidence/milestone-5/m5e/\n?? docs/milestone-5e-execution-safeguards.md\n?? docs/milestone-5e-monitoring-and-incidents.md\n?? docs/milestone-5e-operational-hardening.md\n?? docs/milestone-5e-recipient-verification.md\n?? docs/milestone-5e-rpc-resource-limits.md\n?? docs/milestone-5e-testnet-readiness.md\n?? docs/milestone-5e-tidepool-compatibility.md\n?? execution-service/src/near/errors.ts\n?? execution-service/src/near/http.ts\n?? execution-service/src/near/recipient-preflight.ts\n?? execution-service/src/operations/\n?? execution-service/src/reconciliation/limits.ts\n?? execution-service/tests/operational-monitoring.test.ts\n?? execution-service/tests/operational-safeguards.test.ts\n?? execution-service/tests/recipient-preflight.test.ts\n?? execution-service/tests/rpc-resources.test.ts\n",
+        "stderr": ""
+      },
+      "git rev-parse HEAD": {
+        "exit_code": 0,
+        "stdout": "840c87f6d4a605b9dd70169133ee859e03af99fb\n",
+        "stderr": ""
+      }
+    }
+  },
+  "complete_changed_file_inventory": [
+    "docs/evidence/milestone-5/m5e/baseline.json",
+    "docs/evidence/milestone-5/m5e/buffer-format.log",
+    "docs/evidence/milestone-5/m5e/cleanup.json",
+    "docs/evidence/milestone-5/m5e/clippy.log",
+    "docs/evidence/milestone-5/m5e/final-format.log",
+    "docs/evidence/milestone-5/m5e/final-integrity.json",
+    "docs/evidence/milestone-5/m5e/final-service-check.log",
+    "docs/evidence/milestone-5/m5e/inspect-token.mjs",
+    "docs/evidence/milestone-5/m5e/migrations.log",
+    "docs/evidence/milestone-5/m5e/monitor-integration-check.log",
+    "docs/evidence/milestone-5/m5e/monitor-integration-format.log",
+    "docs/evidence/milestone-5/m5e/parser-format.log",
+    "docs/evidence/milestone-5/m5e/postgres-tests.log",
+    "docs/evidence/milestone-5/m5e/progress.json",
+    "docs/evidence/milestone-5/m5e/readiness-fixture-format.log",
+    "docs/evidence/milestone-5/m5e/readiness-scorecard.json",
+    "docs/evidence/milestone-5/m5e/readiness-test-format.log",
+    "docs/evidence/milestone-5/m5e/rust-commands.json",
+    "docs/evidence/milestone-5/m5e/rust-fmt.log",
+    "docs/evidence/milestone-5/m5e/rust-tests.log",
+    "docs/evidence/milestone-5/m5e/sandbox/callback-observer-race.json",
+    "docs/evidence/milestone-5/m5e/sandbox/callback-observer-race.log",
+    "docs/evidence/milestone-5/m5e/sandbox/capture.log",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/all-sandbox-suites.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/node-b-migration.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/node-faults.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/node-main.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/b-to-c-wasm-migration.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/concurrent-duplicate-execution.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/concurrent-payout-one.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/concurrent-payout-two.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/definitive-token-failure.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/delivered-but-unexpected-result.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/external-callback-payout-success.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/external-callbacks-rejected.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/fault-suite-summary.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/historical-wasm-migration.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/index.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/insufficient-token-balance.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/minimum-gas-and-low-gas-rejection.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/missing-recipient-storage.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/native-near-headroom.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/oog-callback-duplicate-rejected.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/oog-callback.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/panic-callback-duplicate-rejected.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/panic-callback.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/pause-after-dispatch.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/restart-uncertain-response-model.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/same-campaign-concurrent-payouts.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/schedule-panic-duplicate-rejected.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/schedule-panic.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/stale-duplicate-self-callbacks.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/successful-transfer-duplicate-rejected.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/successful-transfer.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/suite-summary.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox/upgrade-between-transfer-and-callback.json",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox-b-migration.log",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox-faults.log",
+    "docs/evidence/milestone-5/m5e/sandbox/fresh-receipt-suite/sandbox-main.log",
+    "docs/evidence/milestone-5/m5e/sandbox/live-read-only-tests.log",
+    "docs/evidence/milestone-5/m5e/sandbox/live-reconciliation-tests.json",
+    "docs/evidence/milestone-5/m5e/sandbox/postgres-tests.log",
+    "docs/evidence/milestone-5/m5e/sandbox/read-only-node.log",
+    "docs/evidence/milestone-5/m5e/sandbox/reproduction-result.json",
+    "docs/evidence/milestone-5/m5e/sandbox/retained-receipt-suite.log",
+    "docs/evidence/milestone-5/m5e/sandbox/sandbox/definitive-token-failure.json",
+    "docs/evidence/milestone-5/m5e/sandbox/sandbox/delivered-but-unexpected-result.json",
+    "docs/evidence/milestone-5/m5e/sandbox/sandbox/insufficient-token-balance.json",
+    "docs/evidence/milestone-5/m5e/sandbox/sandbox/oog-callback.json",
+    "docs/evidence/milestone-5/m5e/sandbox/sandbox/panic-callback.json",
+    "docs/evidence/milestone-5/m5e/sandbox/sandbox/successful-transfer.json",
+    "docs/evidence/milestone-5/m5e/sandbox/service-tests.log",
+    "docs/evidence/milestone-5/m5e/sandbox/test-migrations.log",
+    "docs/evidence/milestone-5/m5e/sandbox-run.log",
+    "docs/evidence/milestone-5/m5e/tidepool-readonly.json",
+    "docs/evidence/milestone-5/m5e/wasm-build.log",
+    "docs/evidence/milestone-5/m5e/ws1-check.log",
+    "docs/evidence/milestone-5/m5e/ws1-final-check.log",
+    "docs/evidence/milestone-5/m5e/ws1-final-format.log",
+    "docs/evidence/milestone-5/m5e/ws1-format.log",
+    "docs/evidence/milestone-5/m5e/ws1-lint.log",
+    "docs/evidence/milestone-5/m5e/ws1-recheck-format.log",
+    "docs/evidence/milestone-5/m5e/ws1-tests.log",
+    "docs/evidence/milestone-5/m5e/ws1-typecheck.log",
+    "docs/evidence/milestone-5/m5e/ws2-check.log",
+    "docs/evidence/milestone-5/m5e/ws2-format.log",
+    "docs/evidence/milestone-5/m5e/ws3-check.log",
+    "docs/evidence/milestone-5/m5e/ws3-format.log",
+    "docs/evidence/milestone-5/m5e/ws4-check.log",
+    "docs/evidence/milestone-5/m5e/ws4-format.log",
+    "docs/milestone-5e-execution-safeguards.md",
+    "docs/milestone-5e-monitoring-and-incidents.md",
+    "docs/milestone-5e-operational-hardening.md",
+    "docs/milestone-5e-recipient-verification.md",
+    "docs/milestone-5e-rpc-resource-limits.md",
+    "docs/milestone-5e-testnet-readiness.md",
+    "docs/milestone-5e-tidepool-compatibility.md",
+    "execution-service/src/api/http.ts",
+    "execution-service/src/discovery/processor.ts",
+    "execution-service/src/host/server.ts",
+    "execution-service/src/near/errors.ts",
+    "execution-service/src/near/http.ts",
+    "execution-service/src/near/providers/fastnear-neardata.ts",
+    "execution-service/src/near/recipient-preflight.ts",
+    "execution-service/src/near/rpc.ts",
+    "execution-service/src/operations/monitoring.ts",
+    "execution-service/src/operations/safeguards.ts",
+    "execution-service/src/reconciliation/limits.ts",
+    "execution-service/src/reconciliation/rpc.ts",
+    "execution-service/src/reconciliation/verifier.ts",
+    "execution-service/src/reconciliation/worker.ts",
+    "execution-service/tests/discovery.test.ts",
+    "execution-service/tests/operational-monitoring.test.ts",
+    "execution-service/tests/operational-safeguards.test.ts",
+    "execution-service/tests/recipient-preflight.test.ts",
+    "execution-service/tests/rpc-resources.test.ts",
+    "docs/evidence/milestone-5/m5e-implementation-results.json",
+    "docs/evidence/milestone-5/m5e/sha256.json"
+  ]
+}

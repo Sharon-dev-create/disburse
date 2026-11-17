@@ -1,3 +1,11 @@
+import { NearRpcError } from "../near/errors.ts";
+import { withAbort } from "../near/http.ts";
+import {
+  assertReceiptGraph,
+  graphLimits,
+  mapBounded,
+  type GraphLimits,
+} from "./limits.ts";
 import {
   bindingDigest,
   canonical,
@@ -15,6 +23,7 @@ import {
 import { viewAt, type EvidenceRpc } from "./rpc.ts";
 
 export interface EvidencePolicy {
+  readonly limits?: Partial<GraphLimits>;
   readonly contractCodeHashes: readonly string[];
   readonly atomicTokenCodeHashes: readonly string[];
 }
@@ -92,6 +101,7 @@ export function verifyBundle(
 ): Verification {
   try {
     validateIdentity(i);
+    const limits = graphLimits(policy.limits);
     same(b.chainId, i.chainId);
     const n = object(b.native),
       binding = object(n.binding),
@@ -180,6 +190,7 @@ export function verifyBundle(
     )
       throw new Error("Accounting invariant violation");
     const tx = object(b.transaction);
+    assertReceiptGraph(tx, limits);
     same(tx.final_execution_status, "FINAL");
     const transaction = object(tx.transaction);
     same(transaction.hash, b.locator.transactionHash);
@@ -197,7 +208,7 @@ export function verifyBundle(
     const rows = list(tx.receipts_outcome);
     if (
       rows.length < 4 ||
-      rows.length > 256 ||
+      rows.length > limits.nodes ||
       b.receipts.length !== rows.length
     )
       throw new Error("Incomplete/oversized graph");
@@ -413,16 +424,18 @@ export function verifyBundle(
     };
   }
 }
-export async function collectBundle(
+async function collectBoundedBundle(
   rpc: EvidenceRpc,
   i: AttemptIdentity,
   locator: TransactionLocator,
+  limits: GraphLimits,
 ): Promise<EvidenceBundle> {
   validateIdentity(i);
   if (locator.senderId !== i.executorId)
     throw new Error("Wrong transaction signer");
   const status = object(await rpc.read("status", []));
-  if (status.chain_id !== i.chainId) throw new Error("Wrong RPC network");
+  if (status.chain_id !== i.chainId)
+    throw new NearRpcError("network-mismatch", "Wrong RPC network");
   const tx = object(
     await rpc.read("tx_status", {
       tx_hash: text(locator.transactionHash),
@@ -431,56 +444,71 @@ export async function collectBundle(
     }),
   );
   if (tx.final_execution_status !== "FINAL")
-    throw new Error("Transaction not final");
+    throw new NearRpcError("finality-uncertain", "Transaction not final");
+  assertReceiptGraph(tx, limits);
   const head = object(
     object(await rpc.read("block", { finality: "final" })).header,
   );
   const hash = text(head.hash);
   const [native, attempt, authorization, payout, accounting, execution] =
-    await Promise.all([
-      viewAt(
-        rpc,
-        i.contractId,
-        "get_native_payout",
-        { payout_id: i.payoutId },
-        hash,
-      ),
-      viewAt(
-        rpc,
-        i.contractId,
-        "get_native_attempt",
-        { payout_id: i.payoutId, attempt_id: i.attemptId },
-        hash,
-      ),
-      viewAt(
-        rpc,
-        i.contractId,
-        "get_native_authorization",
-        { authorization_id: i.authorizationId },
-        hash,
-      ),
-      viewAt(rpc, i.contractId, "get_payout", { payout_id: i.payoutId }, hash),
-      viewAt(
-        rpc,
-        i.contractId,
-        "get_campaign_payout_accounting",
-        { campaign_id: i.campaignId },
-        hash,
-      ),
-      viewAt(
-        rpc,
-        i.contractId,
-        "get_native_execution_outcome",
-        { payout_id: i.payoutId, attempt_id: i.attemptId },
-        hash,
-      ),
-    ]);
+    await mapBounded(
+      [
+        () =>
+          viewAt(
+            rpc,
+            i.contractId,
+            "get_native_payout",
+            { payout_id: i.payoutId },
+            hash,
+          ),
+        () =>
+          viewAt(
+            rpc,
+            i.contractId,
+            "get_native_attempt",
+            { payout_id: i.payoutId, attempt_id: i.attemptId },
+            hash,
+          ),
+        () =>
+          viewAt(
+            rpc,
+            i.contractId,
+            "get_native_authorization",
+            { authorization_id: i.authorizationId },
+            hash,
+          ),
+        () =>
+          viewAt(
+            rpc,
+            i.contractId,
+            "get_payout",
+            { payout_id: i.payoutId },
+            hash,
+          ),
+        () =>
+          viewAt(
+            rpc,
+            i.contractId,
+            "get_campaign_payout_accounting",
+            { campaign_id: i.campaignId },
+            hash,
+          ),
+        () =>
+          viewAt(
+            rpc,
+            i.contractId,
+            "get_native_execution_outcome",
+            { payout_id: i.payoutId, attempt_id: i.attemptId },
+            hash,
+          ),
+      ],
+      limits.concurrency,
+      (work) => work(),
+    );
   const rows = list(tx.receipts_outcome);
-  if (rows.length > 256) throw new Error("Oversized receipt graph");
-  const receipts = await Promise.all(
-    rows.map((r) =>
-      rpc.read("EXPERIMENTAL_receipt", { receipt_id: text(object(r).id) }),
-    ),
+  if (rows.length > limits.nodes) throw new Error("Oversized receipt graph");
+  const receipts = await mapBounded(rows, limits.concurrency, (r) =>
+    rpc.read("EXPERIMENTAL_receipt", { receipt_id: text(object(r).id) }),
   );
   const hashes = [
     ...new Set(
@@ -489,8 +517,10 @@ export async function collectBundle(
       ),
     ),
   ];
-  const blocks = await Promise.all(
-    hashes.map(async (blockHash) => {
+  const blocks = await mapBounded(
+    hashes,
+    limits.concurrency,
+    async (blockHash) => {
       const header = object(
         object(await rpc.read("block", { block_id: blockHash })).header,
       );
@@ -502,7 +532,7 @@ export async function collectBundle(
       if (!Number.isSafeInteger(Number(header.height)))
         throw new Error("Unsafe block height");
       return { header, canonicalHeader };
-    }),
+    },
   );
   return {
     sourceId: rpc.sourceId,
@@ -521,4 +551,64 @@ export async function collectBundle(
     receipts,
     blocks,
   };
+}
+
+/** One bounded observation traversal; unknown/incomplete evidence cannot authorize recovery. */
+export async function collectBundle(
+  rpc: EvidenceRpc,
+  identity: AttemptIdentity,
+  locator: TransactionLocator,
+  options: Partial<GraphLimits> = {},
+  external?: AbortSignal,
+): Promise<EvidenceBundle> {
+  const limits = graphLimits(options),
+    controller = new AbortController();
+  const timer = setTimeout(
+    () =>
+      controller.abort(
+        new NearRpcError(
+          "resource-limit",
+          "Receipt traversal deadline exceeded",
+        ),
+      ),
+    limits.durationMs,
+  );
+  const cancel = () =>
+    controller.abort(
+      new NearRpcError("cancelled", "Receipt traversal cancelled"),
+    );
+  external?.addEventListener("abort", cancel, { once: true });
+  if (external?.aborted) cancel();
+  let calls = 0,
+    bytes = 0;
+  const bounded: EvidenceRpc = {
+    sourceId: rpc.sourceId,
+    endpoint: rpc.endpoint,
+    read: async (method, params) => {
+      if (controller.signal.aborted) throw controller.signal.reason;
+      if (++calls > limits.calls)
+        throw new NearRpcError(
+          "resource-limit",
+          "Receipt RPC call limit exceeded",
+        );
+      const result = await withAbort(
+        rpc.read(method, params, controller.signal),
+        controller.signal,
+      );
+      bytes += Buffer.byteLength(JSON.stringify(result));
+      if (bytes > limits.bytes)
+        throw new NearRpcError(
+          "resource-limit",
+          "Receipt observation byte limit exceeded",
+        );
+      return result;
+    },
+  };
+  try {
+    return await collectBoundedBundle(bounded, identity, locator, limits);
+  } finally {
+    clearTimeout(timer);
+    external?.removeEventListener("abort", cancel);
+    controller.abort();
+  }
 }

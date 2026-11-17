@@ -1,0 +1,38 @@
+{
+  "protected_Rust_persistence_migrations_prior_evidence_unchanged": true,
+  "final_source_and_tests_match_completed_isolated_suite": true,
+  "candidate_wasm_sha256": "37e432600c43d5fc7d44b2d81bc9a852d5e120a7dc043c7f06f83d1e62a24ea9",
+  "baseline_differences": [
+    "execution-service/src/reconciliation/verifier.ts",
+    "execution-service/src/reconciliation/worker.ts",
+    "execution-service/src/reconciliation/rpc.ts",
+    "execution-service/src/discovery/processor.ts",
+    "execution-service/src/api/http.ts",
+    "execution-service/src/near/rpc.ts",
+    "execution-service/src/host/server.ts",
+    "execution-service/src/near/providers/fastnear-neardata.ts",
+    "execution-service/tests/discovery.test.ts"
+  ],
+  "commands": {
+    "git diff --check": {
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "git diff --stat": {
+      "exit_code": 0,
+      "stdout": " execution-service/src/api/http.ts                  |  16 +\n execution-service/src/discovery/processor.ts       |  56 +++-\n execution-service/src/host/server.ts               |  23 ++\n .../src/near/providers/fastnear-neardata.ts        | 137 ++++-----\n execution-service/src/near/rpc.ts                  | 328 ++++++---------------\n execution-service/src/reconciliation/rpc.ts        |  59 ++--\n execution-service/src/reconciliation/verifier.ts   | 190 ++++++++----\n execution-service/src/reconciliation/worker.ts     |  15 +-\n execution-service/tests/discovery.test.ts          | 102 +++++++\n 9 files changed, 526 insertions(+), 400 deletions(-)\n",
+      "stderr": ""
+    },
+    "git status --short": {
+      "exit_code": 0,
+      "stdout": " M execution-service/src/api/http.ts\n M execution-service/src/discovery/processor.ts\n M execution-service/src/host/server.ts\n M execution-service/src/near/providers/fastnear-neardata.ts\n M execution-service/src/near/rpc.ts\n M execution-service/src/reconciliation/rpc.ts\n M execution-service/src/reconciliation/verifier.ts\n M execution-service/src/reconciliation/worker.ts\n M execution-service/tests/discovery.test.ts\n?? docs/evidence/milestone-5/m5e-implementation-results.json\n?? docs/evidence/milestone-5/m5e/\n?? docs/milestone-5e-execution-safeguards.md\n?? docs/milestone-5e-monitoring-and-incidents.md\n?? docs/milestone-5e-operational-hardening.md\n?? docs/milestone-5e-recipient-verification.md\n?? docs/milestone-5e-rpc-resource-limits.md\n?? docs/milestone-5e-testnet-readiness.md\n?? docs/milestone-5e-tidepool-compatibility.md\n?? execution-service/src/near/errors.ts\n?? execution-service/src/near/http.ts\n?? execution-service/src/near/recipient-preflight.ts\n?? execution-service/src/operations/\n?? execution-service/src/reconciliation/limits.ts\n?? execution-service/tests/operational-monitoring.test.ts\n?? execution-service/tests/operational-safeguards.test.ts\n?? execution-service/tests/recipient-preflight.test.ts\n?? execution-service/tests/rpc-resources.test.ts\n",
+      "stderr": ""
+    },
+    "git rev-parse HEAD": {
+      "exit_code": 0,
+      "stdout": "840c87f6d4a605b9dd70169133ee859e03af99fb\n",
+      "stderr": ""
+    }
+  }
+}

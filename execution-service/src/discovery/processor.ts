@@ -1,3 +1,5 @@
+import { NearRpcError } from "../near/errors.ts";
+import { withAbort } from "../near/http.ts";
 import {
   validatePayoutSnapshot,
   type ExecutionJobKey,
@@ -23,6 +25,8 @@ export interface DiscoveryProcessorConfig {
   readonly networkId: string;
   readonly contractId: string;
   readonly pageSize?: number;
+  readonly maxRecoveryPages?: number;
+  readonly maxRecoveryMs?: number;
 }
 
 export interface DiscoveryRunResult {
@@ -39,6 +43,8 @@ export interface DiscoveryRunResult {
 export class PayoutDiscoveryProcessor {
   private readonly sourceKey: string;
   private readonly pageSize: number;
+  private readonly maxRecoveryPages: number;
+  private readonly maxRecoveryMs: number;
   private readonly config: DiscoveryProcessorConfig;
   private readonly source: NearEventSource;
   private readonly reader: ContractReader;
@@ -61,7 +67,22 @@ export class PayoutDiscoveryProcessor {
     }
     this.sourceKey = JSON.stringify([config.networkId, config.contractId]);
     this.pageSize = config.pageSize ?? 100;
-    if (!Number.isSafeInteger(this.pageSize) || this.pageSize <= 0) {
+    this.maxRecoveryPages = config.maxRecoveryPages ?? 100;
+    this.maxRecoveryMs = config.maxRecoveryMs ?? 30000;
+    if (
+      !Number.isSafeInteger(this.maxRecoveryPages) ||
+      this.maxRecoveryPages < 1 ||
+      this.maxRecoveryPages > 1000 ||
+      !Number.isSafeInteger(this.maxRecoveryMs) ||
+      this.maxRecoveryMs < 1 ||
+      this.maxRecoveryMs > 300000
+    )
+      throw new Error("Invalid recovery budget");
+    if (
+      !Number.isSafeInteger(this.pageSize) ||
+      this.pageSize <= 0 ||
+      this.pageSize > 1000
+    ) {
       throw new Error("Discovery page size must be a positive safe integer");
     }
   }
@@ -179,14 +200,34 @@ export class PayoutDiscoveryProcessor {
     let malformedEvents = 0;
     let blocksChecked = recovery.blocksChecked;
     let eventsChecked = recovery.eventsChecked;
+    const controller = new AbortController();
+    const timer = setTimeout(
+      () =>
+        controller.abort(
+          new NearRpcError(
+            "resource-limit",
+            "Recovery duration limit exceeded",
+          ),
+        ),
+      this.maxRecoveryMs,
+    );
+    let pages = 0;
     try {
       let hasMore = true;
       while (hasMore) {
-        const page = await this.source.readRange(
-          startBlockHeight,
-          endBlockHeight,
-          cursor,
-          this.pageSize,
+        if (++pages > this.maxRecoveryPages)
+          throw new NearRpcError(
+            "resource-limit",
+            "Recovery page limit exceeded",
+          );
+        const page = await withAbort(
+          this.source.readRange(
+            startBlockHeight,
+            endBlockHeight,
+            cursor,
+            this.pageSize,
+          ),
+          controller.signal,
         );
         await this.repository.clearSourceFailure(recoverySourceKey);
         if (page.nextCursor === cursor && page.hasMore)
@@ -269,6 +310,9 @@ export class PayoutDiscoveryProcessor {
             : "Historical recovery failed; investigation required",
       });
       throw error;
+    } finally {
+      clearTimeout(timer);
+      controller.abort();
     }
   }
 

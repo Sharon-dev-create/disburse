@@ -1,3 +1,5 @@
+import { BoundedReadHttp, type HttpLimits } from "../http.ts";
+import { NearRpcError } from "../errors.ts";
 import { createHash } from "node:crypto";
 import type { RawNearEvent } from "../../discovery/events.ts";
 import type { DiscoveryBlockObservation } from "../../discovery/repository.ts";
@@ -14,7 +16,9 @@ export type NearDataErrorKind =
   | "malformed"
   | "cursor-corruption"
   | "block-continuity-failure"
-  | "network-mismatch";
+  | "network-mismatch"
+  | "resource-limit"
+  | "cancelled";
 
 export class NearDataProviderError extends Error {
   readonly kind: NearDataErrorKind;
@@ -44,6 +48,7 @@ export interface FastNearNearDataConfig {
   readonly timeoutMs?: number;
   readonly retryAttempts?: number;
   readonly maxBlocksPerPage?: number;
+  readonly httpLimits?: Partial<HttpLimits>;
 }
 
 interface BlockCursor {
@@ -101,7 +106,7 @@ export class FastNearNearDataEventSource implements NearEventSource {
   private readonly timeoutMs: number;
   private readonly retryAttempts: number;
   private readonly maxBlocksPerPage: number;
-  private readonly fetchImpl: typeof fetch;
+  private readonly http: BoundedReadHttp;
   private requestCount = 0;
   private retrievedEvents = 0;
   private scannedBlocks = 0;
@@ -151,7 +156,17 @@ export class FastNearNearDataEventSource implements NearEventSource {
     this.timeoutMs = config.timeoutMs ?? 10_000;
     this.retryAttempts = config.retryAttempts ?? 3;
     this.maxBlocksPerPage = config.maxBlocksPerPage ?? 100;
-    this.fetchImpl = fetchImpl;
+    this.http = new BoundedReadHttp(
+      (...args) => {
+        this.requestCount++;
+        return fetchImpl(...args);
+      },
+      {
+        ...config.httpLimits,
+        timeoutMs: this.timeoutMs,
+        maxAttempts: this.retryAttempts,
+      },
+    );
     if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs <= 0)
       throw new Error("NEAR Data timeout must be a positive safe integer");
     if (
@@ -259,7 +274,7 @@ export class FastNearNearDataEventSource implements NearEventSource {
     limit: number,
     endHeight: bigint | null = null,
   ): Promise<NearEventPage> {
-    if (!Number.isSafeInteger(limit) || limit <= 0)
+    if (!Number.isSafeInteger(limit) || limit <= 0 || limit > 1000)
       throw new Error("Event page limit must be a positive safe integer");
     const events: RawNearEvent[] = [];
     const blocks: DiscoveryBlockObservation[] = [];
@@ -387,83 +402,45 @@ export class FastNearNearDataEventSource implements NearEventSource {
   }
 
   private async getJson(path: string): Promise<unknown> {
-    let lastError: NearDataProviderError | null = null;
-    for (let attempt = 0; attempt < this.retryAttempts; attempt += 1) {
-      const url = new URL(path, this.endpoint);
-      if (this.apiKey) url.searchParams.set("apiKey", this.apiKey);
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    const url = new URL(path, this.endpoint);
+    if (this.apiKey) url.searchParams.set("apiKey", this.apiKey);
+    try {
+      const raw = await this.http.text(url, {
+        method: "GET",
+        headers: { accept: "application/json" },
+      });
+      let result: unknown;
       try {
-        this.requestCount += 1;
-        const response = await this.fetchImpl(url, {
-          method: "GET",
-          headers: { accept: "application/json" },
-          signal: controller.signal,
-        });
-        if (response.status === 429) {
-          lastError = new NearDataProviderError(
-            "rate-limited",
-            "NEAR Data rate limit was reached",
-          );
-        } else if (response.status >= 500) {
-          lastError = new NearDataProviderError(
-            "unavailable",
-            `NEAR Data returned HTTP ${response.status}`,
-          );
-        } else if (response.status === 404) {
-          throw new NearDataProviderError(
-            "missing-history",
-            "NEAR Data does not have the requested historical resource",
-            { path },
-          );
-        } else if (response.status === 401 || response.status === 403) {
-          throw new NearDataProviderError(
-            "configuration",
-            `NEAR Data rejected the configured credentials (HTTP ${response.status})`,
-          );
-        } else if (!response.ok) {
-          throw new NearDataProviderError(
-            "malformed",
-            `NEAR Data returned HTTP ${response.status}`,
-          );
-        } else {
-          try {
-            const result: unknown = await response.json();
-            this.connected = true;
-            return result;
-          } catch {
-            throw new NearDataProviderError(
-              "malformed",
-              "NEAR Data returned invalid JSON",
-            );
-          }
-        }
-      } catch (error) {
-        if (error instanceof NearDataProviderError) {
-          if (!error.retryable) throw error;
-          lastError = error;
-        } else if (controller.signal.aborted) {
-          lastError = new NearDataProviderError(
-            "timeout",
-            "NEAR Data request timed out",
-          );
-        } else {
-          lastError = new NearDataProviderError(
-            "unavailable",
-            "NEAR Data request failed",
-          );
-        }
-      } finally {
-        clearTimeout(timer);
+        result = JSON.parse(raw);
+      } catch {
+        throw new NearDataProviderError(
+          "malformed",
+          "NEAR Data returned invalid JSON",
+        );
       }
-      if (attempt + 1 < this.retryAttempts)
-        await delay(Math.min(1_000, 100 * 2 ** attempt));
+      this.connected = true;
+      return result;
+    } catch (error) {
+      this.connected = false;
+      if (error instanceof NearDataProviderError) throw error;
+      if (error instanceof NearRpcError) {
+        const kind: NearDataErrorKind =
+          error.status === 404
+            ? "missing-history"
+            : error.status === 401 || error.status === 403
+              ? "configuration"
+              : error.kind === "rpc"
+                ? "malformed"
+                : error.kind === "timeout" ||
+                    error.kind === "rate-limited" ||
+                    error.kind === "resource-limit" ||
+                    error.kind === "cancelled"
+                  ? error.kind
+                  : "unavailable";
+        throw new NearDataProviderError(kind, "NEAR Data read failed");
+      }
+      throw new NearDataProviderError("unavailable", "NEAR Data read failed");
     }
-    this.connected = false;
-    throw (
-      lastError ??
-      new NearDataProviderError("unavailable", "NEAR Data request failed")
-    );
   }
 }
 
@@ -758,10 +735,6 @@ function nonEmptyString(value: unknown, label: string): string {
       `NEAR Data ${label} is missing`,
     );
   return value;
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function sha256(value: string): string {
