@@ -1,0 +1,50 @@
+✖ legacy transition rejects expiry during final write lock wait (1083.116588ms)
+ℹ {"lease":{"workerId":"boundary-A","fencingToken":"1","stateVersion":2,"expiresAtMs":1794902361504},"before":{"jobId":"3","idempotencyKey":"jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-3a24d35f-7f35-4731-91fb-754f141ca35a-idem","snapshotDigest":"c05fd18a10ea6e4b93c1c4b45d62363bca3a201a9a16e6fa7effd93ca3f44893","fencingCounter":"1","attemptCount":0,"nextEligibleAtMs":1794902360982,"failure":null,"key":{"networkId":"near:testnet","contractId":"disburse.testnet","payoutId":"1794937160930375703"},"payout":{"payoutId":"1794937160930375703","campaignId":"7","inputAmount":{"tokenId":"near","decimals":24,"atomicAmount":"900719925474099312345"},"contractStatus":"Reserved","expectedOutput":{"tokenId":"wrap.near","decimals":24,"atomicAmount":"900719925474099312345"},"recipientAddress":"recipient.near","destinationChainId":"near:testnet","executionReference":null,"settlementEvidenceReference":null},"discoveryEvent":{"networkId":"near:testnet","contractId":"disburse.testnet","transactionHash":"jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-3a24d35f-7f35-4731-91fb-754f141ca35a-tx","blockHash":"jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-3a24d35f-7f35-4731-91fb-754f141ca35a-block","receiptId":"jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-3a24d35f-7f35-4731-91fb-754f141ca35a-receipt","eventIndex":0,"blockHeight":"123456"},"state":"Leased","version":2,"createdAtMs":1794902360982,"updatedAtMs":1794902361002,"lease":{"workerId":"boundary-A","fencingToken":"1","stateVersion":2,"expiresAtMs":1794902361504},"attempts":[]},"outcome":{"accepted":true,"error":null,"timing":{"blocked":true,"waitMs":917.21651,"rowCount":1,"databaseTime":"2026-11-17T07:59:21.945Z"}},"after":{"jobId":"3","idempotencyKey":"jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-3a24d35f-7f35-4731-91fb-754f141ca35a-idem","snapshotDigest":"c05fd18a10ea6e4b93c1c4b45d62363bca3a201a9a16e6fa7effd93ca3f44893","fencingCounter":"1","attemptCount":0,"nextEligibleAtMs":1794902360982,"failure":null,"key":{"networkId":"near:testnet","contractId":"disburse.testnet","payoutId":"1794937160930375703"},"payout":{"payoutId":"1794937160930375703","campaignId":"7","inputAmount":{"tokenId":"near","decimals":24,"atomicAmount":"900719925474099312345"},"contractStatus":"Reserved","expectedOutput":{"tokenId":"wrap.near","decimals":24,"atomicAmount":"900719925474099312345"},"recipientAddress":"recipient.near","destinationChainId":"near:testnet","executionReference":null,"settlementEvidenceReference":null},"discoveryEvent":{"networkId":"near:testnet","contractId":"disburse.testnet","transactionHash":"jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-3a24d35f-7f35-4731-91fb-754f141ca35a-tx","blockHash":"jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-3a24d35f-7f35-4731-91fb-754f141ca35a-block","receiptId":"jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-3a24d35f-7f35-4731-91fb-754f141ca35a-receipt","eventIndex":0,"blockHeight":"123456"},"state":"Preparing","version":3,"createdAtMs":1794902360982,"updatedAtMs":1794902361942,"lease":{"workerId":"boundary-A","fencingToken":"1","stateVersion":3,"expiresAtMs":1794902361504},"attempts":[]}}
+✖ legacy zero-row release cannot increment version (1024.164659ms)
+ℹ {"expectedLease":{"workerId":"boundary-A","fencingToken":"1","stateVersion":2,"expiresAtMs":1794902362535},"initialVersion":2,"outcome":{"accepted":true,"error":null,"timing":{"blocked":true,"waitMs":908.40201,"rowCount":0,"databaseTime":"2026-11-17T07:59:22.972Z"}},"after":{"jobId":"4","idempotencyKey":"jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-27735a34-3229-4e83-9624-46ab7c61c87c-idem","snapshotDigest":"fc26f4701e7f9739f35d4602addd452f4be3799cd3fcc281634ca556ee7a90bd","fencingCounter":"1","attemptCount":0,"nextEligibleAtMs":1794902361992,"failure":null,"key":{"networkId":"near:testnet","contractId":"disburse.testnet","payoutId":"1794937160930375704"},"payout":{"payoutId":"1794937160930375704","campaignId":"7","inputAmount":{"tokenId":"near","decimals":24,"atomicAmount":"900719925474099312345"},"contractStatus":"Reserved","expectedOutput":{"tokenId":"wrap.near","decimals":24,"atomicAmount":"900719925474099312345"},"recipientAddress":"recipient.near","destinationChainId":"near:testnet","executionReference":null,"settlementEvidenceReference":null},"discoveryEvent":{"networkId":"near:testnet","contractId":"disburse.testnet","transactionHash":"jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-27735a34-3229-4e83-9624-46ab7c61c87c-tx","blockHash":"jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-27735a34-3229-4e83-9624-46ab7c61c87c-block","receiptId":"jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-27735a34-3229-4e83-9624-46ab7c61c87c-receipt","eventIndex":0,"blockHeight":"123456"},"state":"Leased","version":3,"createdAtMs":1794902361992,"updatedAtMs":1794902362975,"lease":{"workerId":"boundary-A","fencingToken":"1","stateVersion":3,"expiresAtMs":1794902362535},"attempts":[]}}
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2491.242637
+
+✖ failing tests:
+
+test at tests/integration/postgres-jobs.test.ts:573:6
+✖ legacy transition rejects expiry during final write lock wait (1083.116588ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///home/topg/disburse/execution-service/tests/integration/postgres-jobs.test.ts:581:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/integration/postgres-jobs.test.ts:586:6
+✖ legacy zero-row release cannot increment version (1024.164659ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///home/topg/disburse/execution-service/tests/integration/postgres-jobs.test.ts:595:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

@@ -1,0 +1,1162 @@
+{
+  "milestone": "M5-D.3",
+  "date": "2026-11-17",
+  "verdict": "PASS",
+  "scope": "Local remediation implementation validation; independent security re-review still required",
+  "status": "REMEDIATED_PENDING_INDEPENDENT_REVIEW",
+  "baseline_revision": "fe2a015bcd9378432ac9df3fe555acc1ebae6b52",
+  "final_observed_revision": "fe2a015bcd9378432ac9df3fe555acc1ebae6b52",
+  "working_tree_baseline": "## main...origin/main\n",
+  "reviewed_vulnerable_source_matched_D2": true,
+  "findings": [
+    {
+      "id": "M5D2-01",
+      "severity": "MEDIUM",
+      "root_cause": "Final nonterminal UPDATE lacked current owner/fence/expiry predicates after initial validation and later lock waits",
+      "fix": "Lock job then matching lease; separate fresh clock validation; conditional state/version/fence/lease UPDATE with affected-row check",
+      "status": "FIXED_LOCAL_REGRESSION_VERIFIED"
+    },
+    {
+      "id": "M5D2-02",
+      "severity": "MEDIUM",
+      "root_cause": "Conditional lease DELETE row count ignored before unconditional version bump",
+      "fix": "Reuse exact-one guarded deletion; only then bump version atomically; failure rolls back all changes",
+      "status": "FIXED_LOCAL_REGRESSION_VERIFIED"
+    }
+  ],
+  "before_fix": {
+    "ran_before_implementation_change": true,
+    "expected_safety_tests_failed": 2,
+    "reproductions": [
+      {
+        "lease": {
+          "workerId": "boundary-A",
+          "fencingToken": "1",
+          "stateVersion": 2,
+          "expiresAtMs": 1794902361504
+        },
+        "before": {
+          "jobId": "3",
+          "idempotencyKey": "jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-3a24d35f-7f35-4731-91fb-754f141ca35a-idem",
+          "snapshotDigest": "c05fd18a10ea6e4b93c1c4b45d62363bca3a201a9a16e6fa7effd93ca3f44893",
+          "fencingCounter": "1",
+          "attemptCount": 0,
+          "nextEligibleAtMs": 1794902360982,
+          "failure": null,
+          "key": {
+            "networkId": "near:testnet",
+            "contractId": "disburse.testnet",
+            "payoutId": "1794937160930375703"
+          },
+          "payout": {
+            "payoutId": "1794937160930375703",
+            "campaignId": "7",
+            "inputAmount": {
+              "tokenId": "near",
+              "decimals": 24,
+              "atomicAmount": "900719925474099312345"
+            },
+            "contractStatus": "Reserved",
+            "expectedOutput": {
+              "tokenId": "wrap.near",
+              "decimals": 24,
+              "atomicAmount": "900719925474099312345"
+            },
+            "recipientAddress": "recipient.near",
+            "destinationChainId": "near:testnet",
+            "executionReference": null,
+            "settlementEvidenceReference": null
+          },
+          "discoveryEvent": {
+            "networkId": "near:testnet",
+            "contractId": "disburse.testnet",
+            "transactionHash": "jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-3a24d35f-7f35-4731-91fb-754f141ca35a-tx",
+            "blockHash": "jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-3a24d35f-7f35-4731-91fb-754f141ca35a-block",
+            "receiptId": "jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-3a24d35f-7f35-4731-91fb-754f141ca35a-receipt",
+            "eventIndex": 0,
+            "blockHeight": "123456"
+          },
+          "state": "Leased",
+          "version": 2,
+          "createdAtMs": 1794902360982,
+          "updatedAtMs": 1794902361002,
+          "lease": {
+            "workerId": "boundary-A",
+            "fencingToken": "1",
+            "stateVersion": 2,
+            "expiresAtMs": 1794902361504
+          },
+          "attempts": []
+        },
+        "outcome": {
+          "accepted": true,
+          "error": null,
+          "timing": {
+            "blocked": true,
+            "waitMs": 917.21651,
+            "rowCount": 1,
+            "databaseTime": "2026-11-17T07:59:21.945Z"
+          }
+        },
+        "after": {
+          "jobId": "3",
+          "idempotencyKey": "jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-3a24d35f-7f35-4731-91fb-754f141ca35a-idem",
+          "snapshotDigest": "c05fd18a10ea6e4b93c1c4b45d62363bca3a201a9a16e6fa7effd93ca3f44893",
+          "fencingCounter": "1",
+          "attemptCount": 0,
+          "nextEligibleAtMs": 1794902360982,
+          "failure": null,
+          "key": {
+            "networkId": "near:testnet",
+            "contractId": "disburse.testnet",
+            "payoutId": "1794937160930375703"
+          },
+          "payout": {
+            "payoutId": "1794937160930375703",
+            "campaignId": "7",
+            "inputAmount": {
+              "tokenId": "near",
+              "decimals": 24,
+              "atomicAmount": "900719925474099312345"
+            },
+            "contractStatus": "Reserved",
+            "expectedOutput": {
+              "tokenId": "wrap.near",
+              "decimals": 24,
+              "atomicAmount": "900719925474099312345"
+            },
+            "recipientAddress": "recipient.near",
+            "destinationChainId": "near:testnet",
+            "executionReference": null,
+            "settlementEvidenceReference": null
+          },
+          "discoveryEvent": {
+            "networkId": "near:testnet",
+            "contractId": "disburse.testnet",
+            "transactionHash": "jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-3a24d35f-7f35-4731-91fb-754f141ca35a-tx",
+            "blockHash": "jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-3a24d35f-7f35-4731-91fb-754f141ca35a-block",
+            "receiptId": "jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-3a24d35f-7f35-4731-91fb-754f141ca35a-receipt",
+            "eventIndex": 0,
+            "blockHeight": "123456"
+          },
+          "state": "Preparing",
+          "version": 3,
+          "createdAtMs": 1794902360982,
+          "updatedAtMs": 1794902361942,
+          "lease": {
+            "workerId": "boundary-A",
+            "fencingToken": "1",
+            "stateVersion": 3,
+            "expiresAtMs": 1794902361504
+          },
+          "attempts": []
+        }
+      },
+      {
+        "expectedLease": {
+          "workerId": "boundary-A",
+          "fencingToken": "1",
+          "stateVersion": 2,
+          "expiresAtMs": 1794902362535
+        },
+        "initialVersion": 2,
+        "outcome": {
+          "accepted": true,
+          "error": null,
+          "timing": {
+            "blocked": true,
+            "waitMs": 908.40201,
+            "rowCount": 0,
+            "databaseTime": "2026-11-17T07:59:22.972Z"
+          }
+        },
+        "after": {
+          "jobId": "4",
+          "idempotencyKey": "jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-27735a34-3229-4e83-9624-46ab7c61c87c-idem",
+          "snapshotDigest": "fc26f4701e7f9739f35d4602addd452f4be3799cd3fcc281634ca556ee7a90bd",
+          "fencingCounter": "1",
+          "attemptCount": 0,
+          "nextEligibleAtMs": 1794902361992,
+          "failure": null,
+          "key": {
+            "networkId": "near:testnet",
+            "contractId": "disburse.testnet",
+            "payoutId": "1794937160930375704"
+          },
+          "payout": {
+            "payoutId": "1794937160930375704",
+            "campaignId": "7",
+            "inputAmount": {
+              "tokenId": "near",
+              "decimals": 24,
+              "atomicAmount": "900719925474099312345"
+            },
+            "contractStatus": "Reserved",
+            "expectedOutput": {
+              "tokenId": "wrap.near",
+              "decimals": 24,
+              "atomicAmount": "900719925474099312345"
+            },
+            "recipientAddress": "recipient.near",
+            "destinationChainId": "near:testnet",
+            "executionReference": null,
+            "settlementEvidenceReference": null
+          },
+          "discoveryEvent": {
+            "networkId": "near:testnet",
+            "contractId": "disburse.testnet",
+            "transactionHash": "jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-27735a34-3229-4e83-9624-46ab7c61c87c-tx",
+            "blockHash": "jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-27735a34-3229-4e83-9624-46ab7c61c87c-block",
+            "receiptId": "jobs-14789420-abfb-4898-b409-7c8d56396196-lease-boundary-27735a34-3229-4e83-9624-46ab7c61c87c-receipt",
+            "eventIndex": 0,
+            "blockHeight": "123456"
+          },
+          "state": "Leased",
+          "version": 3,
+          "createdAtMs": 1794902361992,
+          "updatedAtMs": 1794902362975,
+          "lease": {
+            "workerId": "boundary-A",
+            "fencingToken": "1",
+            "stateVersion": 3,
+            "expiresAtMs": 1794902362535
+          },
+          "attempts": []
+        }
+      }
+    ],
+    "log": "m5d3/before-regressions-confirmed.log"
+  },
+  "after_fix": {
+    "same_original_assertions_passed": 2,
+    "reproductions": [
+      {
+        "lease": {
+          "workerId": "boundary-A",
+          "fencingToken": "1",
+          "stateVersion": 2,
+          "expiresAtMs": 1794902431313
+        },
+        "before": {
+          "jobId": "5",
+          "idempotencyKey": "jobs-df4cd80a-e62e-4f74-bcc9-a624801b351f-lease-boundary-a7dadeb2-170f-4b40-9aad-5cf71bab95b0-idem",
+          "snapshotDigest": "9bdb20dfd70584e3817a3d5f9cbc94c6ff064f8008e45f7c3a2e2e449bec6936",
+          "fencingCounter": "1",
+          "attemptCount": 0,
+          "nextEligibleAtMs": 1794902430793,
+          "failure": null,
+          "key": {
+            "networkId": "near:testnet",
+            "contractId": "disburse.testnet",
+            "payoutId": "1795007575667794382"
+          },
+          "payout": {
+            "payoutId": "1795007575667794382",
+            "campaignId": "7",
+            "inputAmount": {
+              "tokenId": "near",
+              "decimals": 24,
+              "atomicAmount": "900719925474099312345"
+            },
+            "contractStatus": "Reserved",
+            "expectedOutput": {
+              "tokenId": "wrap.near",
+              "decimals": 24,
+              "atomicAmount": "900719925474099312345"
+            },
+            "recipientAddress": "recipient.near",
+            "destinationChainId": "near:testnet",
+            "executionReference": null,
+            "settlementEvidenceReference": null
+          },
+          "discoveryEvent": {
+            "networkId": "near:testnet",
+            "contractId": "disburse.testnet",
+            "transactionHash": "jobs-df4cd80a-e62e-4f74-bcc9-a624801b351f-lease-boundary-a7dadeb2-170f-4b40-9aad-5cf71bab95b0-tx",
+            "blockHash": "jobs-df4cd80a-e62e-4f74-bcc9-a624801b351f-lease-boundary-a7dadeb2-170f-4b40-9aad-5cf71bab95b0-block",
+            "receiptId": "jobs-df4cd80a-e62e-4f74-bcc9-a624801b351f-lease-boundary-a7dadeb2-170f-4b40-9aad-5cf71bab95b0-receipt",
+            "eventIndex": 0,
+            "blockHeight": "123456"
+          },
+          "state": "Leased",
+          "version": 2,
+          "createdAtMs": 1794902430793,
+          "updatedAtMs": 1794902430811,
+          "lease": {
+            "workerId": "boundary-A",
+            "fencingToken": "1",
+            "stateVersion": 2,
+            "expiresAtMs": 1794902431313
+          },
+          "attempts": []
+        },
+        "outcome": {
+          "accepted": false,
+          "error": "Execution job version or lease is stale",
+          "timing": {
+            "blocked": true,
+            "waitMs": 910.8710560000001,
+            "rowCount": 0,
+            "databaseTime": "2026-11-17T08:00:31.742Z"
+          }
+        },
+        "after": {
+          "jobId": "5",
+          "idempotencyKey": "jobs-df4cd80a-e62e-4f74-bcc9-a624801b351f-lease-boundary-a7dadeb2-170f-4b40-9aad-5cf71bab95b0-idem",
+          "snapshotDigest": "9bdb20dfd70584e3817a3d5f9cbc94c6ff064f8008e45f7c3a2e2e449bec6936",
+          "fencingCounter": "1",
+          "attemptCount": 0,
+          "nextEligibleAtMs": 1794902430793,
+          "failure": null,
+          "key": {
+            "networkId": "near:testnet",
+            "contractId": "disburse.testnet",
+            "payoutId": "1795007575667794382"
+          },
+          "payout": {
+            "payoutId": "1795007575667794382",
+            "campaignId": "7",
+            "inputAmount": {
+              "tokenId": "near",
+              "decimals": 24,
+              "atomicAmount": "900719925474099312345"
+            },
+            "contractStatus": "Reserved",
+            "expectedOutput": {
+              "tokenId": "wrap.near",
+              "decimals": 24,
+              "atomicAmount": "900719925474099312345"
+            },
+            "recipientAddress": "recipient.near",
+            "destinationChainId": "near:testnet",
+            "executionReference": null,
+            "settlementEvidenceReference": null
+          },
+          "discoveryEvent": {
+            "networkId": "near:testnet",
+            "contractId": "disburse.testnet",
+            "transactionHash": "jobs-df4cd80a-e62e-4f74-bcc9-a624801b351f-lease-boundary-a7dadeb2-170f-4b40-9aad-5cf71bab95b0-tx",
+            "blockHash": "jobs-df4cd80a-e62e-4f74-bcc9-a624801b351f-lease-boundary-a7dadeb2-170f-4b40-9aad-5cf71bab95b0-block",
+            "receiptId": "jobs-df4cd80a-e62e-4f74-bcc9-a624801b351f-lease-boundary-a7dadeb2-170f-4b40-9aad-5cf71bab95b0-receipt",
+            "eventIndex": 0,
+            "blockHeight": "123456"
+          },
+          "state": "Leased",
+          "version": 2,
+          "createdAtMs": 1794902430793,
+          "updatedAtMs": 1794902430811,
+          "lease": {
+            "workerId": "boundary-A",
+            "fencingToken": "1",
+            "stateVersion": 2,
+            "expiresAtMs": 1794902431313
+          },
+          "attempts": []
+        }
+      },
+      {
+        "expectedLease": {
+          "workerId": "boundary-A",
+          "fencingToken": "1",
+          "stateVersion": 2,
+          "expiresAtMs": 1794902432276
+        },
+        "initialVersion": 2,
+        "outcome": {
+          "accepted": false,
+          "error": "Worker lease expired during transition",
+          "timing": {
+            "blocked": true,
+            "waitMs": 906.8918980000001,
+            "rowCount": 0,
+            "databaseTime": "2026-11-17T08:00:32.702Z"
+          }
+        },
+        "after": {
+          "jobId": "6",
+          "idempotencyKey": "jobs-df4cd80a-e62e-4f74-bcc9-a624801b351f-lease-boundary-c1cec809-e86e-470f-8751-a0c7d0d688ed-idem",
+          "snapshotDigest": "d1fbd8cf73017b8eff192e10984d2a9158b098c452d16a74bd861eb0c8ea97d3",
+          "fencingCounter": "1",
+          "attemptCount": 0,
+          "nextEligibleAtMs": 1794902431756,
+          "failure": null,
+          "key": {
+            "networkId": "near:testnet",
+            "contractId": "disburse.testnet",
+            "payoutId": "1795007575667794383"
+          },
+          "payout": {
+            "payoutId": "1795007575667794383",
+            "campaignId": "7",
+            "inputAmount": {
+              "tokenId": "near",
+              "decimals": 24,
+              "atomicAmount": "900719925474099312345"
+            },
+            "contractStatus": "Reserved",
+            "expectedOutput": {
+              "tokenId": "wrap.near",
+              "decimals": 24,
+              "atomicAmount": "900719925474099312345"
+            },
+            "recipientAddress": "recipient.near",
+            "destinationChainId": "near:testnet",
+            "executionReference": null,
+            "settlementEvidenceReference": null
+          },
+          "discoveryEvent": {
+            "networkId": "near:testnet",
+            "contractId": "disburse.testnet",
+            "transactionHash": "jobs-df4cd80a-e62e-4f74-bcc9-a624801b351f-lease-boundary-c1cec809-e86e-470f-8751-a0c7d0d688ed-tx",
+            "blockHash": "jobs-df4cd80a-e62e-4f74-bcc9-a624801b351f-lease-boundary-c1cec809-e86e-470f-8751-a0c7d0d688ed-block",
+            "receiptId": "jobs-df4cd80a-e62e-4f74-bcc9-a624801b351f-lease-boundary-c1cec809-e86e-470f-8751-a0c7d0d688ed-receipt",
+            "eventIndex": 0,
+            "blockHeight": "123456"
+          },
+          "state": "Leased",
+          "version": 2,
+          "createdAtMs": 1794902431756,
+          "updatedAtMs": 1794902431774,
+          "lease": {
+            "workerId": "boundary-A",
+            "fencingToken": "1",
+            "stateVersion": 2,
+            "expiresAtMs": 1794902432276
+          },
+          "attempts": []
+        }
+      }
+    ],
+    "log": "m5d3/after-two-regressions.log"
+  },
+  "supplemental_baseline_row_lock_replay": {
+    "result": "Unsafe success reproduced against pristine baseline copy; safety assertion failed as expected",
+    "performed_after_implementation_without_worktree_revert": true,
+    "log": "m5d3/pristine-baseline-lease-row-regression.log"
+  },
+  "implementation": {
+    "source_file": "execution-service/src/persistence/postgres-job-repository.ts",
+    "test_file": "execution-service/tests/integration/postgres-jobs.test.ts",
+    "public_interfaces_unchanged": true,
+    "schema_and_migrations_unchanged": true,
+    "helper_changes": [
+      "hasValidLease locks matching lease before separate current-time query, retaining owner/generation/job-version checks",
+      "updateJobState optionally enforces lease owner, job/lease fencing and current deadline within conditional SQL",
+      "releaseLease requires exact-one deletion before version bump",
+      "shared renewal, deletion and post-attempt/failure guards use clock_timestamp; renewal extension uses current DB time"
+    ],
+    "sql_lock_order": "job row -> matching lease row -> conditional mutation, locks retained through commit",
+    "clock_semantics": "clock_timestamp for ownership/deadlines; statement_timestamp retained for ordinary audit metadata",
+    "rollback": "Any stale guard, zero-row required mutation or later error rolls back provisional job/lease/attempt changes",
+    "release_semantics": "Owner release requires a live lease; existing recoverExpiredLeases and claimNext support legitimate expired cleanup/reclamation. Duplicate owner release rejects with no extra version change. A successful deletion authorizes its atomic following version update; commit acknowledgement can be later.",
+    "final_fence_invariants": "job source state/version/fencing counter and matching lease worker/fence/deadline checked; absent lease rejected for protected states"
+  },
+  "regressions": {
+    "new_test_count": 14,
+    "coverage": [
+      "expiry at final transition write",
+      "zero-row release",
+      "actual lease-row wait before validation",
+      "valid owner under contention",
+      "wrong owner/fence/version",
+      "reclaimed owner and simultaneous old/new transitions",
+      "valid/duplicate release",
+      "concurrent release/transition one winner",
+      "post-deletion rollback",
+      "legitimate expired cleanup",
+      "renewal late-expiry rollback",
+      "attempt insertion rollback",
+      "failure-record rollback",
+      "terminal transition/deletion rollback"
+    ],
+    "coordination": "Real PostgreSQL transactions, row/relation locks and pg_blocking_pids barrier before 900ms hold on 500ms lease; 10s test and 5s statement bounds; explicit cleanup",
+    "production_guard": "Existing dedicated test DB/role/loopback configuration checks reused"
+  },
+  "validation": {
+    "rust": [
+      {
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "exit_code": 0
+      },
+      {
+        "command": [
+          "cargo",
+          "clippy",
+          "--locked",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0
+      },
+      {
+        "command": [
+          "cargo",
+          "test",
+          "--locked"
+        ],
+        "exit_code": 0
+      },
+      {
+        "command": [
+          "cargo",
+          "near",
+          "build",
+          "non-reproducible-wasm",
+          "--locked"
+        ],
+        "exit_code": 0
+      }
+    ],
+    "service": {
+      "command": "pnpm check",
+      "exit_code": 0,
+      "format_typecheck_lint": "PASS",
+      "tests": 134,
+      "failed": 0,
+      "skipped": 0
+    },
+    "postgres": {
+      "command": "pnpm test:postgres",
+      "exit_code": 0,
+      "tests": 46,
+      "failed": 0,
+      "skipped": 0,
+      "existing": 32,
+      "new": 14
+    },
+    "local_rpc": {
+      "command": "node --experimental-strip-types --test tests/integration/native-live.test.ts",
+      "exit_code": 0,
+      "tests": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    "sandbox_wrapper": {
+      "command": "python3 tests/sandbox/run_reconciliation.py (isolated copy)",
+      "exit_code": 0,
+      "receipt_groups": 20,
+      "group_definition": "17 named payout cases + 2 migrations + 1 overlap",
+      "groups": [
+        {
+          "name": "successful-transfer",
+          "result": "PASS",
+          "evidence": "sandbox/fresh-receipt-suite/sandbox/successful-transfer.json"
+        },
+        {
+          "name": "missing-recipient-storage",
+          "result": "PASS",
+          "evidence": "sandbox/fresh-receipt-suite/sandbox/missing-recipient-storage.json"
+        },
+        {
+          "name": "definitive-token-failure",
+          "result": "PASS",
+          "evidence": "sandbox/fresh-receipt-suite/sandbox/definitive-token-failure.json"
+        },
+        {
+          "name": "concurrent-duplicate-execution",
+          "result": "PASS",
+          "evidence": "sandbox/fresh-receipt-suite/sandbox/concurrent-duplicate-execution.json"
+        },
+        {
+          "name": "concurrent-payout-one",
+          "result": "PASS",
+          "evidence": "sandbox/fresh-receipt-suite/sandbox/concurrent-payout-one.json"
+        },
+        {
+          "name": "concurrent-payout-two",
+          "result": "PASS",
+          "evidence": "sandbox/fresh-receipt-suite/sandbox/concurrent-payout-two.json"
+        },
+        {
+          "name": "same-campaign-concurrent-payouts",
+          "result": "PASS",
+          "evidence": "sandbox/fresh-receipt-suite/sandbox/same-campaign-concurrent-payouts.json"
+        },
+        {
+          "name": "minimum-gas-and-low-gas-rejection",
+          "result": "PASS",
+          "evidence": "sandbox/fresh-receipt-suite/sandbox/minimum-gas-and-low-gas-rejection.json"
+        },
+        {
+          "name": "native-near-headroom",
+          "result": "PASS",
+          "evidence": "sandbox/fresh-receipt-suite/sandbox/native-near-headroom.json"
+        },
+        {
+          "name": "external-callback-payout-success",
+          "result": "PASS",
+          "evidence": "sandbox/fresh-receipt-suite/sandbox/external-callback-payout-success.json"
+        },
+        {
+          "name": "pause-after-dispatch",
+          "result": "PASS",
+          "evidence": "sandbox/fresh-receipt-suite/sandbox/pause-after-dispatch.json"
+        },
+        {
+          "name": "schedule-panic",
+          "result": "PASS",
+          "evidence": "sandbox/fresh-receipt-suite/sandbox/schedule-panic.json"
+        },
+        {
+          "name": "panic-callback",
+          "result": "PASS",
+          "evidence": "sandbox/fresh-receipt-suite/sandbox/panic-callback.json"
+        },
+        {
+          "name": "oog-callback",
+          "result": "PASS",
+          "evidence": "sandbox/fresh-receipt-suite/sandbox/oog-callback.json"
+        },
+        {
+          "name": "upgrade-between-transfer-and-callback",
+          "result": "PASS",
+          "evidence": "sandbox/fresh-receipt-suite/sandbox/upgrade-between-transfer-and-callback.json"
+        },
+        {
+          "name": "delivered-but-unexpected-result",
+          "result": "PASS",
+          "evidence": "sandbox/fresh-receipt-suite/sandbox/delivered-but-unexpected-result.json"
+        },
+        {
+          "name": "insufficient-token-balance",
+          "result": "PASS",
+          "evidence": "sandbox/fresh-receipt-suite/sandbox/insufficient-token-balance.json"
+        },
+        {
+          "name": "historical-wasm-migration",
+          "result": "PASS",
+          "evidence": "sandbox/fresh-receipt-suite/sandbox/historical-wasm-migration.json"
+        },
+        {
+          "name": "B-to-current-migration",
+          "result": "PASS",
+          "evidence": "sandbox/fresh-receipt-suite/sandbox/b-to-c-wasm-migration.json"
+        },
+        {
+          "name": "callback-observer-overlap",
+          "result": "PASS",
+          "evidence": "sandbox/callback-observer-race.json"
+        }
+      ],
+      "source_and_tests_match_final_worktree": true
+    }
+  },
+  "rust_tests": {
+    "passed": 146,
+    "failed": 0,
+    "ignored": 0,
+    "doctests": 0
+  },
+  "wasm": {
+    "sha256": "37e432600c43d5fc7d44b2d81bc9a852d5e120a7dc043c7f06f83d1e62a24ea9",
+    "near_code_hash": "4mBF2J6mE22XrTrSNo8x7xSLhzUSfNS9HkzHJeaxqwk4",
+    "bytes": 410611,
+    "locked_rebuild_matches": true
+  },
+  "migration_results": {
+    "historical_WASM": "PASS local synthetic populated state under authenticated cached old bytecode",
+    "B_to_current": "PASS, approved execution works and consumed orphan remains locked",
+    "postgres": "Existing 0004 checksum/idempotency suite passes; no schema change or live migration"
+  },
+  "related_paths": {
+    "acquisition_reclamation": "SAFE for inspected ownership invariant, unchanged monotonic fencing/SKIP LOCKED",
+    "ownership_validation": "FIXED post-lock fresh-time validation",
+    "nonterminal_transition": "FIXED final conditional UPDATE",
+    "terminal_transition": "FIXED shared clock/conditional UPDATE; delete failure rolls back",
+    "owner_release": "FIXED exact-one DELETE before version bump",
+    "renewal": "FIXED shared current-clock semantics; normal API preserved",
+    "attempt_failure_records": "FIXED shared current-time postcheck, provisional writes rolled back",
+    "expired_cleanup": "SAFE unchanged separate cleanup authority and exact-one deletion",
+    "audit_records": "SAFE within transaction, no new success-event writer",
+    "admin_bypass": "NOT APPLICABLE, none added",
+    "native_reconciliation": "UNCHANGED existing five lease regressions and worker restart/fencing tests pass"
+  },
+  "payment_safety": {
+    "Rust_contract_unchanged": true,
+    "native_transfer_approval_callback_accounting_locks_preserved": true,
+    "native_reconciliation_unchanged": true,
+    "read_only_configuration_unchanged": true,
+    "new_signer_transfer_retry_settlement_or_release_capability": false
+  },
+  "remaining_risks": [
+    "Independent security re-review required",
+    "M5D2-03 RPC body limit after materialization unchanged; separate resource hardening",
+    "Actual Tidepool token compatibility and controlled live recipient unverified",
+    "Authenticated recovery absent; uncertainty does not authorize retry or reservation release",
+    "Interactive mutations, deployment, live roles/funding caps/monitoring and operational approvals remain blocked",
+    "Database wall-clock corrections, privileged SQL and future triggers require operational review; no commit-acknowledgement deadline guarantee",
+    "Existing acquisition scheduling can return a short lease already expired after unusual statement delay; protected writes reject it, possible liveness limitation"
+  ],
+  "actions": {
+    "live_database_writes": 0,
+    "public_transactions_signed_or_submitted": 0,
+    "deployments": 0,
+    "production_workers_started": 0,
+    "application_signing_enabled": false,
+    "git_commits_or_pushes_issued": 0,
+    "local_synthetic_sandbox_transactions_only": true
+  },
+  "integrity": {
+    "protected_baseline_differences": [
+      "execution-service/src/persistence/postgres-job-repository.ts"
+    ],
+    "only_authorized_source_changed": true,
+    "rust_and_native_reconciliation_unchanged": true,
+    "earlier_raw_evidence_unchanged": true,
+    "prior_review_reports_unchanged": true,
+    "wasm_unchanged": true,
+    "git diff --check": {
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "git diff --stat": {
+      "exit_code": 0,
+      "stdout": " .../src/persistence/postgres-job-repository.ts     |  52 ++-\n .../tests/integration/postgres-jobs.test.ts        | 448 +++++++++++++++++++++\n 2 files changed, 484 insertions(+), 16 deletions(-)\n",
+      "stderr": ""
+    },
+    "git status --short": {
+      "exit_code": 0,
+      "stdout": " M execution-service/src/persistence/postgres-job-repository.ts\n M execution-service/tests/integration/postgres-jobs.test.ts\n?? docs/evidence/milestone-5/m5d3-remediation-results.json\n?? docs/evidence/milestone-5/m5d3/\n?? docs/milestone-5d3-concurrency-regression-results.md\n?? docs/milestone-5d3-lease-path-security-audit.md\n?? docs/milestone-5d3-legacy-lease-remediation.md\n?? docs/milestone-5d3-validation-results.md\n",
+      "stderr": ""
+    },
+    "git rev-parse HEAD": {
+      "exit_code": 0,
+      "stdout": "fe2a015bcd9378432ac9df3fe555acc1ebae6b52\n",
+      "stderr": ""
+    },
+    "new_report_links_valid": true
+  },
+  "cleanup": {
+    "test_database": {
+      "home": "/tmp/disburse-m5d3-pg-nkzf94u7",
+      "port": 19546
+    },
+    "stop_exit_code": 0,
+    "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+    "stderr": "",
+    "sandbox_wrapper_exit_code": 0,
+    "sandbox_node_cleanup": "completed wrapper finally block"
+  },
+  "acceptance_criteria": [
+    {
+      "id": 1,
+      "status": "PASS"
+    },
+    {
+      "id": 2,
+      "status": "PASS"
+    },
+    {
+      "id": 3,
+      "status": "PASS"
+    },
+    {
+      "id": 4,
+      "status": "PASS"
+    },
+    {
+      "id": 5,
+      "status": "PASS"
+    },
+    {
+      "id": 6,
+      "status": "PASS"
+    },
+    {
+      "id": 7,
+      "status": "PASS"
+    },
+    {
+      "id": 8,
+      "status": "PASS"
+    },
+    {
+      "id": 9,
+      "status": "PASS"
+    },
+    {
+      "id": 10,
+      "status": "PASS"
+    },
+    {
+      "id": 11,
+      "status": "PASS"
+    },
+    {
+      "id": 12,
+      "status": "PASS"
+    },
+    {
+      "id": 13,
+      "status": "PASS"
+    },
+    {
+      "id": 14,
+      "status": "PASS"
+    },
+    {
+      "id": 15,
+      "status": "PASS"
+    },
+    {
+      "id": 16,
+      "status": "PASS"
+    },
+    {
+      "id": 17,
+      "status": "PASS"
+    },
+    {
+      "id": 18,
+      "status": "PASS"
+    }
+  ],
+  "next_gate": "Independent M5-D security re-review; no further implementation or deployment authorized",
+  "changed_file_inventory": [
+    {
+      "path": "docs/evidence/milestone-5/m5d3/after-reproductions.json",
+      "sha256": "35d2a091449e2e58cbdda7ff53ab24e472face3588bac0217e9aa7fae4ffdf47"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/after-two-regressions.log",
+      "sha256": "d9187b204a6c8ea415af1a78d5513224ddafadb6f5d15c9d13870e2983b70699"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/baseline.json",
+      "sha256": "77b52a7bc42e0cf18352d91839b7874be151e2ba3e1674db3d3f49689197171d"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/before-regressions-confirmed.log",
+      "sha256": "291ffeb00bc8865ab3e9e6519ca1827ff22be543b6b3d7edee55fab39ace46c8"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/before-regressions-real.log",
+      "sha256": "b3dbf74120ac4cc55843615a001e290ca303d32fa0f37eb76e2b87ee4643a524"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/before-regressions.log",
+      "sha256": "5b7522d692599b7eddf9157cea68b710a8eda298fc891ec9cb11c1ac0f28fa07"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/before-reproductions.json",
+      "sha256": "289bc7940ffb7df1ac2b153d26f7ebc4c98da9aa7dd30e024ed845894573b6c1"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/cleanup.json",
+      "sha256": "e99f4c5b5c3a97c48d2dfb6ecaca354887d5e04248ba183c40c362387cb3ed4e"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/clippy.log",
+      "sha256": "37bb159a3394c6c17ec27f4903c7b544677276d6ae4f3d547760cfd063a9baea"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/final-integrity.json",
+      "sha256": "d6098eb310aee95e408850d8672cd9dc65421d87129e314dfe0eb93364ccc93b"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/implementation-hashes.json",
+      "sha256": "ccf44fff6773fd6e89251877d200ecdf11652fee57574c93a0ac12d033751bc1"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/postgres-tests.log",
+      "sha256": "8c04382f7fbc6b468e3cc611cd2c952d5be00d3d4299c8f15244ed887f2b2fbf"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/preflight-migrations.log",
+      "sha256": "2f03f86e295ec70b8b72adede5efa28a3c20df9d1d48c6ca4a3f46abcecc01a6"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/pristine-baseline-lease-row-regression.log",
+      "sha256": "880cc1ba3e6072ba58daf699219eff31b8aa4ccf69f396956b2113f6b0db4d2c"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/pristine-baseline-setup-failure.log",
+      "sha256": "aaf685b4f891a16069b0cab44d6e2b92fbe25d5ed87aa64afba07e533c92273d"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/rust-commands.json",
+      "sha256": "ec38232a3cd53fb99bc1c94f0cbe8134c0c267709d4a142a0b7413832347eab5"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/rust-fmt.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/rust-tests.log",
+      "sha256": "0cbe2368ab75ef4b4c77480b4f90eed047b1e4729a249c8e2650f202de2ac53d"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/callback-observer-race.json",
+      "sha256": "55f44bb3fc5b2aa39a10c884c66b3941415e4675eee82af223286ca1dce5e585"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/callback-observer-race.log",
+      "sha256": "577cbed806350a81ed1ea5b6af8ccebf2e70dc52e8ef36819f13688e5e30b415"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/capture.log",
+      "sha256": "1eaa4469932046967b403e382b9e549466f4955035cd23bb7048e6496e0dd058"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/all-sandbox-suites.json",
+      "sha256": "2d5ab262483c5bdb723c5bf3916c1508385354bdb9ec9c749d5a49860471a122"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/node-b-migration.json",
+      "sha256": "dbe9c5446a344a26ad981c4edcea7e142dc8d9c16de4f2966be05873b2965d40"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/node-faults.json",
+      "sha256": "05eba596f1582115977c56f026dd714d6b5e9085993c240295f825605b84806e"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/node-main.json",
+      "sha256": "4d9f59771dbadaca6d42a4cc74484683bcdacf653167a98026958868f68700d5"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/b-to-c-wasm-migration.json",
+      "sha256": "2d364e63f204d52a97840197b8abea836c9e966e3a07d3311faf4189a72ae07a"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/concurrent-duplicate-execution.json",
+      "sha256": "a6ad8e1d0ce5357d16c041ac51ddd36eb7ea32b2f49136a33f53bef30caaf4a1"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/concurrent-payout-one.json",
+      "sha256": "766e73c52d78236002e8c7475cd536cd140c8233d95fac9a5cbc9c579177f3e2"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/concurrent-payout-two.json",
+      "sha256": "f633f2286107e21011fb3f6654f6b0f165e6b851835afd96f69db6e8dac017ad"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/definitive-token-failure.json",
+      "sha256": "c77cab9e96b4c9158f3ae5b3c90fc56a2903d8e2b26b5723037e59fe4875395a"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/delivered-but-unexpected-result.json",
+      "sha256": "5c9c6b9d864290c4930a004d73d3f0d1a24b4b9e3e0c3672aa8b7923de6dbcf0"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/external-callback-payout-success.json",
+      "sha256": "358d9ecf3ad17c915f86d4b49a03ecbc86d52334c8fdbd259fbb43a4436ebeb5"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/external-callbacks-rejected.json",
+      "sha256": "ce36f04a5212f705717ecef676673088733232e44869a74158ef7bbb220434c5"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/fault-suite-summary.json",
+      "sha256": "be31f014d22a0716b4c85a97276b00991b828f6eff0d0165f6b4bf3806f09876"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/historical-wasm-migration.json",
+      "sha256": "ae688ef28cadc085dc4883db9e923a0debc864b6d4677187f16805920f2af95c"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/index.json",
+      "sha256": "18b2c426f50f1962a89b7cfb4d7a856a4768670dd2c5383f1b947b3b4fd881d1"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/insufficient-token-balance.json",
+      "sha256": "6655091d19b4694e405b3385c94c5d3964721c1504f4a6993f75e7ec211771fc"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/minimum-gas-and-low-gas-rejection.json",
+      "sha256": "dd0b3746369271586f2e3848826a9eb10abe489ba064d26c42986dd86439c2fc"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/missing-recipient-storage.json",
+      "sha256": "b8401a8f66b5ec8ae427c0d22a922b00202f15d9cf2da57e97d312c89d2a954d"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/native-near-headroom.json",
+      "sha256": "de7fc511d239782eaa3e0516331b9ed6bffc9a8151da32a8c689741871009a65"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/oog-callback-duplicate-rejected.json",
+      "sha256": "b3f34a7dd112d36842e327b73122aa1a747d01001a3f109b12df320cf09a03f2"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/oog-callback.json",
+      "sha256": "c6d1c1f83a930eb0c15502b0333231d962f1bc1e12d907331218a123d73e5fcd"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/panic-callback-duplicate-rejected.json",
+      "sha256": "c244c25fc54102a385e73dfcb2f7173c312a788596560b5904da9c338d6475ad"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/panic-callback.json",
+      "sha256": "b30bbec4a66bd3065a0f726a738a3233faf3437a7c6844c1ed387355a7bf27f1"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/pause-after-dispatch.json",
+      "sha256": "34e90c688b49fb0510a2a4945d959da74a9f1aa3816ca5b5608a9bada5f7866d"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/restart-uncertain-response-model.json",
+      "sha256": "1bc183f95f9a8a36d5058faf07bdc2da41c67ea5edda506027ef32d51e56220e"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/same-campaign-concurrent-payouts.json",
+      "sha256": "7e415f6639b8457b41af8a0ed00f96e0e45293c5b103fa4987e681936b659f2d"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/schedule-panic-duplicate-rejected.json",
+      "sha256": "67591d30c6900bbaafbe627f6c570a8488b5b03c095c7ee95b03f74923b01883"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/schedule-panic.json",
+      "sha256": "666a1306db5dbf0ab2c87b61bd1cbd723d460b350ca46cf09cfdee7a60b07920"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/stale-duplicate-self-callbacks.json",
+      "sha256": "7835142bbb389a775e85f67dcfb10b95d2d48be2c22abec41015ccb2249f3b60"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/successful-transfer-duplicate-rejected.json",
+      "sha256": "04cfc0b0f2f6e81e288730ac8443d289a007606a8f604dede8d35c68d9816d50"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/successful-transfer.json",
+      "sha256": "04320703ff5736a1c2e5c8ee9c85f93a66a88565b8c34057252d18ec27382ed5"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/suite-summary.json",
+      "sha256": "06b3af4326561dab35958a33f2ba4be637ead9feb88181e3ed5adb7cc9175a75"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox/upgrade-between-transfer-and-callback.json",
+      "sha256": "96e77693bdb580a89ed2ca629cb53bfa9a558e175115cb50104973cca06936ca"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox-b-migration.log",
+      "sha256": "da6c40dd2de7e1abc90da988e14912ee9ee2f9a3a84457fa427e964f790184e4"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox-faults.log",
+      "sha256": "e9610ba8eb4f081ac7ba30a108cc4a6f65cb760ec0e07cd1949a973123ff6095"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/fresh-receipt-suite/sandbox-main.log",
+      "sha256": "e5d536ed2b7d7fd1fdc8e8923c93c08485dceb9ce294110a197ae68b5de5929d"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/live-read-only-tests.log",
+      "sha256": "c66448f50863ea619226c9e72390b9f3d43ecc7e186805ccf74661670946db50"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/live-reconciliation-tests.json",
+      "sha256": "c25afc8759bef03b929ccacc9c674f9f2ba96be70a14466424e9381cbe7a27f9"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/postgres-tests.log",
+      "sha256": "c9f27e29f3ab594c9c5bc585b217364c1507d767afa72ac94e5563eb7d1c8aca"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/read-only-node.log",
+      "sha256": "68856391d15c7cad259c65ded6671e26cb8633c85c4b945df3d0f03e1a3ed0d9"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/reproduction-result.json",
+      "sha256": "737376878aa5110c5a05e1df75868b23d7d49ec889d00361094c5f11c32b2042"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/retained-receipt-suite.log",
+      "sha256": "47ba3ed67b63d40e648a43501379acead4ea8c02dc9e543cd779821e18268df5"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/sandbox/definitive-token-failure.json",
+      "sha256": "963c3ddccdda6a085980196875c8c0a5eee4c71ef83ebac59c9d77532b2514dd"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/sandbox/delivered-but-unexpected-result.json",
+      "sha256": "bd5865fedb31e111722b70ba20757cf91d26d980e8bcb6ba4c65e7c2bcc15267"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/sandbox/insufficient-token-balance.json",
+      "sha256": "4a39311b92897f05879de1a37d08a6a1f864334e04c84be35bb11122dff821e2"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/sandbox/oog-callback.json",
+      "sha256": "b25d61b66a83a1f1c36d16ac6d493cbe60363b4ac0425889b61b741088645694"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/sandbox/panic-callback.json",
+      "sha256": "b63824cc0f080061660d7ea0d0b9861064b2b4929657ddaf5188751c214cb350"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/sandbox/successful-transfer.json",
+      "sha256": "3b11eb217dda497aecb49f6b7c712af65bfc34b0eaf4a55d4274112af3920619"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/service-tests.log",
+      "sha256": "ff1db787c6481e29a76e7d10220b26db98dac700d3756b0a593c4739bd072dd8"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox/test-migrations.log",
+      "sha256": "f2692a5425afd0c8061b27b04ff63266f965884b4c1e2ef10e04fe8bfaf0e5ac"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sandbox-run.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/service-check.log",
+      "sha256": "0eeb60ed77a7ef00ef24691e4d8e40dc1ab32082637fd56374141333b5cc8bc0"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/service-initial-typecheck.log",
+      "sha256": "e3fd205e2d30d15cc97f14bff4fdda3de2e7dfff41f74a4a4f09e501ffee22a1"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/service-sandbox-network-failure.log",
+      "sha256": "ae9689ce7d6ea79ede6c3c302447a8ec77280e5c05915452a4ac0f66fe231da3"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/wasm-build.log",
+      "sha256": "8d6cb16856385f38844a1b28f2381608cc278347333449546422e8f0332206af"
+    },
+    {
+      "path": "docs/milestone-5d3-concurrency-regression-results.md",
+      "sha256": "8f2aafbe6512eb85e7c82db0b001882358497b8b6439c9c7ec49137a4c82a062"
+    },
+    {
+      "path": "docs/milestone-5d3-lease-path-security-audit.md",
+      "sha256": "ff532721152f28776f285614fa395077fe243d33d583107ba2fcc01f7d64a7f9"
+    },
+    {
+      "path": "docs/milestone-5d3-legacy-lease-remediation.md",
+      "sha256": "fcc167028ea7c9293a82409482048e34f3f0b3b9f2e447699f3fdb19f48f9bb3"
+    },
+    {
+      "path": "docs/milestone-5d3-validation-results.md",
+      "sha256": "bf471a28af07d8bb8387c39286c82ad5fcfacba248151822d859b9dd3e6ac698"
+    },
+    {
+      "path": "execution-service/src/persistence/postgres-job-repository.ts",
+      "sha256": "5ba0f38db80558730d68ead5367471f730ba88a3003e4ea8c22ec13722c6824a"
+    },
+    {
+      "path": "execution-service/tests/integration/postgres-jobs.test.ts",
+      "sha256": "c6002e39c5089580c87bc68372c480bb4e34643345b214c2e27383a28048a64b"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3-remediation-results.json",
+      "sha256": "Self hash omitted; see m5d3/sha256.json"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d3/sha256.json",
+      "sha256": "Self hash omitted"
+    }
+  ]
+}

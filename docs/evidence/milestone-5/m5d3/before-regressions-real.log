@@ -1,0 +1,42 @@
+✖ legacy transition rejects expiry during final write lock wait (1070.39051ms)
+ℹ {"lease":{"workerId":"boundary-A","fencingToken":"1","stateVersion":2,"expiresAtMs":1794902335376},"before":{"jobId":"1","idempotencyKey":"jobs-93091ec8-53a8-4f51-9333-c3bcc97b64e6-lease-boundary-idem","snapshotDigest":"54674ea62f20ff9efa8dfefb269468e178e4640f7b74bda59ff8172878022cf5","fencingCounter":"1","attemptCount":0,"nextEligibleAtMs":1794902334846,"failure":null,"key":{"networkId":"near:testnet","contractId":"disburse.testnet","payoutId":"1795095683108054286"},"payout":{"payoutId":"1795095683108054286","campaignId":"7","inputAmount":{"tokenId":"near","decimals":24,"atomicAmount":"900719925474099312345"},"contractStatus":"Reserved","expectedOutput":{"tokenId":"wrap.near","decimals":24,"atomicAmount":"900719925474099312345"},"recipientAddress":"recipient.near","destinationChainId":"near:testnet","executionReference":null,"settlementEvidenceReference":null},"discoveryEvent":{"networkId":"near:testnet","contractId":"disburse.testnet","transactionHash":"jobs-93091ec8-53a8-4f51-9333-c3bcc97b64e6-lease-boundary-tx","blockHash":"jobs-93091ec8-53a8-4f51-9333-c3bcc97b64e6-lease-boundary-block","receiptId":"jobs-93091ec8-53a8-4f51-9333-c3bcc97b64e6-lease-boundary-receipt","eventIndex":0,"blockHeight":"123456"},"state":"Leased","version":2,"createdAtMs":1794902334846,"updatedAtMs":1794902334875,"lease":{"workerId":"boundary-A","fencingToken":"1","stateVersion":2,"expiresAtMs":1794902335376},"attempts":[]},"outcome":{"accepted":true,"error":null,"timing":{"blocked":true,"waitMs":913.811224,"rowCount":1,"databaseTime":"2026-11-17T07:58:55.819Z"}},"after":{"jobId":"1","idempotencyKey":"jobs-93091ec8-53a8-4f51-9333-c3bcc97b64e6-lease-boundary-idem","snapshotDigest":"54674ea62f20ff9efa8dfefb269468e178e4640f7b74bda59ff8172878022cf5","fencingCounter":"1","attemptCount":0,"nextEligibleAtMs":1794902334846,"failure":null,"key":{"networkId":"near:testnet","contractId":"disburse.testnet","payoutId":"1795095683108054286"},"payout":{"payoutId":"1795095683108054286","campaignId":"7","inputAmount":{"tokenId":"near","decimals":24,"atomicAmount":"900719925474099312345"},"contractStatus":"Reserved","expectedOutput":{"tokenId":"wrap.near","decimals":24,"atomicAmount":"900719925474099312345"},"recipientAddress":"recipient.near","destinationChainId":"near:testnet","executionReference":null,"settlementEvidenceReference":null},"discoveryEvent":{"networkId":"near:testnet","contractId":"disburse.testnet","transactionHash":"jobs-93091ec8-53a8-4f51-9333-c3bcc97b64e6-lease-boundary-tx","blockHash":"jobs-93091ec8-53a8-4f51-9333-c3bcc97b64e6-lease-boundary-block","receiptId":"jobs-93091ec8-53a8-4f51-9333-c3bcc97b64e6-lease-boundary-receipt","eventIndex":0,"blockHeight":"123456"},"state":"Preparing","version":3,"createdAtMs":1794902334846,"updatedAtMs":1794902335817,"lease":{"workerId":"boundary-A","fencingToken":"1","stateVersion":3,"expiresAtMs":1794902335376},"attempts":[]}}
+✖ legacy zero-row release cannot increment version (8.621853ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1450.305823
+
+✖ failing tests:
+
+test at tests/integration/postgres-jobs.test.ts:573:6
+✖ legacy transition rejects expiry during final write lock wait (1070.39051ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///home/topg/disburse/execution-service/tests/integration/postgres-jobs.test.ts:581:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/integration/postgres-jobs.test.ts:586:6
+✖ legacy zero-row release cannot increment version (8.621853ms)
+  Error [JobCreationConflictError]: Execution-job idempotency or payout identity conflicts with persisted data
+      at PostgresJobRepository.createIdempotent (file:///home/topg/disburse/execution-service/src/persistence/postgres-job-repository.ts:180:17)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async enqueueQueued (file:///home/topg/disburse/execution-service/tests/integration/postgres-jobs.test.ts:428:19)
+      at async leaseFixture (file:///home/topg/disburse/execution-service/tests/integration/postgres-jobs.test.ts:493:19)
+      at async TestContext.<anonymous> (file:///home/topg/disburse/execution-service/tests/integration/postgres-jobs.test.ts:587:33)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)

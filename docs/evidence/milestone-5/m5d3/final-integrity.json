@@ -1,0 +1,31 @@
+{
+  "protected_baseline_differences": [
+    "execution-service/src/persistence/postgres-job-repository.ts"
+  ],
+  "only_authorized_source_changed": true,
+  "rust_and_native_reconciliation_unchanged": true,
+  "earlier_raw_evidence_unchanged": true,
+  "prior_review_reports_unchanged": true,
+  "wasm_unchanged": true,
+  "git diff --check": {
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "git diff --stat": {
+    "exit_code": 0,
+    "stdout": " .../src/persistence/postgres-job-repository.ts     |  52 ++-\n .../tests/integration/postgres-jobs.test.ts        | 448 +++++++++++++++++++++\n 2 files changed, 484 insertions(+), 16 deletions(-)\n",
+    "stderr": ""
+  },
+  "git status --short": {
+    "exit_code": 0,
+    "stdout": " M execution-service/src/persistence/postgres-job-repository.ts\n M execution-service/tests/integration/postgres-jobs.test.ts\n?? docs/evidence/milestone-5/m5d3-remediation-results.json\n?? docs/evidence/milestone-5/m5d3/\n?? docs/milestone-5d3-concurrency-regression-results.md\n?? docs/milestone-5d3-lease-path-security-audit.md\n?? docs/milestone-5d3-legacy-lease-remediation.md\n?? docs/milestone-5d3-validation-results.md\n",
+    "stderr": ""
+  },
+  "git rev-parse HEAD": {
+    "exit_code": 0,
+    "stdout": "fe2a015bcd9378432ac9df3fe555acc1ebae6b52\n",
+    "stderr": ""
+  },
+  "new_report_links_valid": true
+}

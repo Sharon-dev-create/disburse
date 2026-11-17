@@ -288,11 +288,11 @@ export class PostgresJobRepository implements DurableJobRepository {
       if (!updated.rows[0]) return null;
       const renewed = await client.query(
         `UPDATE public.job_leases
-         SET renewed_at = statement_timestamp(),
-             expires_at = statement_timestamp() + ($4::bigint * interval '1 millisecond')
+         SET renewed_at = clock_timestamp(),
+             expires_at = clock_timestamp() + ($4::bigint * interval '1 millisecond')
          WHERE job_id = $1::bigint AND worker_id = $2
            AND fencing_token = $3::numeric
-           AND expires_at > statement_timestamp()
+           AND expires_at > clock_timestamp()
          RETURNING worker_id, fencing_token::text AS lease_fencing_token,
                    expires_at`,
         [job.jobId, lease.workerId, lease.fencingToken, ttlMs],
@@ -330,7 +330,14 @@ export class PostgresJobRepository implements DurableJobRepository {
       }
 
       assertTransition(job.state, next, evidence);
-      await updateJobState(client, job.jobId, job.state, expectedVersion, next);
+      await updateJobState(
+        client,
+        job.jobId,
+        job.state,
+        expectedVersion,
+        next,
+        lease,
+      );
       if (
         lease &&
         (next === "Queued" || next === "Completed" || next === "Abandoned")
@@ -419,13 +426,7 @@ export class PostgresJobRepository implements DurableJobRepository {
         !(await hasValidLease(client, job, lease))
       )
         throw new StaleExecutionJobError("Worker lease is stale or expired");
-      await client.query(
-        `DELETE FROM public.job_leases
-         WHERE job_id = $1::bigint AND worker_id = $2
-           AND fencing_token = $3::numeric
-           AND expires_at > statement_timestamp()`,
-        [job.jobId, lease.workerId, lease.fencingToken],
-      );
+      await deleteCurrentLease(client, job.jobId, lease);
       await bumpVersion(client, job.jobId, lease.stateVersion);
       return readJob(client, job.jobId);
     });
@@ -1029,12 +1030,18 @@ async function hasValidLease(
      FROM public.job_leases
      WHERE job_id = $1::bigint AND worker_id = $2
        AND fencing_token = $3::numeric
-       AND expires_at > statement_timestamp()
      FOR UPDATE`,
+    [job.jobId, lease.workerId, lease.fencingToken],
+  );
+  const validity = await client.query(
+    `SELECT 1 FROM public.job_leases
+     WHERE job_id = $1::bigint AND worker_id = $2
+       AND fencing_token = $3::numeric AND expires_at > clock_timestamp()`,
     [job.jobId, lease.workerId, lease.fencingToken],
   );
   return (
     result.rows.length === 1 &&
+    validity.rowCount === 1 &&
     job.version === lease.stateVersion &&
     requireString(result.rows[0]!, "fencing_token") === lease.fencingToken &&
     job.lease?.workerId === lease.workerId &&
@@ -1049,13 +1056,26 @@ async function updateJobState(
   from: JobState,
   version: number,
   next: JobState,
+  lease: Lease | null = null,
 ): Promise<void> {
   const updated = await client.query(
     `UPDATE public.execution_jobs
      SET state = $4, state_version = state_version + 1,
          updated_at = statement_timestamp()
-     WHERE job_id = $1::bigint AND state = $2 AND state_version = $3`,
-    [jobId, from, version, next],
+     WHERE job_id = $1::bigint AND state = $2 AND state_version = $3
+       AND ($5::text IS NULL OR (fencing_counter = $6::numeric AND EXISTS (
+         SELECT 1 FROM public.job_leases l
+         WHERE l.job_id = $1::bigint AND l.worker_id = $5
+           AND l.fencing_token = $6::numeric AND l.expires_at > clock_timestamp()
+       )))`,
+    [
+      jobId,
+      from,
+      version,
+      next,
+      lease?.workerId ?? null,
+      lease?.fencingToken ?? null,
+    ],
   );
   if (updated.rowCount !== 1) throw new StaleExecutionJobError();
 }
@@ -1084,7 +1104,7 @@ async function advanceLeaseVersion(
     `SELECT 1 FROM public.job_leases
      WHERE job_id = $1::bigint AND worker_id = $2
        AND fencing_token = $3::numeric
-       AND expires_at > statement_timestamp()`,
+       AND expires_at > clock_timestamp()`,
     [jobId, lease.workerId, lease.fencingToken],
   );
   if (advanced.rowCount !== 1)
@@ -1100,7 +1120,7 @@ async function deleteCurrentLease(
     `DELETE FROM public.job_leases
      WHERE job_id = $1::bigint AND worker_id = $2
        AND fencing_token = $3::numeric
-       AND expires_at > statement_timestamp()`,
+       AND expires_at > clock_timestamp()`,
     [jobId, lease.workerId, lease.fencingToken],
   );
   if (deleted.rowCount !== 1)

@@ -1,0 +1,58 @@
+$ pnpm format:check && pnpm typecheck && pnpm lint && pnpm test
+$ prettier --check "src/**/*.ts" "tests/**/*.ts" "*.json"
+Checking formatting...
+All matched files use Prettier code style!
+$ tsc --noEmit
+$ eslint src tests --ext .ts
+$ node --experimental-strip-types --test tests/*.test.ts
+✖ tests/active-testnet.test.ts (795.454905ms)
+✖ tests/api.test.ts (667.855695ms)
+✖ tests/campaign-read.test.ts (674.309979ms)
+✔ tests/discovery.test.ts (867.501486ms)
+✔ tests/fastnear-neardata.test.ts (870.36803ms)
+✖ tests/host-api-integration.test.ts (730.345478ms)
+✔ tests/host-auth.test.ts (370.304067ms)
+✔ tests/host-config.test.ts (424.724278ms)
+✖ tests/host-server.test.ts (643.0611ms)
+✔ tests/native-reconciliation.test.ts (691.825231ms)
+✔ tests/near-intents.test.ts (577.277053ms)
+✔ tests/postgres-config.test.ts (331.625176ms)
+✔ tests/postgres-job-repository.test.ts (439.48662ms)
+✔ tests/postgres-migrations.test.ts (397.633101ms)
+✔ tests/postgres-security-repositories.test.ts (548.698661ms)
+✔ tests/repository.test.ts (320.862331ms)
+✔ tests/security.test.ts (349.302479ms)
+✔ tests/state-machine.test.ts (248.913014ms)
+✔ tests/testnet-readiness.test.ts (229.268337ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 14
+ℹ fail 5
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1633.138393
+
+✖ failing tests:
+
+test at tests/active-testnet.test.ts:1:1
+✖ tests/active-testnet.test.ts (795.454905ms)
+  'test failed'
+
+test at tests/api.test.ts:1:1
+✖ tests/api.test.ts (667.855695ms)
+  'test failed'
+
+test at tests/campaign-read.test.ts:1:1
+✖ tests/campaign-read.test.ts (674.309979ms)
+  'test failed'
+
+test at tests/host-api-integration.test.ts:1:1
+✖ tests/host-api-integration.test.ts (730.345478ms)
+  'test failed'
+
+test at tests/host-server.test.ts:1:1
+✖ tests/host-server.test.ts (643.0611ms)
+  'test failed'
+[ELIFECYCLE] Test failed. See above for more details.
+[ELIFECYCLE] Command failed with exit code 1.

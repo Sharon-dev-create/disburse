@@ -1,0 +1,27 @@
+✖ legacy validation rechecks fresh time after waiting for the lease row (8.948361ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 187.233602
+
+✖ failing tests:
+
+test at tests/integration/postgres-jobs.test.ts:643:6
+✖ legacy validation rechecks fresh time after waiting for the lease row (8.948361ms)
+  Error: ENOENT: no such file or directory, open '/tmp/m5d3-legacy-baseline/sql/migrations/0001_security_repositories.sql'
+      at async open (node:internal/fs/promises:1345:25)
+      at async readFile (node:internal/fs/promises:2003:14)
+      at async loadMigration (file:///tmp/m5d3-legacy-baseline/src/persistence/postgres-migrations.ts:231:15)
+      at async Promise.all (index 0)
+      at async applyPostgresMigrations (file:///tmp/m5d3-legacy-baseline/src/persistence/postgres-migrations.ts:68:18)
+      at async TestContext.<anonymous> (file:///tmp/m5d3-legacy-baseline/tests/integration/postgres-jobs.test.ts:41:3)
+      at async TestHook.run (node:internal/test_runner/test:1409:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/tmp/m5d3-legacy-baseline/sql/migrations/0001_security_repositories.sql'
+  }
