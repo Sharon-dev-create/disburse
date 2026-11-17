@@ -1,0 +1,505 @@
+{
+  "milestone": "M5-F.1",
+  "verdict": "PARTIAL",
+  "execution": "CONTROLLED TESTNET EXECUTION: NOT AUTHORIZED",
+  "source": {
+    "revision": "f5102090a500cfe5c2993187cd704e56b4062d13",
+    "status": "?? docs/evidence/milestone-5/m5f1-preflight/rpc-retry.log\n",
+    "candidate_sha256": "37e432600c43d5fc7d44b2d81bc9a852d5e120a7dc043c7f06f83d1e62a24ea9"
+  },
+  "proposed_accounts": [
+    {
+      "account": "disburse-m12.testnet",
+      "response": {
+        "jsonrpc": "2.0",
+        "error": {
+          "name": "HANDLER_ERROR",
+          "cause": {
+            "info": {
+              "block_hash": "13ujKTNWvVEpkczMs8PyaozExn7eVexv4kEVaT2my33Q",
+              "block_height": 278141487,
+              "requested_account_id": "disburse-m12.testnet"
+            },
+            "name": "UNKNOWN_ACCOUNT"
+          },
+          "code": -32000,
+          "message": "Server error",
+          "data": "account disburse-m12.testnet does not exist while viewing"
+        },
+        "id": "read"
+      },
+      "ownership": "UNVERIFIED"
+    },
+    {
+      "account": "recipient.disburse-m12.testnet",
+      "response": {
+        "jsonrpc": "2.0",
+        "error": {
+          "name": "HANDLER_ERROR",
+          "cause": {
+            "info": {
+              "block_hash": "BQuBRf2e7W1rJQbnpSeTG2X4bDPrZt7boHMj5QjEob5p",
+              "block_height": 278141486,
+              "requested_account_id": "recipient.disburse-m12.testnet"
+            },
+            "name": "UNKNOWN_ACCOUNT"
+          },
+          "code": -32000,
+          "message": "Server error",
+          "data": "account recipient.disburse-m12.testnet does not exist while viewing"
+        },
+        "id": "read"
+      },
+      "ownership": "UNVERIFIED"
+    },
+    {
+      "account": "approver.disburse-m12.testnet",
+      "response": {
+        "jsonrpc": "2.0",
+        "error": {
+          "name": "HANDLER_ERROR",
+          "cause": {
+            "info": {
+              "block_hash": "BQuBRf2e7W1rJQbnpSeTG2X4bDPrZt7boHMj5QjEob5p",
+              "block_height": 278141486,
+              "requested_account_id": "approver.disburse-m12.testnet"
+            },
+            "name": "UNKNOWN_ACCOUNT"
+          },
+          "code": -32000,
+          "message": "Server error",
+          "data": "account approver.disburse-m12.testnet does not exist while viewing"
+        },
+        "id": "read"
+      },
+      "ownership": "UNVERIFIED"
+    },
+    {
+      "account": "executor.disburse-m12.testnet",
+      "response": {
+        "jsonrpc": "2.0",
+        "error": {
+          "name": "HANDLER_ERROR",
+          "cause": {
+            "info": {
+              "block_hash": "5bcD8pWVMwJzchEW2Q63NtVUeJCQBMPi57jCtrR1KHRV",
+              "block_height": 278141491,
+              "requested_account_id": "executor.disburse-m12.testnet"
+            },
+            "name": "UNKNOWN_ACCOUNT"
+          },
+          "code": -32000,
+          "message": "Server error",
+          "data": "account executor.disburse-m12.testnet does not exist while viewing"
+        },
+        "id": "read"
+      },
+      "ownership": "UNVERIFIED"
+    }
+  ],
+  "ownership": "RECIPIENT_OWNERSHIP_NOT_VERIFIED",
+  "candidate_sha256": "37e432600c43d5fc7d44b2d81bc9a852d5e120a7dc043c7f06f83d1e62a24ea9",
+  "fresh_contract_verification": "INCOMPLETE",
+  "rpc_failure": "'result'",
+  "execution_config": {
+    "execution-service/.env": {
+      "DISBURSE_API_HOST": "127.0.0.1",
+      "DISBURSE_POSTGRES_TARGET": "development",
+      "DISBURSE_DEV_DATABASE_URL": {
+        "scheme": "postgresql",
+        "hostname": "127.0.0.1",
+        "credentials_present": true
+      },
+      "DISBURSE_TEST_DATABASE_URL": {
+        "scheme": "postgresql",
+        "hostname": "127.0.0.1",
+        "credentials_present": true
+      },
+      "NEAR_NETWORK": "testnet",
+      "NEAR_RPC_ENDPOINT": {
+        "scheme": "https",
+        "hostname": "rpc.testnet.near.org",
+        "credentials_present": false
+      },
+      "DISBURSE_CONTRACT_ID": "disburse-topg.testnet"
+    },
+    "execution-service/.env.integration.local": {
+      "DISBURSE_DEV_DATABASE_URL": {
+        "scheme": "postgresql",
+        "hostname": "127.0.0.1",
+        "credentials_present": true
+      },
+      "DISBURSE_TEST_DATABASE_URL": {
+        "scheme": "postgresql",
+        "hostname": "127.0.0.1",
+        "credentials_present": true
+      }
+    }
+  },
+  "transaction_plan": [
+    {
+      "number": 1,
+      "purpose": "Account preparation",
+      "signer": "disburse-m12.testnet",
+      "target": "disburse-test-contract.testnet",
+      "method": "CreateAccount",
+      "arguments": "parent creation through separately approved Testnet account/faucet process; signer/public keys unresolved",
+      "attached_deposit_yoctoNEAR": null,
+      "gas_Tgas_proposed": 100,
+      "gas_status": "proposed cap; only execution entry minimum220 Tgas verified from source, not live estimate",
+      "maximum_USDC_atomic": 0,
+      "preconditions": "Resolve all blockers; fresh finalized identity/custody/role/code checks; exact parameters separately approved; deployment stage verified before funding",
+      "expected": "Matching method event and returned ID/state; no historical campaign/accounting delta",
+      "verification": "Finalized receipts and exact view/balance/accounting comparisons; derive returned campaign/payout IDs, never assume",
+      "failure_response": "STOP; preserve evidence and locks; no automatic retry of uncertain submission",
+      "approval": "NOT AUTHORIZED",
+      "serialization_status": "BLOCKED: nulls are unresolved fields, not executable placeholders"
+    },
+    {
+      "number": 2,
+      "purpose": "Create recipient/approver/executor",
+      "signer": "disburse-m12.testnet",
+      "target": "disburse-test-contract.testnet",
+      "method": "CreateAccount + Transfer + AddKey",
+      "arguments": "three separate public keys unresolved; propose 0.1 NEAR each",
+      "attached_deposit_yoctoNEAR": null,
+      "gas_Tgas_proposed": 100,
+      "gas_status": "proposed cap; only execution entry minimum220 Tgas verified from source, not live estimate",
+      "maximum_USDC_atomic": 0,
+      "preconditions": "Resolve all blockers; fresh finalized identity/custody/role/code checks; exact parameters separately approved; deployment stage verified before funding",
+      "expected": "Matching method event and returned ID/state; no historical campaign/accounting delta",
+      "verification": "Finalized receipts and exact view/balance/accounting comparisons; derive returned campaign/payout IDs, never assume",
+      "failure_response": "STOP; preserve evidence and locks; no automatic retry of uncertain submission",
+      "approval": "NOT AUTHORIZED",
+      "serialization_status": "BLOCKED: nulls are unresolved fields, not executable placeholders"
+    },
+    {
+      "number": 3,
+      "purpose": "Deployment approval stage",
+      "signer": "disburse-test-contract.testnet",
+      "target": "disburse-test-contract.testnet",
+      "method": "DeployContract",
+      "arguments": "candidate SHA256 37e432600c43d5fc7d44b2d81bc9a852d5e120a7dc043c7f06f83d1e62a24ea9",
+      "attached_deposit_yoctoNEAR": null,
+      "gas_Tgas_proposed": 100,
+      "gas_status": "proposed cap; only execution entry minimum220 Tgas verified from source, not live estimate",
+      "maximum_USDC_atomic": 0,
+      "preconditions": "Resolve all blockers; fresh finalized identity/custody/role/code checks; exact parameters separately approved; deployment stage verified before funding",
+      "expected": "Matching method event and returned ID/state; no historical campaign/accounting delta",
+      "verification": "Finalized receipts and exact view/balance/accounting comparisons; derive returned campaign/payout IDs, never assume",
+      "failure_response": "STOP; preserve evidence and locks; no automatic retry of uncertain submission",
+      "approval": "NOT AUTHORIZED",
+      "serialization_status": "BLOCKED: nulls are unresolved fields, not executable placeholders"
+    },
+    {
+      "number": 4,
+      "purpose": "Maintenance pause",
+      "signer": "disburse-topg.testnet",
+      "target": "disburse-test-contract.testnet",
+      "method": "pause",
+      "arguments": {},
+      "attached_deposit_yoctoNEAR": "0",
+      "gas_Tgas_proposed": 100,
+      "gas_status": "proposed cap; only execution entry minimum220 Tgas verified from source, not live estimate",
+      "maximum_USDC_atomic": 0,
+      "preconditions": "Resolve all blockers; fresh finalized identity/custody/role/code checks; exact parameters separately approved; deployment stage verified before funding",
+      "expected": "Matching method event and returned ID/state; no historical campaign/accounting delta",
+      "verification": "Finalized receipts and exact view/balance/accounting comparisons; derive returned campaign/payout IDs, never assume",
+      "failure_response": "STOP; preserve evidence and locks; no automatic retry of uncertain submission",
+      "approval": "NOT AUTHORIZED",
+      "serialization_status": "BLOCKED: nulls are unresolved fields, not executable placeholders"
+    },
+    {
+      "number": 5,
+      "purpose": "Native bootstrap",
+      "signer": "disburse-topg.testnet",
+      "target": "disburse-test-contract.testnet",
+      "method": "initialize_native_execution",
+      "arguments": {
+        "expected_legacy_state_hash": null,
+        "max_payout_amount": "100000",
+        "max_authorization_ttl_ns": "900000000000"
+      },
+      "attached_deposit_yoctoNEAR": "0",
+      "gas_Tgas_proposed": 100,
+      "gas_status": "proposed cap; only execution entry minimum220 Tgas verified from source, not live estimate",
+      "maximum_USDC_atomic": 0,
+      "preconditions": "Resolve all blockers; fresh finalized identity/custody/role/code checks; exact parameters separately approved; deployment stage verified before funding",
+      "expected": "Matching method event and returned ID/state; no historical campaign/accounting delta",
+      "verification": "Finalized receipts and exact view/balance/accounting comparisons; derive returned campaign/payout IDs, never assume",
+      "failure_response": "STOP; preserve evidence and locks; no automatic retry of uncertain submission",
+      "approval": "NOT AUTHORIZED",
+      "serialization_status": "BLOCKED: nulls are unresolved fields, not executable placeholders"
+    },
+    {
+      "number": 6,
+      "purpose": "Grant Approver",
+      "signer": "disburse-topg.testnet",
+      "target": "disburse-test-contract.testnet",
+      "method": "set_native_role",
+      "arguments": {
+        "account_id": "approver.disburse-m12.testnet",
+        "role": "Approver",
+        "enabled": true
+      },
+      "attached_deposit_yoctoNEAR": "0",
+      "gas_Tgas_proposed": 100,
+      "gas_status": "proposed cap; only execution entry minimum220 Tgas verified from source, not live estimate",
+      "maximum_USDC_atomic": 0,
+      "preconditions": "Resolve all blockers; fresh finalized identity/custody/role/code checks; exact parameters separately approved; deployment stage verified before funding",
+      "expected": "Matching method event and returned ID/state; no historical campaign/accounting delta",
+      "verification": "Finalized receipts and exact view/balance/accounting comparisons; derive returned campaign/payout IDs, never assume",
+      "failure_response": "STOP; preserve evidence and locks; no automatic retry of uncertain submission",
+      "approval": "NOT AUTHORIZED",
+      "serialization_status": "BLOCKED: nulls are unresolved fields, not executable placeholders"
+    },
+    {
+      "number": 7,
+      "purpose": "Grant Executor",
+      "signer": "disburse-topg.testnet",
+      "target": "disburse-test-contract.testnet",
+      "method": "set_native_role",
+      "arguments": {
+        "account_id": "executor.disburse-m12.testnet",
+        "role": "Executor",
+        "enabled": true
+      },
+      "attached_deposit_yoctoNEAR": "0",
+      "gas_Tgas_proposed": 100,
+      "gas_status": "proposed cap; only execution entry minimum220 Tgas verified from source, not live estimate",
+      "maximum_USDC_atomic": 0,
+      "preconditions": "Resolve all blockers; fresh finalized identity/custody/role/code checks; exact parameters separately approved; deployment stage verified before funding",
+      "expected": "Matching method event and returned ID/state; no historical campaign/accounting delta",
+      "verification": "Finalized receipts and exact view/balance/accounting comparisons; derive returned campaign/payout IDs, never assume",
+      "failure_response": "STOP; preserve evidence and locks; no automatic retry of uncertain submission",
+      "approval": "NOT AUTHORIZED",
+      "serialization_status": "BLOCKED: nulls are unresolved fields, not executable placeholders"
+    },
+    {
+      "number": 8,
+      "purpose": "Approve recipient",
+      "signer": "disburse-topg.testnet",
+      "target": "disburse-test-contract.testnet",
+      "method": "approve_native_recipient",
+      "arguments": {
+        "recipient_id": "recipient.disburse-m12.testnet",
+        "evidence_hash": null
+      },
+      "attached_deposit_yoctoNEAR": "0",
+      "gas_Tgas_proposed": 100,
+      "gas_status": "proposed cap; only execution entry minimum220 Tgas verified from source, not live estimate",
+      "maximum_USDC_atomic": 0,
+      "preconditions": "Resolve all blockers; fresh finalized identity/custody/role/code checks; exact parameters separately approved; deployment stage verified before funding",
+      "expected": "Matching method event and returned ID/state; no historical campaign/accounting delta",
+      "verification": "Finalized receipts and exact view/balance/accounting comparisons; derive returned campaign/payout IDs, never assume",
+      "failure_response": "STOP; preserve evidence and locks; no automatic retry of uncertain submission",
+      "approval": "NOT AUTHORIZED",
+      "serialization_status": "BLOCKED: nulls are unresolved fields, not executable placeholders"
+    },
+    {
+      "number": 9,
+      "purpose": "Recipient token registration",
+      "signer": "recipient.disburse-m12.testnet",
+      "target": "usdc.tidepool-sandbox.testnet",
+      "method": "storage_deposit",
+      "arguments": {
+        "account_id": "recipient.disburse-m12.testnet",
+        "registration_only": true
+      },
+      "attached_deposit_yoctoNEAR": null,
+      "gas_Tgas_proposed": 100,
+      "gas_status": "proposed cap; only execution entry minimum220 Tgas verified from source, not live estimate",
+      "maximum_USDC_atomic": 0,
+      "preconditions": "Resolve all blockers; fresh finalized identity/custody/role/code checks; exact parameters separately approved; deployment stage verified before funding",
+      "expected": "Matching method event and returned ID/state; no historical campaign/accounting delta",
+      "verification": "Finalized receipts and exact view/balance/accounting comparisons; derive returned campaign/payout IDs, never assume",
+      "failure_response": "STOP; preserve evidence and locks; no automatic retry of uncertain submission",
+      "approval": "NOT AUTHORIZED",
+      "serialization_status": "BLOCKED: nulls are unresolved fields, not executable placeholders"
+    },
+    {
+      "number": 10,
+      "purpose": "Unpause",
+      "signer": "disburse-topg.testnet",
+      "target": "disburse-test-contract.testnet",
+      "method": "unpause",
+      "arguments": {},
+      "attached_deposit_yoctoNEAR": "0",
+      "gas_Tgas_proposed": 100,
+      "gas_status": "proposed cap; only execution entry minimum220 Tgas verified from source, not live estimate",
+      "maximum_USDC_atomic": 0,
+      "preconditions": "Resolve all blockers; fresh finalized identity/custody/role/code checks; exact parameters separately approved; deployment stage verified before funding",
+      "expected": "Matching method event and returned ID/state; no historical campaign/accounting delta",
+      "verification": "Finalized receipts and exact view/balance/accounting comparisons; derive returned campaign/payout IDs, never assume",
+      "failure_response": "STOP; preserve evidence and locks; no automatic retry of uncertain submission",
+      "approval": "NOT AUTHORIZED",
+      "serialization_status": "BLOCKED: nulls are unresolved fields, not executable placeholders"
+    },
+    {
+      "number": 11,
+      "purpose": "Create isolated campaign",
+      "signer": "disburse-op-b966e36d.testnet",
+      "target": "disburse-test-contract.testnet",
+      "method": "create_campaign",
+      "arguments": {
+        "title": "Disburse M5-F isolated native experiment",
+        "token_id": "usdc.tidepool-sandbox.testnet",
+        "budget": 100000
+      },
+      "attached_deposit_yoctoNEAR": "0",
+      "gas_Tgas_proposed": 100,
+      "gas_status": "proposed cap; only execution entry minimum220 Tgas verified from source, not live estimate",
+      "maximum_USDC_atomic": 0,
+      "preconditions": "Resolve all blockers; fresh finalized identity/custody/role/code checks; exact parameters separately approved; deployment stage verified before funding",
+      "expected": "Matching method event and returned ID/state; no historical campaign/accounting delta",
+      "verification": "Finalized receipts and exact view/balance/accounting comparisons; derive returned campaign/payout IDs, never assume",
+      "failure_response": "STOP; preserve evidence and locks; no automatic retry of uncertain submission",
+      "approval": "NOT AUTHORIZED",
+      "serialization_status": "BLOCKED: nulls are unresolved fields, not executable placeholders"
+    },
+    {
+      "number": 12,
+      "purpose": "Approve campaign",
+      "signer": "disburse-topg.testnet",
+      "target": "disburse-test-contract.testnet",
+      "method": "approve_campaign",
+      "arguments": {
+        "campaign_id": null
+      },
+      "attached_deposit_yoctoNEAR": "0",
+      "gas_Tgas_proposed": 100,
+      "gas_status": "proposed cap; only execution entry minimum220 Tgas verified from source, not live estimate",
+      "maximum_USDC_atomic": 0,
+      "preconditions": "Resolve all blockers; fresh finalized identity/custody/role/code checks; exact parameters separately approved; deployment stage verified before funding",
+      "expected": "Matching method event and returned ID/state; no historical campaign/accounting delta",
+      "verification": "Finalized receipts and exact view/balance/accounting comparisons; derive returned campaign/payout IDs, never assume",
+      "failure_response": "STOP; preserve evidence and locks; no automatic retry of uncertain submission",
+      "approval": "NOT AUTHORIZED",
+      "serialization_status": "BLOCKED: nulls are unresolved fields, not executable placeholders"
+    },
+    {
+      "number": 13,
+      "purpose": "Fund campaign",
+      "signer": "disburse-op-b966e36d.testnet",
+      "target": "usdc.tidepool-sandbox.testnet",
+      "method": "ft_transfer_call",
+      "arguments": {
+        "receiver_id": "disburse-test-contract.testnet",
+        "amount": "100000",
+        "msg": null
+      },
+      "attached_deposit_yoctoNEAR": "1",
+      "gas_Tgas_proposed": 100,
+      "gas_status": "proposed cap; only execution entry minimum220 Tgas verified from source, not live estimate",
+      "maximum_USDC_atomic": 100000,
+      "preconditions": "Resolve all blockers; fresh finalized identity/custody/role/code checks; exact parameters separately approved; deployment stage verified before funding",
+      "expected": "Matching method event and returned ID/state; no historical campaign/accounting delta",
+      "verification": "Finalized receipts and exact view/balance/accounting comparisons; derive returned campaign/payout IDs, never assume",
+      "failure_response": "STOP; preserve evidence and locks; no automatic retry of uncertain submission",
+      "approval": "NOT AUTHORIZED",
+      "serialization_status": "BLOCKED: nulls are unresolved fields, not executable placeholders"
+    },
+    {
+      "number": 14,
+      "purpose": "Activate campaign",
+      "signer": "disburse-op-b966e36d.testnet",
+      "target": "disburse-test-contract.testnet",
+      "method": "activate_campaign",
+      "arguments": {
+        "campaign_id": null
+      },
+      "attached_deposit_yoctoNEAR": "0",
+      "gas_Tgas_proposed": 100,
+      "gas_status": "proposed cap; only execution entry minimum220 Tgas verified from source, not live estimate",
+      "maximum_USDC_atomic": 0,
+      "preconditions": "Resolve all blockers; fresh finalized identity/custody/role/code checks; exact parameters separately approved; deployment stage verified before funding",
+      "expected": "Matching method event and returned ID/state; no historical campaign/accounting delta",
+      "verification": "Finalized receipts and exact view/balance/accounting comparisons; derive returned campaign/payout IDs, never assume",
+      "failure_response": "STOP; preserve evidence and locks; no automatic retry of uncertain submission",
+      "approval": "NOT AUTHORIZED",
+      "serialization_status": "BLOCKED: nulls are unresolved fields, not executable placeholders"
+    },
+    {
+      "number": 15,
+      "purpose": "Reserve native payout",
+      "signer": "disburse-op-b966e36d.testnet",
+      "target": "disburse-test-contract.testnet",
+      "method": "create_native_payout",
+      "arguments": {
+        "campaign_id": null,
+        "idempotency_key": "m5f2-isolated-first-native-v1",
+        "recipient_id": "recipient.disburse-m12.testnet",
+        "amount": "100000"
+      },
+      "attached_deposit_yoctoNEAR": "0",
+      "gas_Tgas_proposed": 100,
+      "gas_status": "proposed cap; only execution entry minimum220 Tgas verified from source, not live estimate",
+      "maximum_USDC_atomic": 100000,
+      "preconditions": "Resolve all blockers; fresh finalized identity/custody/role/code checks; exact parameters separately approved; deployment stage verified before funding",
+      "expected": "Matching method event and returned ID/state; no historical campaign/accounting delta",
+      "verification": "Finalized receipts and exact view/balance/accounting comparisons; derive returned campaign/payout IDs, never assume",
+      "failure_response": "STOP; preserve evidence and locks; no automatic retry of uncertain submission",
+      "approval": "NOT AUTHORIZED",
+      "serialization_status": "BLOCKED: nulls are unresolved fields, not executable placeholders"
+    },
+    {
+      "number": 16,
+      "purpose": "Approve attempt",
+      "signer": "approver.disburse-m12.testnet",
+      "target": "disburse-test-contract.testnet",
+      "method": "approve_native_execution",
+      "arguments": {
+        "payout_id": null,
+        "authorization_id": "m5f2-first-native-v1",
+        "attempt_id": 1,
+        "expires_at_ns": null
+      },
+      "attached_deposit_yoctoNEAR": "0",
+      "gas_Tgas_proposed": 100,
+      "gas_status": "proposed cap; only execution entry minimum220 Tgas verified from source, not live estimate",
+      "maximum_USDC_atomic": 100000,
+      "preconditions": "Resolve all blockers; fresh finalized identity/custody/role/code checks; exact parameters separately approved; deployment stage verified before funding",
+      "expected": "Matching method event and returned ID/state; no historical campaign/accounting delta",
+      "verification": "Finalized receipts and exact view/balance/accounting comparisons; derive returned campaign/payout IDs, never assume",
+      "failure_response": "STOP; preserve evidence and locks; no automatic retry of uncertain submission",
+      "approval": "NOT AUTHORIZED",
+      "serialization_status": "BLOCKED: nulls are unresolved fields, not executable placeholders"
+    },
+    {
+      "number": 17,
+      "purpose": "Execute once",
+      "signer": "executor.disburse-m12.testnet",
+      "target": "disburse-test-contract.testnet",
+      "method": "begin_native_preflight",
+      "arguments": {
+        "payout_id": null,
+        "authorization_id": "m5f2-first-native-v1",
+        "attempt_id": 1
+      },
+      "attached_deposit_yoctoNEAR": "0",
+      "gas_Tgas_proposed": 250,
+      "gas_status": "proposed cap; only execution entry minimum220 Tgas verified from source, not live estimate",
+      "maximum_USDC_atomic": 100000,
+      "preconditions": "Resolve all blockers; fresh finalized identity/custody/role/code checks; exact parameters separately approved; deployment stage verified before funding",
+      "expected": "Matching method event and returned ID/state; no historical campaign/accounting delta",
+      "verification": "Finalized receipts and exact view/balance/accounting comparisons; derive returned campaign/payout IDs, never assume",
+      "failure_response": "STOP; preserve evidence and locks; no automatic retry of uncertain submission",
+      "approval": "NOT AUTHORIZED",
+      "serialization_status": "BLOCKED: nulls are unresolved fields, not executable placeholders"
+    }
+  ],
+  "blockers": [
+    "Fresh deployed contract/token snapshot incomplete: RPC collection stopped with KeyError; preserve partial raw responses, rerun corrected collector before approval.",
+    "Proposed parent and three subaccounts return UNKNOWN_ACCOUNT at finalized heights 278141486\u2013278141491. No parent custody or child signer exists verified.",
+    "Recipient ownership remains unverified; durable authenticated proof/replay workflow absent.",
+    "Current environment targets disburse-topg.testnet and omits restricted read-only flag; it must not be started for this experiment.",
+    "Candidate hardcodes disburse-test-contract.testnet; new isolated deployment requires separately reviewed identity changes/rebuild. In-place upgrade needs explicit authorization and Campaign 0 preservation evidence.",
+    "Focused tests failed to load pg; full regression suites not repeated. Prior results are historical only.",
+    "Native role holders, owner signing access and emergency key availability not freshly verified."
+  ],
+  "tests": {
+    "focused": "FAILED_TO_LOAD_pg",
+    "full_regression": "NOT_RUN; no application source modified; prior146/186/46/8/20 historical"
+  },
+  "state_changes": 0
+}

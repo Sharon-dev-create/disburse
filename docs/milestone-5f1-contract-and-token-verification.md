@@ -1,0 +1,7 @@
+M5-F.1, 2026-11-17. CONTROLLED TESTNET EXECUTION: NOT AUTHORIZED. Proposed transactions require separate approval. No live keys generated, accounts created or transactions submitted.
+
+Fresh full verification incomplete; see retained testnet-snapshot.json and rpc logs. Do not substitute historical observations. Prior snapshot block278122198 showed old deployed hash CJUcu5UqBYA4ZV47TJMABQJWc7MdvdaYYMNdDeB1mxcf, 1 USDC contract and99 Operator, registered storage0.00125NEAR; these are historical. Candidate SHA 37e432600c43d5fc7d44b2d81bc9a852d5e120a7dc043c7f06f83d1e62a24ea9 differs from that deployment.
+
+Native candidate hardcodes existing account; new contract deployment cannot work unchanged. Prefer fresh isolation only after separately reviewed target-identity changes; otherwise explicit in-place upgrade review and byte-preserved Campaign0 snapshot are mandatory. Do not deploy to arbitrary namespace.
+
+Requery metadata, code, storage bounds, accounts, token balances, full STATE/counters and both endpoints before approval. Minimum execution headroom is (post-upgrade storage_usage+16384)*storage_byte_cost+1 yoctoNEAR. Entry minimum220Tgas; storage10, storage callback170, token transfer30, settlement50 Tgas are nested allocations, not additive separate signer transactions. Propose250Tgas entry. Live protocol/gas estimation remains unresolved. Actual Tidepool transfer compatibility remains unverified until future approved experiment.

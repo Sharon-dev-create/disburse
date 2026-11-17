@@ -1,0 +1,5 @@
+M5-F.1, 2026-11-17. CONTROLLED TESTNET EXECUTION: NOT AUTHORIZED. Proposed transactions require separate approval. No live keys generated, accounts created or transactions submitted.
+
+RECIPIENT_OWNERSHIP_NOT_VERIFIED. Proposed recipient recipient.disburse-m12.testnet does not exist at observed block.
+
+Procedure: authenticated local operator issues 32-byte random nonce; NEP-413 message binds account, near:testnet, Disburse application/domain, purpose, expiry and intended payout context. Use an actually supported wallet signMessage capability only after capability verification; no wallet was selected here. Verify canonical NEP-413 signature and current finalized FullAccess public-key membership on claimed account; reject wrong account/network/domain, expired challenge or reused nonce. Atomically consume nonce in durable authenticated issuance store, record public proof/hash/block/expiry without secrets; on failure remain unverified. Durable replay/auth integration is outside this documentation-only milestone; no positive ownership status asserted.

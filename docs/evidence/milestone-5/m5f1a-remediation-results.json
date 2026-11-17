@@ -1,0 +1,21 @@
+{
+  "milestone": "M5-F.1A",
+  "verdict": "PARTIAL",
+  "revision": "f5102090a500cfe5c2993187cd704e56b4062d13",
+  "dependency": "pg 8.23.1 restored with frozen lockfile; resolves from execution-service",
+  "identity_strategy": "Retain all Rust identity guards. Existing isolated target requires separately approved upgrade; fresh address requires separate identity review. No Rust change.",
+  "configuration": "Ignored .env.m5f-isolated.local and narrow loader added; integration and requested negative tests incomplete; do not launch",
+  "validation": "See service-baseline.log and service-check.log; full Rust/PostgreSQL/RPC/sandbox reruns outstanding",
+  "RPC": "Recovered collector attempt pending; no fresh complete snapshot claimed",
+  "ownership": "UNVERIFIED",
+  "independent_review_readiness": "NOT READY",
+  "controlled_testnet_execution": "NOT AUTHORIZED",
+  "production_readiness": "NOT READY",
+  "remaining": [
+    "Wire and test isolated profile boundary",
+    "Finish bounded RPC collection and classify responses",
+    "Dedicated PostgreSQL verification and complete full regression",
+    "Complete account/role commands and ownership preparation"
+  ],
+  "candidate_SHA256": "37e432600c43d5fc7d44b2d81bc9a852d5e120a7dc043c7f06f83d1e62a24ea9"
+}
