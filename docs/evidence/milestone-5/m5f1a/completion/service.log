@@ -1,0 +1,76 @@
+$ pnpm format:check && pnpm typecheck && pnpm lint && pnpm test
+$ prettier --check "src/**/*.ts" "tests/**/*.ts" "*.json"
+Checking formatting...
+All matched files use Prettier code style!
+$ tsc --noEmit
+$ eslint src tests --ext .ts
+$ node --experimental-strip-types --test tests/*.test.ts
+✖ tests/active-testnet.test.ts (772.924975ms)
+✖ tests/api.test.ts (555.153945ms)
+✖ tests/campaign-read.test.ts (502.92734ms)
+✔ tests/discovery.test.ts (1215.206743ms)
+✔ tests/fastnear-neardata.test.ts (812.503564ms)
+✖ tests/host-api-integration.test.ts (643.981647ms)
+✔ tests/host-auth.test.ts (298.445121ms)
+✔ tests/host-config.test.ts (292.862106ms)
+✖ tests/host-server.test.ts (541.444771ms)
+✔ tests/isolated-startup.test.ts (514.513638ms)
+✔ tests/native-reconciliation.test.ts (510.611186ms)
+✔ tests/near-intents.test.ts (798.857436ms)
+✖ tests/operational-audit-regressions.test.ts (1080.008012ms)
+✖ tests/operational-monitoring.test.ts (531.912985ms)
+✔ tests/operational-safeguards.test.ts (284.37478ms)
+✔ tests/postgres-config.test.ts (369.079471ms)
+✔ tests/postgres-job-repository.test.ts (348.412092ms)
+✔ tests/postgres-migrations.test.ts (379.89892ms)
+✔ tests/postgres-security-repositories.test.ts (677.89681ms)
+✔ tests/recipient-preflight.test.ts (667.315088ms)
+✔ tests/repository.test.ts (414.144288ms)
+✖ tests/rpc-resources.test.ts (686.150593ms)
+✔ tests/security.test.ts (306.094578ms)
+✔ tests/state-machine.test.ts (371.105062ms)
+✔ tests/testnet-readiness.test.ts (238.000464ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 17
+ℹ fail 8
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2173.099104
+
+✖ failing tests:
+
+test at tests/active-testnet.test.ts:1:1
+✖ tests/active-testnet.test.ts (772.924975ms)
+  'test failed'
+
+test at tests/api.test.ts:1:1
+✖ tests/api.test.ts (555.153945ms)
+  'test failed'
+
+test at tests/campaign-read.test.ts:1:1
+✖ tests/campaign-read.test.ts (502.92734ms)
+  'test failed'
+
+test at tests/host-api-integration.test.ts:1:1
+✖ tests/host-api-integration.test.ts (643.981647ms)
+  'test failed'
+
+test at tests/host-server.test.ts:1:1
+✖ tests/host-server.test.ts (541.444771ms)
+  'test failed'
+
+test at tests/operational-audit-regressions.test.ts:1:1
+✖ tests/operational-audit-regressions.test.ts (1080.008012ms)
+  'test failed'
+
+test at tests/operational-monitoring.test.ts:1:1
+✖ tests/operational-monitoring.test.ts (531.912985ms)
+  'test failed'
+
+test at tests/rpc-resources.test.ts:1:1
+✖ tests/rpc-resources.test.ts (686.150593ms)
+  'test failed'
+[ELIFECYCLE] Test failed. See above for more details.
+[ELIFECYCLE] Command failed with exit code 1.

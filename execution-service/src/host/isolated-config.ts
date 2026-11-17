@@ -6,6 +6,18 @@ export function loadIsolatedTestnetConfig(env: NodeJS.ProcessEnv) {
     throw new HostConfigError(
       "Isolated profile requires explicit read-only mode.",
     );
+  for (const name of [
+    "DISBURSE_EXECUTION_WORKER_ENABLED",
+    "DISBURSE_PAYOUT_SUBMISSION_ENABLED",
+  ]) {
+    if (env[name] !== "false")
+      throw new HostConfigError(
+        `${name} must be explicitly false in the isolated profile.`,
+      );
+  }
+  // This is a read-only profile: its enforced submission budget is zero.
+  if (env.DISBURSE_MAX_PAYOUT_ATOMIC !== "0")
+    throw new HostConfigError("Isolated payout cap must be exactly zero.");
   const config = loadExecutionHostConfig(env);
   if (
     config.nearNetworkId !== "testnet" ||
