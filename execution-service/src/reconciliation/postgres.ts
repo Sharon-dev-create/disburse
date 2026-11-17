@@ -147,7 +147,12 @@ export class NativeReconciliationRepository {
     try {
       await c.query("BEGIN");
       const row = await c.query(
-        `SELECT *,lease_until>clock_timestamp() AS valid FROM public.native_reconciliation_jobs WHERE job_key=$1 FOR UPDATE`,
+        `SELECT * FROM public.native_reconciliation_jobs WHERE job_key=$1 FOR UPDATE`,
+        [claim.key],
+      );
+      // Lock acquisition may outlive the lease: evaluate database time in a new statement.
+      const validity = await c.query(
+        "SELECT lease_until>clock_timestamp() AS valid FROM public.native_reconciliation_jobs WHERE job_key=$1",
         [claim.key],
       );
       const j = row.rows[0];
@@ -156,7 +161,7 @@ export class NativeReconciliationRepository {
         j.state !== "Processing" ||
         j.worker_id !== claim.workerId ||
         String(j.fence) !== claim.fence ||
-        !j.valid
+        !validity.rows[0]?.valid
       )
         throw new Error("Stale reconciliation fence/lease");
       if (
@@ -218,24 +223,35 @@ export class NativeReconciliationRepository {
             trust,
           }
         : decision;
-      await c.query(
-        "INSERT INTO public.native_reconciliation_decisions(job_key,fence,decision) VALUES($1,$2,$3::jsonb)",
+      const inserted = await c.query(
+        `INSERT INTO public.native_reconciliation_decisions(job_key,fence,decision)
+         SELECT job_key,fence,$3::jsonb FROM public.native_reconciliation_jobs
+         WHERE job_key=$1 AND fence=$2::bigint AND worker_id=$4
+         AND state='Processing' AND lease_until>clock_timestamp()`,
         [
           claim.key,
           claim.fence,
           canonical({ ...final, conflicting, workerId: claim.workerId }),
+          claim.workerId,
         ],
       );
-      await c.query(
+      if (inserted.rowCount !== 1)
+        throw new Error("Stale reconciliation fence/lease");
+      const completed = await c.query(
         `UPDATE public.native_reconciliation_jobs SET state=$2,semantic_digest=COALESCE(semantic_digest,$3),conflicted=$4,
-        worker_id=NULL,lease_until=NULL,updated_at=clock_timestamp() WHERE job_key=$1`,
+        worker_id=NULL,lease_until=NULL,updated_at=clock_timestamp() WHERE job_key=$1 AND state='Processing'
+        AND worker_id=$5 AND fence=$6::bigint AND lease_until>clock_timestamp()`,
         [
           claim.key,
           final.classification === "ManualReview" ? "ManualReview" : "Done",
           final.semanticDigest,
           conflicting,
+          claim.workerId,
+          claim.fence,
         ],
       );
+      if (completed.rowCount !== 1)
+        throw new Error("Stale reconciliation fence/lease");
       await c.query("COMMIT");
       return final;
     } catch (e) {

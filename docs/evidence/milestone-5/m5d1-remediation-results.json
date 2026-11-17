@@ -1,0 +1,618 @@
+{
+  "milestone": "M5-D.1",
+  "verdict": "PASS",
+  "scope": "Local remediation validation only; independent security re-review required",
+  "baseline_revision": "8b2c068bfb31eb47ec4ed61194a1a98c2ea5149a",
+  "final_observed_HEAD": "8b2c068bfb31eb47ec4ed61194a1a98c2ea5149a",
+  "finding": "M5D-R01",
+  "status": "REMEDIATED_PENDING_INDEPENDENT_REVIEW",
+  "root_cause": "Lease validity projection evaluated before FOR UPDATE wait and reused after expiry",
+  "fix": [
+    "Lock first, then separate fresh clock_timestamp query",
+    "Preserve Processing state, worker, fencing token and immutable identity/locator checks",
+    "Conditional decision INSERT SELECT checks lease at write boundary",
+    "Conditional final job UPDATE checks same predicates; rowcount must be1",
+    "Any rejection rolls back observations, claims, decisions and job mutation"
+  ],
+  "schema_changes": false,
+  "before": {
+    "result": {
+      "accepted": true
+    },
+    "timing": {
+      "updated_at": "2026-11-16T14:43:15.109Z",
+      "lease_until": "2026-11-16T14:43:15.609Z",
+      "observed": "2026-11-16T14:43:15.112Z"
+    },
+    "elapsedMs": 906,
+    "state": {
+      "state": "ManualReview",
+      "fence": "1",
+      "lease_until": null
+    },
+    "decisions": {
+      "count": "1"
+    }
+  },
+  "after": {
+    "result": {
+      "accepted": false,
+      "error": "Stale reconciliation fence/lease"
+    },
+    "timing": {
+      "updated_at": "2026-11-16T14:43:16.198Z",
+      "lease_until": "2026-11-16T14:43:16.698Z",
+      "observed": "2026-11-16T14:43:16.201Z"
+    },
+    "elapsedMs": 904,
+    "state": {
+      "state": "Processing",
+      "fence": "1",
+      "lease_until": "2026-11-16T14:43:16.698Z"
+    },
+    "decisions": {
+      "count": "0"
+    }
+  },
+  "tests": {
+    "Rust": {
+      "passed": 146,
+      "failed": 0,
+      "ignored": 0
+    },
+    "service": {
+      "passed": 134,
+      "failed": 0,
+      "skipped": 0
+    },
+    "PostgreSQL": {
+      "passed": 32,
+      "new_tests": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    "sandbox_receipt_groups": 20,
+    "real_WASM_migrations": 2,
+    "live_readonly_tests": 8,
+    "callback_observer_overlap": "PASS",
+    "format_typecheck_lint_clippy_build": "PASS"
+  },
+  "coverage": [
+    "Expired500ms lease after synchronized900ms row-lock wait",
+    "Valid lease after short wait",
+    "Wrong worker/generation and duplicate completion",
+    "Reclaimed generation, concurrent claims and real SIGKILL restart in existing suite",
+    "Modeled same-owner database renewal; native API has no renewal method",
+    "Later receipt-claim wait causes final predicate rejection and provisional evidence rollback"
+  ],
+  "related_paths": "Native complete centralizes all leased evidence/decision/ManualReview/completion writes. claim atomic, recheck fenced and terminal-only, enqueue immutable, history read-only. No native renew/release API added. Separate legacy lock-first path inspected, unchanged.",
+  "payment_safety": "Rust/WASM/callbacks/authorization/accounting/locks unchanged; no transfer/retry/release/settlement capability added",
+  "remaining_risks": [
+    "Independent security re-review pending",
+    "On-chain recovery remains blocked",
+    "Trusted RPC/token/root assumptions unchanged",
+    "No claim that lease remains unexpired until network acknowledgement of COMMIT; predicates enforce actual SQL write boundary"
+  ],
+  "actions": {
+    "live_transactions": 0,
+    "live_database_changes": 0,
+    "production_workers_started": 0,
+    "commits_or_pushes_issued": 0,
+    "user_staging_preserved": true
+  },
+  "acceptance_criteria": [
+    {
+      "id": 1,
+      "status": "PASS"
+    },
+    {
+      "id": 2,
+      "status": "PASS"
+    },
+    {
+      "id": 3,
+      "status": "PASS"
+    },
+    {
+      "id": 4,
+      "status": "PASS"
+    },
+    {
+      "id": 5,
+      "status": "PASS"
+    },
+    {
+      "id": 6,
+      "status": "PASS"
+    },
+    {
+      "id": 7,
+      "status": "PASS"
+    },
+    {
+      "id": 8,
+      "status": "PASS"
+    },
+    {
+      "id": 9,
+      "status": "PASS"
+    },
+    {
+      "id": 10,
+      "status": "PASS"
+    },
+    {
+      "id": 11,
+      "status": "PASS"
+    },
+    {
+      "id": 12,
+      "status": "PASS"
+    },
+    {
+      "id": 13,
+      "status": "PASS"
+    },
+    {
+      "id": 14,
+      "status": "PASS"
+    },
+    {
+      "id": 15,
+      "status": "PASS"
+    },
+    {
+      "id": 16,
+      "status": "PASS"
+    }
+  ],
+  "changed_files": [
+    {
+      "path": "execution-service/src/reconciliation/postgres.ts",
+      "purpose": "Narrow repository fix"
+    },
+    {
+      "path": "execution-service/tests/integration/postgres-native-lease-race.test.ts",
+      "purpose": "Deterministic regression coverage"
+    },
+    {
+      "path": "docs/milestone-5d1-lease-fencing-remediation.md",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/milestone-5d1-concurrency-regression-results.md",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/milestone-5d1-security-revalidation.md",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/after.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/m5d1-after.mjs",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/m5d1-rust.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/m5d1-build.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/m5d1-rust-fmt.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/m5d1-service.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/m5d1-clippy.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/m5d1-before.mjs",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/m5d1-postgres.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/before.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/baseline/evidence.ts",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/baseline/postgres.ts",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/postgres-tests.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/baseline-service-tests.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/capture.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/test-migrations.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/callback-observer-race.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/postgres-durability.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/service-tests.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/retained-receipt-suite.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/live-reconciliation-tests.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/development-notes.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/local-environments.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/live-read-only-tests.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/baseline-typecheck.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/read-only-node.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/reproduction-result.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/callback-observer-race.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/validation/postgres-tests.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/validation/rust-tests.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/validation/rust-fmt.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/validation/format.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/validation/rust-clippy.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/validation/migration-idempotency.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/validation/typecheck.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/validation/service-tests.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/validation/service.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/validation/wasm-build.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/validation/live-read-only-tests.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/validation/rust.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/validation/lint.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/validation/integration.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/sandbox/definitive-token-failure.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/sandbox/insufficient-token-balance.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/sandbox/delivered-but-unexpected-result.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/sandbox/panic-callback.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/sandbox/successful-transfer.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/sandbox/oog-callback.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/node-faults.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox-b-migration.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox-faults.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox-main.log",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/all-sandbox-suites.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/node-b-migration.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/node-main.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/definitive-token-failure.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/index.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/missing-recipient-storage.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/insufficient-token-balance.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/same-campaign-concurrent-payouts.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/delivered-but-unexpected-result.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/stale-duplicate-self-callbacks.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/b-to-c-wasm-migration.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/minimum-gas-and-low-gas-rejection.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/native-near-headroom.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/restart-uncertain-response-model.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/successful-transfer-duplicate-rejected.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/concurrent-duplicate-execution.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/panic-callback.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/concurrent-payout-two.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/suite-summary.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/panic-callback-duplicate-rejected.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/schedule-panic-duplicate-rejected.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/fault-suite-summary.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/concurrent-payout-one.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/schedule-panic.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/external-callback-payout-success.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/upgrade-between-transfer-and-callback.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/successful-transfer.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/pause-after-dispatch.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/oog-callback.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/historical-wasm-migration.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/external-callbacks-rejected.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    },
+    {
+      "path": "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/oog-callback-duplicate-rejected.json",
+      "purpose": "Remediation documentation or preserved validation/reproduction evidence"
+    }
+  ],
+  "sha256": {
+    "execution-service/src/reconciliation/postgres.ts": "7e0ac2351e01b362eb9d8e01c94dad7a071ed726d415b758186c838f6b191ced",
+    "execution-service/tests/integration/postgres-native-lease-race.test.ts": "794293f14fbf8a1d713b7c1e56d2622afb1f064b69928b0bf52b4a3c31fef503",
+    "docs/milestone-5d1-lease-fencing-remediation.md": "e6eabb95a16c784362e028e070fd5830591796c4eda38ac92ae15f8162858c1f",
+    "docs/milestone-5d1-concurrency-regression-results.md": "fddf762c199ad781f00c3ae19ad5cfbc0ad6b774902c21896b26556a9a3df6be",
+    "docs/milestone-5d1-security-revalidation.md": "5386b98879c0f661989acb58097fc4bb2913c81dcf0dfdfa0631d7c1f0b88afe",
+    "docs/evidence/milestone-5/m5d1/after.json": "83318380453fdabc1a14aed54e9e459ceda7a688d681dc8cc26a6497886255d7",
+    "docs/evidence/milestone-5/m5d1/m5d1-after.mjs": "d3cfe9e54a679af91bce8b8da04db9616c3cd573ca66cde4cbb98be048b52e8e",
+    "docs/evidence/milestone-5/m5d1/m5d1-rust.log": "5407126c041f1488cafa52df94065c097664b78db39b651dba8ee66b20e80c9d",
+    "docs/evidence/milestone-5/m5d1/m5d1-build.log": "a4e91c642142c5eea3542c7f11d99784530da1352353afd76636b704b4989322",
+    "docs/evidence/milestone-5/m5d1/m5d1-rust-fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "docs/evidence/milestone-5/m5d1/m5d1-service.log": "aec63787424ca5309dad879424cf6e6188eac0d5dff44bf8f60062a8ba067dbb",
+    "docs/evidence/milestone-5/m5d1/m5d1-clippy.log": "520a2dfdec7786fd380c2ba4d4a0c5f0b1cb1b39a1783b8a6bbf09dd0c7a25da",
+    "docs/evidence/milestone-5/m5d1/m5d1-before.mjs": "7c369eeca455ac7a01e5d350b4e5b7e5792a8b37f288184a872d6ff745b6d92e",
+    "docs/evidence/milestone-5/m5d1/m5d1-postgres.log": "d7fe8e42eba6a8c38fe60bcce17bebb4e8bc7bc0d560161d5a476bc2d7746bce",
+    "docs/evidence/milestone-5/m5d1/before.json": "d2b796821f4ff8d6baa8528771776c5379c8b0b95197b85b2e59019132aa9026",
+    "docs/evidence/milestone-5/m5d1/baseline/evidence.ts": "ca02bfdcfc95b34383ed4318f7a82e0ffbb901b24895eeab698aee164f4e413b",
+    "docs/evidence/milestone-5/m5d1/baseline/postgres.ts": "8b675de8af381035de3e5f8833f74f229312d8a28dc798eede851dbf82a7525a",
+    "docs/evidence/milestone-5/m5d1/sandbox/postgres-tests.log": "f96d5b0678574eed4351704a6ba3e46362ddd5d628c83399b4a5ceb55266c6a9",
+    "docs/evidence/milestone-5/m5d1/sandbox/baseline-service-tests.log": "8f26bdce46310e55fb0ecd52edb8d6e16e9a221ea0bb07f1e2793d1e8ac56ba7",
+    "docs/evidence/milestone-5/m5d1/sandbox/capture.log": "1eaa4469932046967b403e382b9e549466f4955035cd23bb7048e6496e0dd058",
+    "docs/evidence/milestone-5/m5d1/sandbox/test-migrations.log": "9c78ddd840d83548e092937a9934cc3cc6491321fbfc560d4e1a5b2682aaafbf",
+    "docs/evidence/milestone-5/m5d1/sandbox/callback-observer-race.log": "577cbed806350a81ed1ea5b6af8ccebf2e70dc52e8ef36819f13688e5e30b415",
+    "docs/evidence/milestone-5/m5d1/sandbox/postgres-durability.json": "f573bc0743ea51ff7d89ef7d78d858edcf586701968b8780652d57e21cbe2b7e",
+    "docs/evidence/milestone-5/m5d1/sandbox/service-tests.log": "e58195bab0dc7f1e63c9ff2dcb9a30a164fcd9ca3dd5556466dc06e0eb2e0975",
+    "docs/evidence/milestone-5/m5d1/sandbox/retained-receipt-suite.log": "47ba3ed67b63d40e648a43501379acead4ea8c02dc9e543cd779821e18268df5",
+    "docs/evidence/milestone-5/m5d1/sandbox/live-reconciliation-tests.json": "c09fdc0f9e0a3a472feeb424df78badb0b24504ec42544aaea0fd61841aa4d3e",
+    "docs/evidence/milestone-5/m5d1/sandbox/development-notes.json": "5f3ff24bef1ae4497b07a6ead2bca857713bb7cd3dc409d5f2ea66a1aa93b272",
+    "docs/evidence/milestone-5/m5d1/sandbox/local-environments.json": "9e8eee81caa040d0c05cdc5eb2c4bb3ff465d1b3c599e2a6adab3308a8d66d02",
+    "docs/evidence/milestone-5/m5d1/sandbox/live-read-only-tests.log": "83382fd0f5f2e730b2032f9c190bca5cd08ff1cecb11f626febcee76f4d9657f",
+    "docs/evidence/milestone-5/m5d1/sandbox/baseline-typecheck.log": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92",
+    "docs/evidence/milestone-5/m5d1/sandbox/read-only-node.log": "7cafd069fc19b2c50bea8c2b0268a2746d3c19f8c7e79aeb56b00627efe37e6b",
+    "docs/evidence/milestone-5/m5d1/sandbox/reproduction-result.json": "44591ec1403a4104ca436d84ad09fbbe181225ee890a228492c68ad10b82356d",
+    "docs/evidence/milestone-5/m5d1/sandbox/callback-observer-race.json": "c91b815162623430618bfec83e712e4a3d64b52f4814823f5a6fcdc128cd68bd",
+    "docs/evidence/milestone-5/m5d1/sandbox/validation/postgres-tests.log": "b5a0eb7b4e560250874d2133b89e4083b3076163e160388eb67d1f66ae8e1b83",
+    "docs/evidence/milestone-5/m5d1/sandbox/validation/rust-tests.log": "2cb2279c7a58f5e1bffd93ee6a8ea58cdd49127aa3a5ee0e6981c93d181519bc",
+    "docs/evidence/milestone-5/m5d1/sandbox/validation/rust-fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "docs/evidence/milestone-5/m5d1/sandbox/validation/format.log": "0c0246fee8e0a91379a58cb5ea3a76c37c24b5c4a37db3c7051a1c4738f84ab0",
+    "docs/evidence/milestone-5/m5d1/sandbox/validation/rust-clippy.log": "c54bca416b8a09e3c2018b0ada16771065b3b9b5469242539af42bc53077e2cf",
+    "docs/evidence/milestone-5/m5d1/sandbox/validation/migration-idempotency.log": "f9dd31816170f87ae4fa7fdf210b7ecb8560d50f4c6fb92d675a66f4d4a13d5b",
+    "docs/evidence/milestone-5/m5d1/sandbox/validation/typecheck.log": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92",
+    "docs/evidence/milestone-5/m5d1/sandbox/validation/service-tests.log": "f038adc7de70c1b7b3377f4babeabb3c3a98689e6254173e430df281a70c1147",
+    "docs/evidence/milestone-5/m5d1/sandbox/validation/service.json": "c7d85147a5e59f1393ba509fe55d148c6a7d8a6c4fdb540a9201444cc65c9137",
+    "docs/evidence/milestone-5/m5d1/sandbox/validation/wasm-build.log": "2623f84fab9065c2fc8f30ff5cf18b7930fde3a6b8b4745a672606c8817464d5",
+    "docs/evidence/milestone-5/m5d1/sandbox/validation/live-read-only-tests.log": "2d889180d2cfebdde059ff0bfa25af76df5846fc20cb6bfbfadd2d8ae87774be",
+    "docs/evidence/milestone-5/m5d1/sandbox/validation/rust.json": "b33ab2d2a82cc6e38b71a4a7ececbdb5235c6a9f51e2c30f53eb8f416d0d7b9d",
+    "docs/evidence/milestone-5/m5d1/sandbox/validation/lint.log": "426c4c193463ac2c4801152ebcf59e624e012ac76019aded22ab8eaa05e77dd6",
+    "docs/evidence/milestone-5/m5d1/sandbox/validation/integration.json": "bf46d40056e37eaf8ca38758042b1c5a48512cd3f22a9f06ae74fe6a5b944a11",
+    "docs/evidence/milestone-5/m5d1/sandbox/sandbox/definitive-token-failure.json": "1414444d988cf1e0b001fc83069b46f622e6f1f3fdf01c543fac257b7cbe38ba",
+    "docs/evidence/milestone-5/m5d1/sandbox/sandbox/insufficient-token-balance.json": "77ad2b4981ed459b5db3b99b531af9099d744506cc7d5ceb7037d1f1a74a399b",
+    "docs/evidence/milestone-5/m5d1/sandbox/sandbox/delivered-but-unexpected-result.json": "33f189ecef5d387bd31947412e278f0fecd30417354ae6d53a78e20e7fd1f5a0",
+    "docs/evidence/milestone-5/m5d1/sandbox/sandbox/panic-callback.json": "85f62f629afe9b478ffefd6d12e78be6b31d9daa5e97f0ae8b08e47e84c8fbad",
+    "docs/evidence/milestone-5/m5d1/sandbox/sandbox/successful-transfer.json": "1307544b22cb90905b982999b8983f3ea57e78f58021c7bd6c52b11b1ea21b96",
+    "docs/evidence/milestone-5/m5d1/sandbox/sandbox/oog-callback.json": "70c41766fec6c7958ff1662754a526c3889b92a4b036dfdad986011cc0739fd3",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/node-faults.json": "11e705fb872c67a8ad73a5cc63d49aba80a1179cf571c422bf1f6f3a79402949",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox-b-migration.log": "5f3876999967b9c64104db6c2cf792b51bfd553b79eaaf83b47da8ff4a8b46d8",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox-faults.log": "afd3b2983b460ff449de8e145a834f6f4036d588a3da0f35d4cb88dd472ec3de",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox-main.log": "290c980971c83a5d4338bbdeed689326e833097ff1cfb4d93b26dea8e4bfa0a0",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/all-sandbox-suites.json": "2d5ab262483c5bdb723c5bf3916c1508385354bdb9ec9c749d5a49860471a122",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/node-b-migration.json": "831a1cc297f00429af82c8fc8cc44300a2273b54c6e3c049e9f4e49a25d072ba",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/node-main.json": "9219f7135df65a9fc4eb78face6dc5b706293ba210d588fc7b8c28d4cbacdec7",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/definitive-token-failure.json": "247002da6bd7d4b6fb47f128bacd5559ae5ba59cc3ce40eed475563d52612407",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/index.json": "18b2c426f50f1962a89b7cfb4d7a856a4768670dd2c5383f1b947b3b4fd881d1",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/missing-recipient-storage.json": "7977cd73d6d66b9b6f77c5b5c79718c010112b666ecfaf6e0da71dc34cf752e6",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/insufficient-token-balance.json": "1d184e2364a649e9fcc29d5e9c1521985fe77665b15e64f164db801d1e25e57d",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/same-campaign-concurrent-payouts.json": "2fadfced58e0717263066713ac5da9a27c09177f79bb2175f4a765fc231f151f",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/delivered-but-unexpected-result.json": "83f69825a241970c1cb72e7123d9d36402c567694709b3e23803e1630d0a08df",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/stale-duplicate-self-callbacks.json": "d829d8224a3f8b8295d5c5e1a041ca6e9681185d996eb14db54c4110a29fb4a2",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/b-to-c-wasm-migration.json": "7741a773e7ae4deed922d9d92f263b168eaa3aebe8f0b1faab1f22616b2d135b",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/minimum-gas-and-low-gas-rejection.json": "e4e0ad8d89d2960125d6331d109cb79dabfb7888c0de12f84fca28f4cf831297",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/native-near-headroom.json": "b8699ebde54ada6fcd581bdbcd3a2c21a709ad85ac7baad86dc76f9d53247d9a",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/restart-uncertain-response-model.json": "fc6e841a7f97ea81127bc1bbfb00bd6875a6a8341e9c9f56efe19f6e598d277d",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/successful-transfer-duplicate-rejected.json": "57d059aea74f8499fbcb3a23a72d0a16059a67100cec47de865eb91de1d91c0e",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/concurrent-duplicate-execution.json": "46f10fc83ab9f5e5b7812553796bccc2e27c40ab5c56a86dd165664066ddf86e",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/panic-callback.json": "3c292c3332fcb5cf0901a5d407436ae4a9e4a5a8757707d71a4fdbaebdd77f8b",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/concurrent-payout-two.json": "582808e4495b6b5f0f2d67b3edfa1739e84a084b7a2d83c24aed63514abd1a23",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/suite-summary.json": "06b3af4326561dab35958a33f2ba4be637ead9feb88181e3ed5adb7cc9175a75",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/panic-callback-duplicate-rejected.json": "42e9137b755ec38e9bc24dc6e8ac349717eff201792540f5b45e7a4e1494b05a",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/schedule-panic-duplicate-rejected.json": "874c463f626cfa487b74fb4b068fd33b04ed5b6a4f6e82d8980fb2b2b292d4f3",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/fault-suite-summary.json": "be31f014d22a0716b4c85a97276b00991b828f6eff0d0165f6b4bf3806f09876",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/concurrent-payout-one.json": "2187f9317c0e52e3af813e78494db8c9d3ef91b02401b5f0d9dff46ccc0ee5bb",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/schedule-panic.json": "1f8af8c7793f551e17570765a574687ab0794f7f6e82cede06b051f728d777cf",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/external-callback-payout-success.json": "8bb52fe0b9e6a70e0ef88f7f5d7e81e7c7c80a17a019f5336eb8b02fa1a3ce42",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/upgrade-between-transfer-and-callback.json": "2ff2334cbe758111771eadc085904449883cd61799bcde158204de716fd77352",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/successful-transfer.json": "c0f54f70c35605b1340b1d7996e01062a3d63859c0ccd0587e6983019aaa613b",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/pause-after-dispatch.json": "5f7449cc9c461d2f20b3dc5f9aaaf70793b41103f410fbd1f9561cae4313a4a9",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/oog-callback.json": "b71213330ac990d699ad42400daebb67ff103c3925c345cd67ad174e1e681cdf",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/historical-wasm-migration.json": "7e062f1057759e14245f6493214df7c3b405fda33187b1f84c926a4205d3c097",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/external-callbacks-rejected.json": "f27b94c92c7431e7d8a2eecfab350d5c10bd261535b322a9d180ed2f98874b19",
+    "docs/evidence/milestone-5/m5d1/sandbox/fresh-receipt-suite/sandbox/oog-callback-duplicate-rejected.json": "a0199418835f87c7a13b65a2d201e932d1469571c1b1182ca7fbddea3d07a889"
+  }
+}

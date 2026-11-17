@@ -1,0 +1,50 @@
+[
+  {
+    "name": "rust-fmt",
+    "command": [
+      "cargo",
+      "fmt",
+      "--all",
+      "--",
+      "--check"
+    ],
+    "exit_code": 0,
+    "log": "docs/evidence/milestone-5/m5d/validation/rust-fmt.log"
+  },
+  {
+    "name": "rust-clippy",
+    "command": [
+      "cargo",
+      "clippy",
+      "--locked",
+      "--all-targets",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "exit_code": 0,
+    "log": "docs/evidence/milestone-5/m5d/validation/rust-clippy.log"
+  },
+  {
+    "name": "rust-tests",
+    "command": [
+      "cargo",
+      "test",
+      "--locked"
+    ],
+    "exit_code": 0,
+    "log": "docs/evidence/milestone-5/m5d/validation/rust-tests.log"
+  },
+  {
+    "name": "wasm-build",
+    "command": [
+      "cargo",
+      "near",
+      "build",
+      "non-reproducible-wasm",
+      "--locked"
+    ],
+    "exit_code": 0,
+    "log": "docs/evidence/milestone-5/m5d/validation/wasm-build.log"
+  }
+]

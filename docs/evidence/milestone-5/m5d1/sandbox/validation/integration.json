@@ -1,0 +1,31 @@
+[
+  {
+    "name": "postgres-tests",
+    "command": [
+      "pnpm",
+      "test:postgres"
+    ],
+    "exit_code": 0,
+    "log": "docs/evidence/milestone-5/m5d/validation/postgres-tests.log"
+  },
+  {
+    "name": "live-read-only-tests",
+    "command": [
+      "node",
+      "--experimental-strip-types",
+      "--test",
+      "tests/integration/native-live.test.ts"
+    ],
+    "exit_code": 0,
+    "log": "docs/evidence/milestone-5/m5d/validation/live-read-only-tests.log"
+  },
+  {
+    "name": "migration-idempotency",
+    "command": [
+      "pnpm",
+      "db:migrate:test"
+    ],
+    "exit_code": 0,
+    "log": "docs/evidence/milestone-5/m5d/validation/migration-idempotency.log"
+  }
+]

@@ -1,0 +1,57 @@
+$ node --experimental-strip-types --test tests/integration/postgres-*.test.ts
+✔ job migrations apply idempotently and record version 0004 (317.842851ms)
+✔ creation is durable, idempotent, payout-unique, and preserves exact amounts (58.486955ms)
+✔ campaign job listing is scoped to the configured contract and campaign (27.238279ms)
+✔ same idempotency key or payout identity rejects conflicting protected payloads (14.933344ms)
+✔ concurrent job creation on independent connections has one database winner (24.147106ms)
+✔ concurrent workers claim one queued job and stale lease writes are fenced (50.316051ms)
+✔ lease renewal, expiry replacement, and fencing counters survive repository restart (2155.915821ms)
+✔ attempts and safe failures are atomic and duplicate attempt idempotency rolls back (54.063012ms)
+✔ expired ambiguous submission moves to manual review without releasing payout state (1131.716203ms)
+✔ snapshot identity cannot be changed and job creation never mutates payout accounting (19.373943ms)
+(node:11624) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ expired after row lock (1137.248487ms)
+✔ valid after short row lock (80.231636ms)
+✔ wrong owner and fence reject without changing current owner's ability to complete (10.894562ms)
+✔ database fixture renewal preserves owner and generation; no renewal API is invented (613.643743ms)
+✔ expiry during evidence-claim lock wait rolls back observations and decision (926.2397ms)
+✔ M5-D migrations are checksum-protected and idempotent (311.727864ms)
+✔ concurrent enqueue/claims have one immutable attempt and one lease (69.324192ms)
+(node:11626) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ duplicate observations are idempotent; historical evidence cannot update/delete (65.541052ms)
+✔ expired fences cannot persist; transaction rollback leaves no partial observation (158.662325ms)
+✔ reused receipt or transaction and conflicting finalized evidence become sticky ManualReview (44.276951ms)
+✔ real SIGKILL and fresh worker process recover same PostgreSQL job and evidence (591.395499ms)
+✖ restricted pool enforces PostgreSQL read-only sessions even when URL requests read-write (49.440031ms)
+✔ persists complete authorization payload and safely parameterizes lookups (240.117573ms)
+✔ concurrent discovery is idempotent and conflicting protected data is rejected (21.178397ms)
+✔ database arbitrates concurrent one-time authorization consumption (18.526938ms)
+✔ database statement time expires an authorization after its deadline (9.159634ms)
+✔ revocation and consumption race has exactly one terminal winner (24.168963ms)
+✔ refund policy binds once, survives concurrent duplicate approval, and is immutable (56.467637ms)
+✔ concurrent conflicting refund bindings retain one authoritative policy (16.408707ms)
+✔ a fresh process can read and consume durable authorization state (508.974709ms)
+✔ transaction rollback removes writes and leaves the pooled connection usable (10.09756ms)
+✔ separate pool connections observe shared committed state (6.501202ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 31
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6427.481158
+
+✖ failing tests:
+
+test at tests/integration/postgres-read-only.test.ts:7:6
+✖ restricted pool enforces PostgreSQL read-only sessions even when URL requests read-write (49.440031ms)
+  Error: PostgreSQL migrations have not been applied
+      at assertPostgresMigrationsCurrent (file:///home/topg/disburse/execution-service/src/persistence/postgres-migrations.ts:143:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///home/topg/disburse/execution-service/tests/integration/postgres-read-only.test.ts:21:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+[ELIFECYCLE] Command failed with exit code 1.

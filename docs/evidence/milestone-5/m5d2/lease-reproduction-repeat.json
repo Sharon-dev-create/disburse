@@ -1,0 +1,97 @@
+[
+  {
+    "label": "baseline",
+    "initial": {
+      "state": "Processing",
+      "fence": "1",
+      "lease_until": "2026-11-17T06:45:01.644Z",
+      "observed": "2026-11-17T06:45:01.147Z"
+    },
+    "blocked": true,
+    "beforeHold": "2026-11-17T06:45:01.158Z",
+    "elapsedMs": 924.338951,
+    "result": {
+      "accepted": true
+    },
+    "job": {
+      "job_key": "644321cc120fc8981ec053071b8ea80de2dfc90865c434c105a1e21a88f7a679",
+      "identity": {
+        "amount": "100000",
+        "chainId": "m5d2-190d8f49-dd1a-47e6-abc1-34e57d37a0d7",
+        "tokenId": "usdc.tidepool-sandbox.testnet",
+        "payoutId": "2",
+        "attemptId": "1",
+        "campaignId": "1",
+        "contractId": "disburse-test-contract.testnet",
+        "executorId": "executor.testnet",
+        "bindingHash": "5cf45e6a7146d8c568338fab9c1097c80036fdf084271cb7adb17fc639961285",
+        "recipientId": "recipient.testnet",
+        "authorizationId": "sandbox-auth:2"
+      },
+      "locator": {
+        "senderId": "executor.testnet",
+        "transactionHash": "44aWSBd8EHDcZcD1767Bs1H4JUCd15mSDtywitsbHYg1"
+      },
+      "state": "ManualReview",
+      "fence": "1",
+      "worker_id": null,
+      "lease_until": null,
+      "semantic_digest": null,
+      "conflicted": false,
+      "created_at": "2026-11-17T06:45:01.139Z",
+      "updated_at": "2026-11-17T06:45:02.063Z"
+    },
+    "observations": 0,
+    "decisions": 1,
+    "receiptClaims": "0",
+    "transactionClaims": "0"
+  },
+  {
+    "label": "current",
+    "initial": {
+      "state": "Processing",
+      "fence": "1",
+      "lease_until": "2026-11-17T06:45:02.586Z",
+      "observed": "2026-11-17T06:45:02.088Z"
+    },
+    "blocked": true,
+    "beforeHold": "2026-11-17T06:45:02.095Z",
+    "elapsedMs": 919.170517,
+    "result": {
+      "accepted": false,
+      "error": "Stale reconciliation fence/lease"
+    },
+    "job": {
+      "job_key": "1ab912dad6e7f9bcb98c153582c568e44365dd8accb35c77c287f47005d659bb",
+      "identity": {
+        "amount": "100000",
+        "chainId": "m5d2-1070a551-3dbe-4fa9-9a6b-e206c8a80155",
+        "tokenId": "usdc.tidepool-sandbox.testnet",
+        "payoutId": "2",
+        "attemptId": "1",
+        "campaignId": "1",
+        "contractId": "disburse-test-contract.testnet",
+        "executorId": "executor.testnet",
+        "bindingHash": "5cf45e6a7146d8c568338fab9c1097c80036fdf084271cb7adb17fc639961285",
+        "recipientId": "recipient.testnet",
+        "authorizationId": "sandbox-auth:2"
+      },
+      "locator": {
+        "senderId": "executor.testnet",
+        "transactionHash": "44aWSBd8EHDcZcD1767Bs1H4JUCd15mSDtywitsbHYg1"
+      },
+      "state": "Processing",
+      "fence": "1",
+      "worker_id": "audit-A",
+      "lease_until": "2026-11-17T06:45:02.586Z",
+      "semantic_digest": null,
+      "conflicted": false,
+      "created_at": "2026-11-17T06:45:02.080Z",
+      "updated_at": "2026-11-17T06:45:02.086Z"
+    },
+    "observations": 0,
+    "decisions": 0,
+    "receiptClaims": "0",
+    "transactionClaims": "0"
+  }
+]
