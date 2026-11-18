@@ -1,5 +1,14 @@
-# M5-F.1A — isolated-testnet-configuration
+# M5-F.1A isolated startup integration
 
-Ignored .env.m5f-isolated.local and narrow loader added; integration and requested negative tests incomplete; do not launch
+`execution-service/src/host.ts` (the package `start` entrypoint) exports `startExecutionHost`, selects the isolated validator before calling `runExecutionHost`, and revalidates on every invocation. Imports compose no pool/listener/worker. Unknown profiles reject. A missing selector with isolated control fields present rejects. Existing generic configurations without these new fields retain the original loader.
 
-No deployment, public transaction, live worker or Git mutation was performed. This is an incomplete progress record, not an acceptance report.
+The explicit selector is `DISBURSE_EXECUTION_PROFILE=isolated-testnet`. `loadIsolatedTestnetConfig` requires `DISBURSE_ACTIVE_TESTNET_READ_ONLY=true`, `DISBURSE_POSTGRES_TARGET=test`, `NEAR_NETWORK=testnet`, and historical isolated `DISBURSE_CONTRACT_ID=disburse-test-contract.testnet`. The protected `disburse-topg.testnet` and proposed new accounts are rejected. RPC and authenticated API configuration remain required by the existing loader, along with loopback binding and nonproduction mode.
+
+New startup interlocks require exact `DISBURSE_EXECUTION_WORKER_ENABLED=false`, `DISBURSE_PAYOUT_SUBMISSION_ENABLED=false`, `DISBURSE_MAX_PAYOUT_ATOMIC=0`. Missing/malformed/enabled values reject before host initialization. These cannot enable a worker or transfer: the existing composition root creates only a read-only database pool and GET API and contains no signer or execution worker. The zero cap expresses the enforced no-submission profile; it is not a future live payout limit. No operational payout feature was added.
+
+`tests/isolated-startup.test.ts` tests the actual exported entrypoint with an injected host initializer, including enabled-worker rejection with initializer never called, valid startup, missing/false/malformed read-only, wrong/missing/protected contract, wrong network, worker flags, submission flags, missing RPC, invalid/missing cap, wrong database target, unknown/missing selector and incomplete restart. Twenty tests pass. Existing generic startup tests also pass.
+
+The ignored `execution-service/.env.m5f-isolated.local` now selects this profile and explicit interlocks. Existing `.env` and `.env.integration.local` were not edited. The file does not contain DB credentials or an API token; required values must be supplied explicitly by the invoking environment. Node does not automatically load it. Future reviewed startup would explicitly use `node --env-file=.env.m5f-isolated.local --experimental-strip-types src/host.ts` from the service directory, with a verified dedicated test DB and local API token supplied. This command was not used to start a live host. Missing required values fail closed. Removing every profile indicator deliberately selects the preexisting generic mode; no new production policy is imposed.
+
+
+Scope: local implementation/tests and public read-only RPC only. No deployment, public transaction, key generation, role change, custody change, live worker, production database operation or Git write command was performed. M5-F.1B review has not begun.

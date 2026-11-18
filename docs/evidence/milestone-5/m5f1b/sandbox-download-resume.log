@@ -1,0 +1,42 @@
+[16, "cached"]
+[5, "cached"]
+[9, "cached"]
+[13, "cached"]
+[6, "cached"]
+[11, "cached"]
+[1, "cached"]
+[2, "cached"]
+[3, "cached"]
+[14, "cached"]
+[12, "cached"]
+[8, "cached"]
+[15, "cached"]
+[0, "cached"]
+[10, "cached"]
+[22, "downloaded"]
+[21, "downloaded"]
+[18, "URLError"]
+[20, "downloaded"]
+[24, "downloaded"]
+[17, "TimeoutError"]
+[19, "TimeoutError"]
+[7, "downloaded"]
+[4, "downloaded"]
+[26, "downloaded"]
+[23, "TimeoutError"]
+[25, "TimeoutError"]
+[33, "downloaded"]
+[32, "downloaded"]
+[27, "TimeoutError"]
+[28, "TimeoutError"]
+[30, "TimeoutError"]
+[29, "TimeoutError"]
+[31, "TimeoutError"]
+Traceback (most recent call last):
+  File "/home/topg/disburse/docs/evidence/milestone-5/m5f1b/download-resume.py", line 24, in <module>
+    c=p/f'chunk-{i}';assert c.stat().st_size==min(size,total-i*size);w.write(c.read_bytes())
+                            ~~~~~~^^
+  File "/usr/lib/python3.13/pathlib/_local.py", line 517, in stat
+    return os.stat(self, follow_symlinks=follow_symlinks)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/disburse-m5c-tools/chunk-17'

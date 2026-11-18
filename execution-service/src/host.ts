@@ -8,6 +8,17 @@ export async function startExecutionHost(
   run: typeof runExecutionHost = runExecutionHost,
 ): Promise<void> {
   const profile = environment.DISBURSE_EXECUTION_PROFILE;
+  if (
+    profile === undefined &&
+    [
+      "DISBURSE_EXECUTION_WORKER_ENABLED",
+      "DISBURSE_PAYOUT_SUBMISSION_ENABLED",
+      "DISBURSE_MAX_PAYOUT_ATOMIC",
+    ].some((name) => environment[name] !== undefined)
+  )
+    throw new HostConfigError(
+      "Isolated controls require an explicit execution profile.",
+    );
   if (profile !== undefined && profile !== "isolated-testnet")
     throw new HostConfigError("Unsupported execution profile.");
   const config =

@@ -1,0 +1,157 @@
+{
+  "block_hash": "4uDzHK6Eqwg3ZfgLgsMdtmi9fP1napKRqouaBSNdFmBD",
+  "block_height": 278160132,
+  "network": "testnet",
+  "endpoint": "https://rpc.testnet.near.org",
+  "accounts": {
+    "disburse-test-contract.testnet": {
+      "account": {
+        "amount": "9997589250750002699999999",
+        "block_hash": "4uDzHK6Eqwg3ZfgLgsMdtmi9fP1napKRqouaBSNdFmBD",
+        "block_height": 278160132,
+        "code_hash": "CJUcu5UqBYA4ZV47TJMABQJWc7MdvdaYYMNdDeB1mxcf",
+        "locked": "0",
+        "storage_paid_at": 0,
+        "storage_usage": 299843
+      },
+      "ownership_verified": false
+    },
+    "usdc.tidepool-sandbox.testnet": {
+      "account": {
+        "amount": "2415864902976716900002340",
+        "block_hash": "4uDzHK6Eqwg3ZfgLgsMdtmi9fP1napKRqouaBSNdFmBD",
+        "block_height": 278160132,
+        "code_hash": "DgV3WsKJsGtCjNWxYzFvi599szo7oojkKXWCoGBBAHwj",
+        "locked": "0",
+        "storage_paid_at": 0,
+        "storage_usage": 187329
+      },
+      "ownership_verified": false
+    },
+    "disburse-topg.testnet": {
+      "account": {
+        "amount": "9995079148795219300000000",
+        "block_hash": "4uDzHK6Eqwg3ZfgLgsMdtmi9fP1napKRqouaBSNdFmBD",
+        "block_height": 278160132,
+        "code_hash": "CJUcu5UqBYA4ZV47TJMABQJWc7MdvdaYYMNdDeB1mxcf",
+        "locked": "0",
+        "storage_paid_at": 0,
+        "storage_usage": 299422
+      },
+      "ownership_verified": false
+    },
+    "disburse-op-b966e36d.testnet": {
+      "account": {
+        "amount": "9997509459348787899999999",
+        "block_hash": "4uDzHK6Eqwg3ZfgLgsMdtmi9fP1napKRqouaBSNdFmBD",
+        "block_height": 278160132,
+        "code_hash": "11111111111111111111111111111111",
+        "locked": "0",
+        "storage_paid_at": 0,
+        "storage_usage": 182
+      },
+      "ownership_verified": false
+    },
+    "disburse-m12.testnet": {
+      "account": null,
+      "ownership_verified": false
+    },
+    "recipient.disburse-m12.testnet": {
+      "account": null,
+      "ownership_verified": false
+    },
+    "approver.disburse-m12.testnet": {
+      "account": null,
+      "ownership_verified": false
+    },
+    "executor.disburse-m12.testnet": {
+      "account": null,
+      "ownership_verified": false
+    }
+  },
+  "views": {
+    "get_owner": "disburse-topg.testnet",
+    "is_paused": false,
+    "get_campaign_count": 1,
+    "get_campaign": {
+      "id": 0,
+      "creator_id": "disburse-topg.testnet",
+      "title": "Disburse Milestone 3 funding verification",
+      "token_id": "usdc.tidepool-sandbox.testnet",
+      "budget": 1000000,
+      "funded": 1000000,
+      "reserved": 0,
+      "spent": 0,
+      "status": "Active",
+      "created_at_ns": 1794722173685400100
+    },
+    "get_campaign_payout_accounting": {
+      "campaign_id": 0,
+      "budget": "1000000",
+      "funded": "1000000",
+      "reserved": "0",
+      "spent": "0",
+      "available": "1000000"
+    },
+    "is_accepted_token": true,
+    "get_native_config": {
+      "decode_error": true
+    },
+    "get_payout": null,
+    "roles:disburse-topg.testnet": {
+      "Owner": true,
+      "Administrator": true,
+      "Operator": false,
+      "Verifier": false
+    },
+    "roles:disburse-op-b966e36d.testnet": {
+      "Owner": false,
+      "Administrator": false,
+      "Operator": true,
+      "Verifier": false
+    },
+    "roles:disburse-test-contract.testnet": {
+      "Owner": false,
+      "Administrator": false,
+      "Operator": false,
+      "Verifier": false
+    }
+  },
+  "token": {
+    "ft_metadata": {
+      "spec": "ft-1.0.0",
+      "name": "Tidepool Testnet USDC (no value)",
+      "symbol": "USDC",
+      "icon": null,
+      "reference": null,
+      "reference_hash": null,
+      "decimals": 6
+    },
+    "storage_balance_bounds": {
+      "min": "1250000000000000000000",
+      "max": "1250000000000000000000"
+    },
+    "disburse-test-contract.testnet": {
+      "storage_balance_of": {
+        "total": "1250000000000000000000",
+        "available": "0"
+      },
+      "ft_balance_of": "1000000"
+    },
+    "disburse-topg.testnet": {
+      "storage_balance_of": null,
+      "ft_balance_of": "0"
+    },
+    "disburse-op-b966e36d.testnet": {
+      "storage_balance_of": {
+        "total": "1250000000000000000000",
+        "available": "0"
+      },
+      "ft_balance_of": "99000000"
+    }
+  },
+  "gas_price": {
+    "gas_price": "100000000"
+  }
+}
+{'owner': 'disburse-topg.testnet', 'paused': False, 'campaign_count': 1, 'payout_count': 0, 'prefixes': ['campaigns', 'role-assignments', 'accepted-ft-tokens', 'payout-records', 'payout-idempotency'], 'sha256': 'f85f3b81e942170627baffc1f3672a8d96e11ed50317763fdaeef58396b1f6c5', 'bytes': 137}

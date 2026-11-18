@@ -1,5 +1,12 @@
-# M5-F.1A — local-environment-remediation
+# M5-F.1A local environment completion
 
-Frozen-lockfile installation restored declared pg8.23.1 without manifest upgrades. Earlier missing driver was an installation problem. Dedicated database verification remains outstanding.
+Initial revision: `0ce7cee8119260c656d672190d6de09a0117a216`, initially clean `main...origin/main`. HEAD advanced externally during testing to `c1f01d701f2f8ece806d4a536e5f1c4f08851153`; no Git mutation was run by this agent. Narrow source changes: host entrypoint, isolated validator, startup regression tests. No dependency manifest, lockfile, Rust, migration, authorization, lease, frontend or execution architecture changes.
 
-No deployment, public transaction, live worker or Git mutation was performed. This is an incomplete progress record, not an acceptance report.
+Node v24.22.3; pnpm 12.18.0; pg 8.23.1 already restored from the frozen service lockfile. Service formatting, typecheck, lint and 206 tests pass. An initial sandboxed test attempt could not bind local listeners; the authorized elevated rerun passes.
+
+A fresh temporary PostgreSQL 17 cluster was created on `127.0.0.1:19552`. Before migrations/tests, SQL verified database and role both `disburse_test` and loopback host/port. Only this new owned cluster was used. Migrations 0001–0004 applied in order; repeat run applied none. Checksums and required indexes/tables are recorded in `evidence/milestone-5/m5f1a/completion/database-schema.log`. Existing dev/production databases were not accessed. The 46-test suite covers native authorization/attempt persistence, lease expiry and lock contention, zero-row/repeated releases, concurrent transitions, rollback and cleanup. Tests demonstrate their named assertions; they do not prove behavior under every possible crash or interleaving.
+
+Sandbox tool/fixture cache was absent. Token and fault artifacts were rebuilt in `/tmp/m5f1acompletion-sandbox`, with historical fixture Git reads explicitly pointing to this repository. Initial fixture Git lookup from the temporary directory failed and was rerun correctly; production source was untouched. Historical public WASM was downloaded using view_code and authenticated against the pinned 299058-byte SHA-256. The official S3 archive was eventually obtained via eight bounded range downloads in 94 seconds and passed its pinned archive/executable hashes. All 20 receipt groups passed; eight local RPC tests passed. The temporary synthetic nodes and PostgreSQL cluster were stopped after validation. Final details are in the regression report.
+
+
+Scope: local implementation/tests and public read-only RPC only. No deployment, public transaction, key generation, role change, custody change, live worker, production database operation or Git write command was performed. M5-F.1B review has not begun.

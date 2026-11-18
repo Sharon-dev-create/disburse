@@ -1,0 +1,29 @@
+built build
+built token-build
+built panic-callback
+built oog-callback
+built schedule-panic
+built missing-callback
+fatal: not a git repository (or any parent up to mount point /)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+Traceback (most recent call last):
+  File "/tmp/m5f1acompletion-sandbox/tests/sandbox/build_variants.py", line 12, in <module>
+    for path in subprocess.check_output(['git','ls-tree','-r','--name-only','fdd8b48','--','src','Cargo.toml','Cargo.lock'],cwd=ROOT,text=True).splitlines():
+                ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 472, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+           ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               **kwargs).stdout
+               ^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['git', 'ls-tree', '-r', '--name-only', 'fdd8b48', '--', 'src', 'Cargo.toml', 'Cargo.lock']' returned non-zero exit status 128.
+Traceback (most recent call last):
+  File "/tmp/m5f1acompletion-sandbox/tests/sandbox/build_artifacts.py", line 13, in <module>
+    subprocess.run([sys.executable,str(ROOT/'tests/sandbox/build_variants.py')],cwd=ROOT,check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['/usr/bin/python3', '/tmp/m5f1acompletion-sandbox/tests/sandbox/build_variants.py']' returned non-zero exit status 1.

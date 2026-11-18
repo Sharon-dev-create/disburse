@@ -1,0 +1,39 @@
+ version |                name                |                             checksum                             
+---------+------------------------------------+------------------------------------------------------------------
+ 0001    | security_repositories              | 647dbad3fb908f4a44e5915d736aa2d49fb0c88ad05061bb02fe14e803686eff
+ 0002    | execution_jobs                     | 7195df7d3c98c75ea52fb9d526f80dac42cdbbed1f404876c156b2408520be86
+ 0003    | execution_jobs_campaign_read_index | 14e2f2b5b493005d7ca2abc759aead6bb9059af4279feb547c6a13d0c3394a01
+ 0004    | native_reconciliation              | 32c762ce113981691c849ab148dbdb3d5d2ad698a2c61cb7330f2dce16f871f4
+(4 rows)
+
+                tablename                 |                            indexname                            
+------------------------------------------+-----------------------------------------------------------------
+ disburse_schema_migrations               | disburse_schema_migrations_pkey
+ execution_attempts                       | execution_attempts_attempt_key_uq
+ execution_attempts                       | execution_attempts_idempotency_uq
+ execution_attempts                       | execution_attempts_job_attempt_uq
+ execution_attempts                       | execution_attempts_pkey
+ execution_attempts                       | execution_attempts_sequence_uq
+ execution_authorizations                 | execution_authorizations_campaign_id_payout_id_execution_at_key
+ execution_authorizations                 | execution_authorizations_lifecycle_idx
+ execution_authorizations                 | execution_authorizations_pkey
+ execution_jobs                           | execution_jobs_campaign_read_idx
+ execution_jobs                           | execution_jobs_claimable_idx
+ execution_jobs                           | execution_jobs_discovery_event_uq
+ execution_jobs                           | execution_jobs_execution_reference_uq
+ execution_jobs                           | execution_jobs_idempotency_uq
+ execution_jobs                           | execution_jobs_payout_identity_uq
+ execution_jobs                           | execution_jobs_pkey
+ job_leases                               | job_leases_expiration_idx
+ job_leases                               | job_leases_pkey
+ native_receipt_observations              | native_receipt_observations_pkey
+ native_reconciliation_decisions          | native_reconciliation_decisions_job_key_fence_key
+ native_reconciliation_decisions          | native_reconciliation_decisions_pkey
+ native_reconciliation_jobs               | native_reconciliation_identity_uq
+ native_reconciliation_jobs               | native_reconciliation_jobs_pkey
+ native_reconciliation_receipt_claims     | native_reconciliation_receipt_claims_pkey
+ native_reconciliation_transaction_claims | native_reconciliation_transaction_claims_pkey
+ payout_refund_policies                   | payout_refund_policies_campaign_id_payout_id_policy_fingerp_key
+ payout_refund_policies                   | payout_refund_policies_pkey
+(27 rows)
+

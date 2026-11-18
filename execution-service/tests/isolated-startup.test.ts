@@ -41,6 +41,7 @@ for (const [name, value] of [
   ["DISBURSE_MAX_PAYOUT_ATOMIC", undefined],
   ["DISBURSE_POSTGRES_TARGET", "development"],
   ["DISBURSE_EXECUTION_PROFILE", "unknown"],
+  ["DISBURSE_EXECUTION_PROFILE", undefined],
 ] as const) {
   void test(`startup rejects ${name}=${String(value)} before initialization`, async () => {
     let initialized = false;
