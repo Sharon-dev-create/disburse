@@ -1,0 +1,123 @@
+{
+  "milestone": "M5-F.1D",
+  "review_date": "2026-11-19",
+  "reviewed_head": "b610cb44136f71923ef216ff082637c24c4d5389",
+  "source_matches_m5f1c": 120,
+  "production_changes": 0,
+  "decisions": {
+    "authorization": "PASS",
+    "postgresql": "PASS",
+    "receipts": "BLOCKED",
+    "overall": "PARTIAL"
+  },
+  "fresh_tests": {
+    "postgresql": 61,
+    "authorization_subset": 15,
+    "targeted_lease_subset": 20,
+    "independent_race_runs": 3,
+    "rust": 146,
+    "service": 206,
+    "configuration_negative": 45,
+    "rpc": {
+      "status": "BLOCKED",
+      "required": 8
+    },
+    "sandbox": {
+      "status": "BLOCKED",
+      "required": 20
+    }
+  },
+  "race_results": [
+    {
+      "test": "actual repository consume after deterministic lock-wait expiry",
+      "expected": "reject expired authorization without consumption",
+      "blockedOnRow": true,
+      "expiredBeforeLockRelease": {
+        "expired": true,
+        "released_at": "2026-11-19T12:32:40.462Z",
+        "authorization_expires_at": "2026-11-19T12:32:40.158Z"
+      },
+      "accepted": false,
+      "error": "Error: Authorization has expired",
+      "final": {
+        "lifecycle": "Expired",
+        "consumed_at": null,
+        "authorization_expires_at": "2026-11-19T12:32:40.158Z",
+        "observed_at": "2026-11-19T12:32:40.467Z"
+      }
+    },
+    {
+      "test": "actual repository consume after deterministic lock-wait expiry",
+      "expected": "reject expired authorization without consumption",
+      "blockedOnRow": true,
+      "expiredBeforeLockRelease": {
+        "expired": true,
+        "released_at": "2026-11-19T12:32:43.577Z",
+        "authorization_expires_at": "2026-11-19T12:32:43.274Z"
+      },
+      "accepted": false,
+      "error": "Error: Authorization has expired",
+      "final": {
+        "lifecycle": "Expired",
+        "consumed_at": null,
+        "authorization_expires_at": "2026-11-19T12:32:43.274Z",
+        "observed_at": "2026-11-19T12:32:43.582Z"
+      }
+    },
+    {
+      "test": "actual repository consume after deterministic lock-wait expiry",
+      "expected": "reject expired authorization without consumption",
+      "blockedOnRow": true,
+      "expiredBeforeLockRelease": {
+        "expired": true,
+        "released_at": "2026-11-19T12:32:24.586Z",
+        "authorization_expires_at": "2026-11-19T12:32:24.282Z"
+      },
+      "accepted": false,
+      "error": "Error: Authorization has expired",
+      "final": {
+        "lifecycle": "Expired",
+        "consumed_at": null,
+        "authorization_expires_at": "2026-11-19T12:32:24.282Z",
+        "observed_at": "2026-11-19T12:32:24.591Z"
+      }
+    }
+  ],
+  "wasm_sha256": "37e432600c43d5fc7d44b2d81bc9a852d5e120a7dc043c7f06f83d1e62a24ea9",
+  "findings": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "informational": [
+      "Candidate identity remains pinned",
+      "Parent setup prerequisites unresolved",
+      "Receipt infrastructure blocked"
+    ]
+  },
+  "database_stopped": true,
+  "controlled_testnet_execution": "NOT AUTHORIZED",
+  "production_readiness": "NOT READY",
+  "evidence_sha256": {
+    "docs/evidence/milestone-5/m5f1d/adversarial-startup.json": "8ba8e4cabc37e8f2681c30a8038130b7e1e2fd7969a0ad07a00162012958a937",
+    "docs/evidence/milestone-5/m5f1d/adversarial-startup.stderr": "8dc324190402af4104de0a5291895e9dd15631f97dfab7c9208bc130c0ce7193",
+    "docs/evidence/milestone-5/m5f1d/adversarial-startup.ts": "2bc7073370b087d37b779b8db5f34670484f1bf86fd6ced4268568c8c2229aa6",
+    "docs/evidence/milestone-5/m5f1d/artifact-recovery.log": "bbcca60676e1213a8e1e374f2d05c1e5ddff4661e216dbd255b79c3776e190bb",
+    "docs/evidence/milestone-5/m5f1d/cli-help.log": "062ad12b39d41567e8abfdce0896474e39ebafc3e8d41cd7742f59d2d06856df",
+    "docs/evidence/milestone-5/m5f1d/database-cleanup.log": "ca19178a35ab4153b75b494963b66ce8243e1b94c173107c87b44d09db23652d",
+    "docs/evidence/milestone-5/m5f1d/database-identity.log": "3f63e82f7c1e6cdfc058a4fdbb4155f2ae95436c002f8b229e1d4dc55b350aa2",
+    "docs/evidence/milestone-5/m5f1d/independent-race-2.json": "61efba0e294021f64b0a0afbb2d2ba14ae3c70505166138bff4452876ee8c02d",
+    "docs/evidence/milestone-5/m5f1d/independent-race-2.stderr": "8ae8e257466a8d10716f706ffe4169e71bd42b9d2da86ae8d2e8a4ba077f17a2",
+    "docs/evidence/milestone-5/m5f1d/independent-race-3.json": "0284b44762039f4b69a5ef499e68031176c09760dd0cf72202f5ef29e9f43424",
+    "docs/evidence/milestone-5/m5f1d/independent-race-3.stderr": "388e1df32def0c3a50440a3cfab21f28755101a4a767aad479db7a225bd038a1",
+    "docs/evidence/milestone-5/m5f1d/independent-race.json": "5dc66773d5b3d4480ff037ec6f7badda54c4f1702c892a0c6ab9987c75968c21",
+    "docs/evidence/milestone-5/m5f1d/independent-race.stderr": "51af0475a5910db97a91607cde86d86d4bc335dc8efeeee941a796226f349830",
+    "docs/evidence/milestone-5/m5f1d/independent-race.ts": "a689b8e3d055c5104782cda772b31dce5e941329cc9db794356ad2e5a24d1bc0",
+    "docs/evidence/milestone-5/m5f1d/initial.diff": "88c81ac9d363901303308804bad588a0be91e263c1fa84e1298d6a30435c335b",
+    "docs/evidence/milestone-5/m5f1d/postgres.log": "c4387516139331c8961e178f66a05805f3d48e35521537bf4a955e37dfbe4958",
+    "docs/evidence/milestone-5/m5f1d/rust.log": "37072796f7b18a1164720cd7578ce158dc49339609505cd8b48bfab6e5ad0b5b",
+    "docs/evidence/milestone-5/m5f1d/service.log": "02128b939786ca99d923940f59cba66167b5e2b906fc0d77ccac5bf6aee76db1",
+    "docs/evidence/milestone-5/m5f1d/source-identity.json": "6ec980fe29a47eb1146c08d5d643bdd388cba37a7dd16e55f02e84900dc59cb0",
+    "docs/evidence/milestone-5/m5f1d/start-test-db.py": "1f366e9bbc72b7cc120228553fcd64366078963a60f8778a4abb1efd10e27559"
+  }
+}

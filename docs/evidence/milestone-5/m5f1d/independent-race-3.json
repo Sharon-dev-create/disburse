@@ -1,0 +1,18 @@
+{
+  "test": "actual repository consume after deterministic lock-wait expiry",
+  "expected": "reject expired authorization without consumption",
+  "blockedOnRow": true,
+  "expiredBeforeLockRelease": {
+    "expired": true,
+    "released_at": "2026-11-19T12:32:43.577Z",
+    "authorization_expires_at": "2026-11-19T12:32:43.274Z"
+  },
+  "accepted": false,
+  "error": "Error: Authorization has expired",
+  "final": {
+    "lifecycle": "Expired",
+    "consumed_at": null,
+    "authorization_expires_at": "2026-11-19T12:32:43.274Z",
+    "observed_at": "2026-11-19T12:32:43.582Z"
+  }
+}
