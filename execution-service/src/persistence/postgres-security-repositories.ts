@@ -44,6 +44,16 @@ const authorizationColumns = `
   authorization_expires_at, lifecycle, approved_at, consumed_at,
   revoked_at, expired_at`;
 
+// Lock first, then sample wall-clock time once. The materialized dependency prevents
+// a lock wait from backdating expiry decisions or their audit timestamps. Equality
+// with the deadline is expired; the row stays locked through the conditional update.
+const authorizationDecision = `WITH locked_authorization AS MATERIALIZED (
+  SELECT authorization_id FROM execution_authorizations
+  WHERE authorization_id = $1 FOR UPDATE
+), authorization_decision AS MATERIALIZED (
+  SELECT clock_timestamp() AS decided_at FROM locked_authorization
+)`;
+
 export class PostgresAuthorizationRepository implements AuthorizationRepository {
   private readonly query: PostgresQuery;
 
@@ -117,21 +127,23 @@ export class PostgresAuthorizationRepository implements AuthorizationRepository 
     authorizationId: string,
     nowMs: number,
   ): Promise<StoredExecutionAuthorization> {
-    void nowMs; // PostgreSQL statement time is authoritative for durable lifecycle expiry.
+    void nowMs; // PostgreSQL post-lock time is authoritative for durable lifecycle expiry.
     const updated = await this.query(
-      `UPDATE execution_authorizations
+      `${authorizationDecision}
+       UPDATE execution_authorizations
        SET lifecycle = CASE
-             WHEN authorization_expires_at <= statement_timestamp() THEN 'Expired'
+             WHEN authorization_expires_at <= authorization_decision.decided_at THEN 'Expired'
              ELSE 'Approved'
            END,
            approved_at = CASE
-             WHEN authorization_expires_at > statement_timestamp() THEN statement_timestamp()
+             WHEN authorization_expires_at > authorization_decision.decided_at THEN authorization_decision.decided_at
              ELSE approved_at
            END,
            expired_at = CASE
-             WHEN authorization_expires_at <= statement_timestamp() THEN statement_timestamp()
+             WHEN authorization_expires_at <= authorization_decision.decided_at THEN authorization_decision.decided_at
              ELSE expired_at
            END
+       FROM authorization_decision
        WHERE authorization_id = $1 AND lifecycle = 'Created'
        RETURNING ${authorizationColumns}`,
       [authorizationId],
@@ -171,11 +183,13 @@ export class PostgresAuthorizationRepository implements AuthorizationRepository 
       nowMs,
     );
     const updated = await this.query(
-      `UPDATE execution_authorizations
-       SET lifecycle = 'Consumed', consumed_at = statement_timestamp()
+      `${authorizationDecision}
+       UPDATE execution_authorizations
+       SET lifecycle = 'Consumed', consumed_at = authorization_decision.decided_at
+       FROM authorization_decision
        WHERE authorization_id = $1 AND lifecycle = 'Approved'
          AND authorization_hash = $2
-         AND authorization_expires_at > statement_timestamp()
+         AND authorization_expires_at > authorization_decision.decided_at
        RETURNING ${authorizationColumns}`,
       [authorizationId, current.authorizationHash],
     );
@@ -194,21 +208,23 @@ export class PostgresAuthorizationRepository implements AuthorizationRepository 
     authorizationId: string,
     nowMs: number,
   ): Promise<StoredExecutionAuthorization> {
-    void nowMs; // PostgreSQL statement time is authoritative for durable lifecycle expiry.
+    void nowMs; // PostgreSQL post-lock time is authoritative for durable lifecycle expiry.
     const updated = await this.query(
-      `UPDATE execution_authorizations
+      `${authorizationDecision}
+       UPDATE execution_authorizations
        SET lifecycle = CASE
-             WHEN authorization_expires_at <= statement_timestamp() THEN 'Expired'
+             WHEN authorization_expires_at <= authorization_decision.decided_at THEN 'Expired'
              ELSE 'Revoked'
            END,
            revoked_at = CASE
-             WHEN authorization_expires_at > statement_timestamp() THEN statement_timestamp()
+             WHEN authorization_expires_at > authorization_decision.decided_at THEN authorization_decision.decided_at
              ELSE revoked_at
            END,
            expired_at = CASE
-             WHEN authorization_expires_at <= statement_timestamp() THEN statement_timestamp()
+             WHEN authorization_expires_at <= authorization_decision.decided_at THEN authorization_decision.decided_at
              ELSE expired_at
            END
+       FROM authorization_decision
        WHERE authorization_id = $1 AND lifecycle IN ('Created', 'Approved')
        RETURNING ${authorizationColumns}`,
       [authorizationId],
@@ -226,7 +242,7 @@ export class PostgresAuthorizationRepository implements AuthorizationRepository 
     authorizationId: string,
     nowMs: number,
   ): Promise<StoredExecutionAuthorization> {
-    void nowMs; // PostgreSQL statement time is authoritative for durable lifecycle expiry.
+    void nowMs; // PostgreSQL post-lock time is authoritative for durable lifecycle expiry.
     const expired = await this.expireIfDue(authorizationId);
     if (expired) return expired;
     const existing = await requireAuthorization(this, authorizationId);
@@ -240,11 +256,13 @@ export class PostgresAuthorizationRepository implements AuthorizationRepository 
     authorizationId: string,
   ): Promise<StoredExecutionAuthorization | null> {
     const result = await this.query(
-      `UPDATE execution_authorizations
-       SET lifecycle = 'Expired', expired_at = statement_timestamp()
+      `${authorizationDecision}
+       UPDATE execution_authorizations
+       SET lifecycle = 'Expired', expired_at = authorization_decision.decided_at
+       FROM authorization_decision
        WHERE authorization_id = $1
          AND lifecycle IN ('Created', 'Approved')
-         AND authorization_expires_at <= statement_timestamp()
+         AND authorization_expires_at <= authorization_decision.decided_at
        RETURNING ${authorizationColumns}`,
       [authorizationId],
     );

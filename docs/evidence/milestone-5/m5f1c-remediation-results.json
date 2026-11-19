@@ -1,0 +1,254 @@
+{
+  "milestone": "M5-F.1C",
+  "verdict": "PARTIAL",
+  "inspection_date": "2026-11-18",
+  "evidence_generated_at_utc": "2026-11-18T19:10:46.138604+00:00",
+  "source_identity": {
+    "initial_head": "b610cb44136f71923ef216ff082637c24c4d5389",
+    "final_head": "b610cb44136f71923ef216ff082637c24c4d5389",
+    "initial_application_hashes_matching_review": 119,
+    "unchanged_existing_application_files": 117,
+    "identity_file": "m5f1c/source-identity-final.json",
+    "initial_unrelated_changes_preserved": true,
+    "git_commits_or_pushes": 0
+  },
+  "finding_remediation": {
+    "F1B-M01": {
+      "severity": "Medium",
+      "implementation_status": "FIXED_PENDING_INDEPENDENT_REVIEW",
+      "root_cause": "statement_timestamp() fixed before row-lock contention allowed a protected decision after expiry with backdated timestamps",
+      "before_fix": {
+        "expected_failing_tests": 3,
+        "blocked_consumer_confirmed": true,
+        "expiry": "2026-11-18T18:37:31.560Z",
+        "lock_released": "2026-11-18T18:37:31.587Z",
+        "accepted": true,
+        "consumed_at": "2026-11-18T18:37:29.584Z",
+        "log": "m5f1c/before-fix.log"
+      },
+      "fix": "Single SQL statement: materialized SELECT FOR UPDATE, dependent materialized clock_timestamp() sample, then conditional lifecycle UPDATE using the same post-lock decision time",
+      "methods": [
+        "approve",
+        "consume",
+        "revoke",
+        "expireIfDue"
+      ],
+      "expiry_boundary": "exclusive: expires_at > decided_at",
+      "interfaces_preserved": true,
+      "schema_changes": false,
+      "after_fix_new_tests": 15
+    },
+    "F1B-L01": {
+      "severity": "Low",
+      "status": "DOCUMENTATION_CORRECTED",
+      "direct_child_signer": "disburse-m12.testnet (only after verified creation and control)",
+      "direct_child_receivers": [
+        "recipient.disburse-m12.testnet",
+        "approver.disburse-m12.testnet",
+        "executor.disburse-m12.testnet"
+      ],
+      "parent_creation_method": "UNRESOLVED; faucet/registrar must be selected and transaction semantics verified",
+      "public_keys": "UNRESOLVED; none generated",
+      "native_action_prepaid_gas": "not applicable; fresh native action fee estimate required",
+      "cli_version": "near-cli-rs 0.31.1",
+      "help_evidence": "m5f1c/cli-help.log"
+    },
+    "F1B-informational-contract-identity": {
+      "status": "UNCHANGED",
+      "candidate_native_contract_id": "disburse-test-contract.testnet"
+    }
+  },
+  "changed_files": [
+    "execution-service/src/persistence/postgres-security-repositories.ts",
+    "execution-service/tests/postgres-security-repositories.test.ts",
+    "execution-service/tests/integration/postgres-authorization-expiry.test.ts",
+    "docs/milestone-5f1-controlled-transaction-plan.md",
+    "docs/milestone-5f1c-authorization-expiry-remediation.md",
+    "docs/milestone-5f1c-concurrency-regressions.md",
+    "docs/milestone-5f1c-account-plan-correction.md",
+    "docs/milestone-5f1c-receipt-regression-recovery.md",
+    "docs/milestone-5f1c-readiness-verdict.md",
+    "docs/evidence/milestone-5/m5f1c-remediation-results.json",
+    "docs/evidence/milestone-5/m5f1c/ (raw evidence)"
+  ],
+  "validation": {
+    "rust": {
+      "format": "PASS",
+      "clippy": "PASS",
+      "locked_tests": {
+        "pass": 146,
+        "fail": 0
+      },
+      "locked_wasm_build": "PASS",
+      "log": "m5f1c/rust-checks.log"
+    },
+    "service": {
+      "format": "PASS",
+      "typecheck": "PASS",
+      "lint": "PASS",
+      "tests": {
+        "pass": 206,
+        "fail": 0,
+        "skipped": 0
+      },
+      "startup_tests_included": 20,
+      "log": "m5f1c/service-check.log",
+      "mock_adjustment": "CTE UPDATE dispatch must precede embedded SELECT dispatch; initial mock-only failures corrected and complete check rerun successfully"
+    },
+    "additional_configuration_probes": {
+      "pass": 45,
+      "fail": 0,
+      "log": "m5f1c/adversarial-startup.json",
+      "child_process_cli_conflict_rejected": true,
+      "secrets_absent_from_diagnostics": true
+    },
+    "postgres": {
+      "pass": 61,
+      "fail": 0,
+      "skipped": 0,
+      "existing_tests": 46,
+      "new_tests": 15,
+      "log": "m5f1c/postgres.log",
+      "database": {
+        "host": "127.0.0.1",
+        "port": 19555,
+        "database": "disburse_test",
+        "role": "disburse_test",
+        "version": "17.10",
+        "identity_verified_before_writes": true,
+        "temporary_owned_cluster_stopped": true
+      },
+      "migration_repeat": "none applied; already current"
+    },
+    "targeted_lease_fencing": {
+      "pass": 20,
+      "fail": 0,
+      "subset_of_full_postgres": true,
+      "log": "m5f1c/targeted-lease.log"
+    },
+    "new_authorization_regressions": {
+      "pass": 15,
+      "fail": 0,
+      "log": "m5f1c/authorization-regressions.log",
+      "exact_microsecond_boundary": "real PostgreSQL with a test-only query adapter substituting decision-time expression; not naturally timed wall-clock coincidence",
+      "restart": "fresh pool/repository test plus existing full-suite child-process test"
+    },
+    "receipt_backed_rpc": {
+      "status": "BLOCKED",
+      "required": 8,
+      "fresh_passes": 0,
+      "reason": "Pinned near-sandbox executable unavailable; no historical result substituted"
+    },
+    "sandbox_receipt_groups": {
+      "status": "BLOCKED",
+      "required": 20,
+      "fresh_passes": 0,
+      "reason": "Official pinned artifact recovery incomplete; binary never executed"
+    }
+  },
+  "artifact_recovery": {
+    "status": "BLOCKED",
+    "official_version": "2.14.0",
+    "required_archive_bytes": 35582480,
+    "archive_sha256": "a0ba004218b218bd74351795e7ce2eda4a2b6af5cd3e252bd5e8bfe3c8f2e691",
+    "binary_sha256": "797b9d7a9a23907048d68a427e86a55c94f1de232dbfb8b8a1eec09ecef3bf13",
+    "hashes_verified_this_run": false,
+    "cached_complete_megabyte_ranges": 26,
+    "missing_subranges_initial": 128,
+    "first_pass_complete": 82,
+    "final_pass_complete": 125,
+    "remaining_subranges": [
+      "31:0",
+      "31:14",
+      "31:15"
+    ],
+    "errors": [
+      "TimeoutError",
+      "URLError"
+    ],
+    "attempts_per_subrange_per_pass": 2,
+    "request_timeout_seconds": 10,
+    "maximum_parallel_requests": 8,
+    "scheduling_budget_seconds_per_pass": 180,
+    "first_pass_elapsed_seconds": 205.8954326889998,
+    "final_pass_elapsed_seconds": 105.50292709599944,
+    "elapsed_note": "In-flight requests drain after scheduling budget",
+    "integrity_checks_weakened": false,
+    "logs": [
+      "m5f1c/artifact-recovery.log",
+      "m5f1c/artifact-recovery-final.log"
+    ],
+    "reproduction": "docs/milestone-5f1c-receipt-regression-recovery.md"
+  },
+  "wasm": {
+    "sha256": "37e432600c43d5fc7d44b2d81bc9a852d5e120a7dc043c7f06f83d1e62a24ea9",
+    "near_code_hash": "4mBF2J6mE22XrTrSNo8x7xSLhzUSfNS9HkzHJeaxqwk4",
+    "bytes": 410611,
+    "unchanged": true
+  },
+  "gates": {
+    "A": "PASS",
+    "B": "PASS",
+    "C": "PASS",
+    "D": "PASS",
+    "E": "PASS",
+    "F": "PASS",
+    "G": "PASS",
+    "H": "BLOCKED",
+    "I": "PASS"
+  },
+  "security_invariants": {
+    "fresh_post_lock_expiry": "PASS",
+    "single_consumption": "PASS",
+    "revocation": "PASS",
+    "rollback_atomicity": "PASS",
+    "immutable_bindings": "PASS",
+    "lease_and_restart_fencing": "PASS existing implementation unchanged",
+    "native_roles_callbacks_pending_locks_accounting": "Rust unchanged; 146 Rust tests pass; fresh receipt validation BLOCKED",
+    "read_only_configuration": "unchanged; startup and negative checks pass",
+    "automatic_retry_or_manual_success_override_added": false,
+    "live_workers_enabled": false
+  },
+  "remaining_blockers": [
+    "Gate H: recover pinned sandbox binary and run all eight receipt-backed RPC tests and twenty sandbox receipt groups",
+    "Separate independent re-review of implementation and evidence",
+    "Future Testnet account method, exact identities/keys and ownership proofs remain unresolved; no setup authorization"
+  ],
+  "scope_controls": {
+    "rust_changes": 0,
+    "migration_changes": 0,
+    "lease_fencing_changes": 0,
+    "live_configuration_changes": 0,
+    "testnet_mutations": 0,
+    "key_generation": 0,
+    "production_database_mutations": 0,
+    "public_chain_transactions": 0,
+    "git_writes": 0
+  },
+  "recommended_next_action": "Independent re-review, then complete blocked local receipt suites with verified artifact. Do not proceed to Testnet setup, deployment or execution.",
+  "evidence_sha256": {
+    "docs/evidence/milestone-5/m5f1c/adversarial-startup.json": "8ba8e4cabc37e8f2681c30a8038130b7e1e2fd7969a0ad07a00162012958a937",
+    "docs/evidence/milestone-5/m5f1c/adversarial-startup.stderr": "fe0ca519abea0308c324de207bf9ff8e44e6997bd3fb3545ed7709fee8e6564a",
+    "docs/evidence/milestone-5/m5f1c/adversarial-startup.ts": "2bc7073370b087d37b779b8db5f34670484f1bf86fd6ced4268568c8c2229aa6",
+    "docs/evidence/milestone-5/m5f1c/artifact-recovery-final.log": "60825665d559c63b8d30b8bbf67c943910fec9dde4903165906a32c43e641df7",
+    "docs/evidence/milestone-5/m5f1c/artifact-recovery.log": "c35252826de502a99295cefca341f80734386a483b341d52aafd5bdbc800b5d0",
+    "docs/evidence/milestone-5/m5f1c/authorization-regressions.log": "669f808db18c4b9d176fb34b6f0d6aa3f8b8c699328e1cf17944513fbb9d4f96",
+    "docs/evidence/milestone-5/m5f1c/baseline.json": "93839fef1eef56e662b1f7662f75c1798fdffbc4525789e8e41ddd651f106143",
+    "docs/evidence/milestone-5/m5f1c/before-fix.log": "85f9fccb8ef2a475145d28cdffb4dcdd19fbafcf80393f125e4a1724d1f9e9db",
+    "docs/evidence/milestone-5/m5f1c/cli-help.log": "7f07e7292bd0999e0a7f5cd759d8de89f0705bbe9d03d2f2e82f66a3a04456f2",
+    "docs/evidence/milestone-5/m5f1c/database-cleanup.log": "ca19178a35ab4153b75b494963b66ce8243e1b94c173107c87b44d09db23652d",
+    "docs/evidence/milestone-5/m5f1c/database-final.log": "ac9112c041a59ca16c51d49d5b38cfb19b70d4a2df10cbb91ad2a87c84ab5014",
+    "docs/evidence/milestone-5/m5f1c/database-identity.log": "44ea3836c173a9eda4014ddd5ca9fda96a06cdb0586793e55bcbf6da9ec61b3e",
+    "docs/evidence/milestone-5/m5f1c/history.txt": "663c64dea984b4f96774c6475399009e376dfc6f1de8a26d8215c29c079be4b8",
+    "docs/evidence/milestone-5/m5f1c/initial-working-tree.diff": "d1a28c7d2b158e1eba856b808a445e522a1bc2edd9f33ab0a31fe0254af898b5",
+    "docs/evidence/milestone-5/m5f1c/migrations-repeat.log": "f9dd31816170f87ae4fa7fdf210b7ecb8560d50f4c6fb92d675a66f4d4a13d5b",
+    "docs/evidence/milestone-5/m5f1c/migrations.log": "e09e879a9b1aaf35423a76ca9092085c6ad36ee74a7a9c57557ff106763dc8d8",
+    "docs/evidence/milestone-5/m5f1c/postgres.log": "8613cf51447695e1b86c31b582ab3f3629fb792d8d49dcaa5862cb7205a2e398",
+    "docs/evidence/milestone-5/m5f1c/recover-artifact.py": "b385a5f60cc944781d81c4cf302721ceee7d601ab23a5a2e2ae6504ff6b09aa7",
+    "docs/evidence/milestone-5/m5f1c/rust-checks.log": "d63009003e65f9a33539cc08e7608dd449890f838427c41eb6b31d47ff760f61",
+    "docs/evidence/milestone-5/m5f1c/service-check.log": "eabe18a07ffe39617120e17e7c1c5b537d4f06cdbc46a3572c95c15c2a83a976",
+    "docs/evidence/milestone-5/m5f1c/source-identity-final.json": "8665f3e1dac1d5ab1dc27a3f0e7cfee8521d09703c7c4cfc3708827df9d6c575",
+    "docs/evidence/milestone-5/m5f1c/targeted-lease.log": "3082b7e85cbde2681fab32d236793375330dc429201fddcdee2a6df134026daa",
+    "docs/evidence/milestone-5/m5f1c/toolchain.txt": "9b6c11431b9eda0a1238174df349c06f41343bc13a256a6cf02f9161ec2395fd"
+  }
+}

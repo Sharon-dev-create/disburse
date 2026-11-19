@@ -1,0 +1,27 @@
+diff --git a/docs/evidence/milestone-5/m5f1b/sandbox-download-alternate.log b/docs/evidence/milestone-5/m5f1b/sandbox-download-alternate.log
+index f771497..af5dde7 100644
+--- a/docs/evidence/milestone-5/m5f1b/sandbox-download-alternate.log
++++ b/docs/evidence/milestone-5/m5f1b/sandbox-download-alternate.log
+@@ -21,3 +21,22 @@
+ [24, "cached"]
+ [13, "cached"]
+ [19, "downloaded"]
++[23, "downloaded"]
++[28, "TimeoutError"]
++[32, "cached"]
++[33, "cached"]
++[29, "TimeoutError"]
++[25, "TimeoutError"]
++[17, "TimeoutError"]
++[27, "TimeoutError"]
++[18, "TimeoutError"]
++[31, "TimeoutError"]
++[30, "TimeoutError"]
++Traceback (most recent call last):
++  File "/home/topg/disburse/docs/evidence/milestone-5/m5f1b/download-alternate.py", line 24, in <module>
++    c=p/f'chunk-{i}';assert c.stat().st_size==min(size,total-i*size);w.write(c.read_bytes())
++                            ~~~~~~^^
++  File "/usr/lib/python3.13/pathlib/_local.py", line 517, in stat
++    return os.stat(self, follow_symlinks=follow_symlinks)
++           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++FileNotFoundError: [Errno 2] No such file or directory: '/tmp/disburse-m5c-tools/chunk-17'

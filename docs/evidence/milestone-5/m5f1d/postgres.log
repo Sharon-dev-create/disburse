@@ -1,0 +1,113 @@
+$ node --experimental-strip-types src/persistence/migrate.ts test
+PostgreSQL test migrations complete; applied: 0001, 0002, 0003, 0004
+$ node --experimental-strip-types --test tests/integration/postgres-*.test.ts
+✔ consumption before expiry records a valid single consumption (81.523076ms)
+✔ expired before consumption rejects despite a stale caller clock (1034.822041ms)
+✔ consumption rejects expiry during row-lock wait (2030.172774ms)
+ℹ {"result":{"blocked":true,"releasedAt":"2026-11-19T12:31:43.726Z","accepted":false,"error":"Error: Authorization has expired"},"lifecycle":"Expired","consumedAt":null,"expiresAt":"2026-11-19T12:31:43.703Z"}
+✔ valid short lock wait samples consumption time after acquiring the lock (16.904823ms)
+✔ expiry immediately before the protected database decision rejects (1025.446095ms)
+✔ two current consumers have one winner (9.524745ms)
+✔ revocation during consumption lock contention wins without consumption (17.825884ms)
+✔ already consumed authorization rejects without changing stored state (7.824536ms)
+✔ failed transaction rolls a successful consumption update back (13.899193ms)
+✔ consumption persists across pool and repository restart (19.097559ms)
+✔ exclusive expiry boundary with controlled database decision clock offset -1 microseconds (10.407048ms)
+✔ exclusive expiry boundary with controlled database decision clock offset 0 microseconds (9.236732ms)
+✔ exclusive expiry boundary with controlled database decision clock offset 1 microseconds (7.916209ms)
+✔ approval after expiry during row-lock wait becomes Expired (2025.238408ms)
+✔ revocation after expiry during row-lock wait preserves expiry lifecycle (2024.523261ms)
+✔ job migrations apply idempotently and record version 0004 (287.754909ms)
+✔ creation is durable, idempotent, payout-unique, and preserves exact amounts (46.453469ms)
+✔ campaign job listing is scoped to the configured contract and campaign (14.757302ms)
+✔ same idempotency key or payout identity rejects conflicting protected payloads (13.371422ms)
+✔ concurrent job creation on independent connections has one database winner (19.770809ms)
+✔ concurrent workers claim one queued job and stale lease writes are fenced (49.439628ms)
+✔ lease renewal, expiry replacement, and fencing counters survive repository restart (2156.70653ms)
+✔ attempts and safe failures are atomic and duplicate attempt idempotency rolls back (44.698727ms)
+✔ expired ambiguous submission moves to manual review without releasing payout state (1139.069429ms)
+✔ snapshot identity cannot be changed and job creation never mutates payout accounting (8.951917ms)
+✔ legacy transition rejects expiry during final write lock wait (940.942615ms)
+ℹ {"lease":{"workerId":"boundary-A","fencingToken":"1","stateVersion":2,"expiresAtMs":1795091504872},"before":{"jobId":"16","idempotencyKey":"jobs-dce06457-5097-43bb-b12b-c57965aa57c2-lease-boundary-aa7bc094-ca69-42a4-9563-1840019ebd4f-idem","snapshotDigest":"8a715d4940f7664d38386559db90af9f4f332b5780cb3ea58672602a83cf28bd","fencingCounter":"1","attemptCount":0,"nextEligibleAtMs":1795091504362,"failure":null,"key":{"networkId":"near:testnet","contractId":"disburse.testnet","payoutId":"1795276429984943945"},"payout":{"payoutId":"1795276429984943945","campaignId":"7","inputAmount":{"tokenId":"near","decimals":24,"atomicAmount":"900719925474099312345"},"contractStatus":"Reserved","expectedOutput":{"tokenId":"wrap.near","decimals":24,"atomicAmount":"900719925474099312345"},"recipientAddress":"recipient.near","destinationChainId":"near:testnet","executionReference":null,"settlementEvidenceReference":null},"discoveryEvent":{"networkId":"near:testnet","contractId":"disburse.testnet","transactionHash":"jobs-dce06457-5097-43bb-b12b-c57965aa57c2-lease-boundary-aa7bc094-ca69-42a4-9563-1840019ebd4f-tx","blockHash":"jobs-dce06457-5097-43bb-b12b-c57965aa57c2-lease-boundary-aa7bc094-ca69-42a4-9563-1840019ebd4f-block","receiptId":"jobs-dce06457-5097-43bb-b12b-c57965aa57c2-lease-boundary-aa7bc094-ca69-42a4-9563-1840019ebd4f-receipt","eventIndex":0,"blockHeight":"123456"},"state":"Leased","version":2,"createdAtMs":1795091504362,"updatedAtMs":1795091504371,"lease":{"workerId":"boundary-A","fencingToken":"1","stateVersion":2,"expiresAtMs":1795091504872},"attempts":[]},"outcome":{"accepted":false,"error":"Execution job version or lease is stale","timing":{"blocked":true,"waitMs":908.2372220000007,"rowCount":0,"databaseTime":"2026-11-19T12:31:45.297Z"}},"after":{"jobId":"16","idempotencyKey":"jobs-dce06457-5097-43bb-b12b-c57965aa57c2-lease-boundary-aa7bc094-ca69-42a4-9563-1840019ebd4f-idem","snapshotDigest":"8a715d4940f7664d38386559db90af9f4f332b5780cb3ea58672602a83cf28bd","fencingCounter":"1","attemptCount":0,"nextEligibleAtMs":1795091504362,"failure":null,"key":{"networkId":"near:testnet","contractId":"disburse.testnet","payoutId":"1795276429984943945"},"payout":{"payoutId":"1795276429984943945","campaignId":"7","inputAmount":{"tokenId":"near","decimals":24,"atomicAmount":"900719925474099312345"},"contractStatus":"Reserved","expectedOutput":{"tokenId":"wrap.near","decimals":24,"atomicAmount":"900719925474099312345"},"recipientAddress":"recipient.near","destinationChainId":"near:testnet","executionReference":null,"settlementEvidenceReference":null},"discoveryEvent":{"networkId":"near:testnet","contractId":"disburse.testnet","transactionHash":"jobs-dce06457-5097-43bb-b12b-c57965aa57c2-lease-boundary-aa7bc094-ca69-42a4-9563-1840019ebd4f-tx","blockHash":"jobs-dce06457-5097-43bb-b12b-c57965aa57c2-lease-boundary-aa7bc094-ca69-42a4-9563-1840019ebd4f-block","receiptId":"jobs-dce06457-5097-43bb-b12b-c57965aa57c2-lease-boundary-aa7bc094-ca69-42a4-9563-1840019ebd4f-receipt","eventIndex":0,"blockHeight":"123456"},"state":"Leased","version":2,"createdAtMs":1795091504362,"updatedAtMs":1795091504371,"lease":{"workerId":"boundary-A","fencingToken":"1","stateVersion":2,"expiresAtMs":1795091504872},"attempts":[]}}
+✔ legacy zero-row release cannot increment version (928.164724ms)
+ℹ {"expectedLease":{"workerId":"boundary-A","fencingToken":"1","stateVersion":2,"expiresAtMs":1795091505814},"initialVersion":2,"outcome":{"accepted":false,"error":"Worker lease expired during transition","timing":{"blocked":true,"waitMs":902.5361079999993,"rowCount":0,"databaseTime":"2026-11-19T12:31:46.224Z"}},"after":{"jobId":"17","idempotencyKey":"jobs-dce06457-5097-43bb-b12b-c57965aa57c2-lease-boundary-749508b2-ee62-4ce9-9d57-1e1e3843d993-idem","snapshotDigest":"36d214efb910995ccb3642eb6d211ecd48f4394b0acfd4beee358d767dbda149","fencingCounter":"1","attemptCount":0,"nextEligibleAtMs":1795091505303,"failure":null,"key":{"networkId":"near:testnet","contractId":"disburse.testnet","payoutId":"1795276429984943946"},"payout":{"payoutId":"1795276429984943946","campaignId":"7","inputAmount":{"tokenId":"near","decimals":24,"atomicAmount":"900719925474099312345"},"contractStatus":"Reserved","expectedOutput":{"tokenId":"wrap.near","decimals":24,"atomicAmount":"900719925474099312345"},"recipientAddress":"recipient.near","destinationChainId":"near:testnet","executionReference":null,"settlementEvidenceReference":null},"discoveryEvent":{"networkId":"near:testnet","contractId":"disburse.testnet","transactionHash":"jobs-dce06457-5097-43bb-b12b-c57965aa57c2-lease-boundary-749508b2-ee62-4ce9-9d57-1e1e3843d993-tx","blockHash":"jobs-dce06457-5097-43bb-b12b-c57965aa57c2-lease-boundary-749508b2-ee62-4ce9-9d57-1e1e3843d993-block","receiptId":"jobs-dce06457-5097-43bb-b12b-c57965aa57c2-lease-boundary-749508b2-ee62-4ce9-9d57-1e1e3843d993-receipt","eventIndex":0,"blockHeight":"123456"},"state":"Leased","version":2,"createdAtMs":1795091505303,"updatedAtMs":1795091505313,"lease":{"workerId":"boundary-A","fencingToken":"1","stateVersion":2,"expiresAtMs":1795091505814},"attempts":[]}}
+✔ legacy validation rechecks fresh time after waiting for the lease row (923.24008ms)
+✔ legacy current worker can transition after bounded contention (918.947511ms)
+✔ legacy wrong worker, fence and version cannot transition or release (40.750228ms)
+✔ legacy reclaimed owner defeats stale transition and release including concurrent completion (132.710638ms)
+✔ legacy valid release increments once and duplicate release changes nothing (22.881732ms)
+✔ legacy concurrent release and transition have exactly one version winner (23.255159ms)
+✔ legacy failure after successful lease deletion rolls deletion and version back (20.726979ms)
+✔ legacy expired cleanup remains available without stale worker authority (133.657935ms)
+✔ legacy renewal rolls back expiry during its later write (928.724487ms)
+✔ legacy attempt rolls back expiry during its later write (927.315342ms)
+✔ legacy failure rolls back expiry during its later write (950.317949ms)
+✔ legacy terminal rolls back expiry during its later write (938.363389ms)
+(node:14134) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ expired after row lock (1123.814869ms)
+✔ valid after short row lock (74.228382ms)
+✔ wrong owner and fence reject without changing current owner's ability to complete (19.54357ms)
+✔ database fixture renewal preserves owner and generation; no renewal API is invented (610.232454ms)
+✔ expiry during evidence-claim lock wait rolls back observations and decision (910.572682ms)
+✔ M5-D migrations are checksum-protected and idempotent (274.000806ms)
+✔ concurrent enqueue/claims have one immutable attempt and one lease (52.148503ms)
+(node:14135) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ duplicate observations are idempotent; historical evidence cannot update/delete (36.253347ms)
+✔ expired fences cannot persist; transaction rollback leaves no partial observation (156.262663ms)
+✔ reused receipt or transaction and conflicting finalized evidence become sticky ManualReview (57.556808ms)
+✔ real SIGKILL and fresh worker process recover same PostgreSQL job and evidence (670.54112ms)
+✔ restricted pool enforces PostgreSQL read-only sessions even when URL requests read-write (84.449779ms)
+✔ persists complete authorization payload and safely parameterizes lookups (179.534593ms)
+✔ concurrent discovery is idempotent and conflicting protected data is rejected (26.3494ms)
+✔ database arbitrates concurrent one-time authorization consumption (20.104925ms)
+✔ database statement time expires an authorization after its deadline (7.611767ms)
+✔ revocation and consumption race has exactly one terminal winner (16.251783ms)
+✔ refund policy binds once, survives concurrent duplicate approval, and is immutable (39.64044ms)
+✔ concurrent conflicting refund bindings retain one authoritative policy (10.377418ms)
+✔ a fresh process can read and consume durable authorization state (612.183742ms)
+✔ transaction rollback removes writes and leaves the pooled connection usable (15.733966ms)
+✔ separate pool connections observe shared committed state (8.330848ms)
+ℹ tests 61
+ℹ suites 0
+ℹ pass 61
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12275.623277
+✔ concurrent workers claim one queued job and stale lease writes are fenced (417.990302ms)
+✔ lease renewal, expiry replacement, and fencing counters survive repository restart (2260.833885ms)
+✔ legacy transition rejects expiry during final write lock wait (1018.953615ms)
+ℹ {"lease":{"workerId":"boundary-A","fencingToken":"1","stateVersion":2,"expiresAtMs":1795091516419},"before":{"jobId":"32","idempotencyKey":"jobs-53d64532-6e0c-4a24-a4bd-cf0525349803-lease-boundary-d1933ab4-8539-44f7-9c28-0e844e7725ba-idem","snapshotDigest":"2ffe4ebcf3a4ca85cab60515bbad4892b5fd24d76e2d34a33986989df7841334","fencingCounter":"1","attemptCount":0,"nextEligibleAtMs":1795091515884,"failure":null,"key":{"networkId":"near:testnet","contractId":"disburse.testnet","payoutId":"1795294895694020371"},"payout":{"payoutId":"1795294895694020371","campaignId":"7","inputAmount":{"tokenId":"near","decimals":24,"atomicAmount":"900719925474099312345"},"contractStatus":"Reserved","expectedOutput":{"tokenId":"wrap.near","decimals":24,"atomicAmount":"900719925474099312345"},"recipientAddress":"recipient.near","destinationChainId":"near:testnet","executionReference":null,"settlementEvidenceReference":null},"discoveryEvent":{"networkId":"near:testnet","contractId":"disburse.testnet","transactionHash":"jobs-53d64532-6e0c-4a24-a4bd-cf0525349803-lease-boundary-d1933ab4-8539-44f7-9c28-0e844e7725ba-tx","blockHash":"jobs-53d64532-6e0c-4a24-a4bd-cf0525349803-lease-boundary-d1933ab4-8539-44f7-9c28-0e844e7725ba-block","receiptId":"jobs-53d64532-6e0c-4a24-a4bd-cf0525349803-lease-boundary-d1933ab4-8539-44f7-9c28-0e844e7725ba-receipt","eventIndex":0,"blockHeight":"123456"},"state":"Leased","version":2,"createdAtMs":1795091515884,"updatedAtMs":1795091515918,"lease":{"workerId":"boundary-A","fencingToken":"1","stateVersion":2,"expiresAtMs":1795091516419},"attempts":[]},"outcome":{"accepted":false,"error":"Execution job version or lease is stale","timing":{"blocked":true,"waitMs":924.1243330000007,"rowCount":0,"databaseTime":"2026-11-19T12:31:56.873Z"}},"after":{"jobId":"32","idempotencyKey":"jobs-53d64532-6e0c-4a24-a4bd-cf0525349803-lease-boundary-d1933ab4-8539-44f7-9c28-0e844e7725ba-idem","snapshotDigest":"2ffe4ebcf3a4ca85cab60515bbad4892b5fd24d76e2d34a33986989df7841334","fencingCounter":"1","attemptCount":0,"nextEligibleAtMs":1795091515884,"failure":null,"key":{"networkId":"near:testnet","contractId":"disburse.testnet","payoutId":"1795294895694020371"},"payout":{"payoutId":"1795294895694020371","campaignId":"7","inputAmount":{"tokenId":"near","decimals":24,"atomicAmount":"900719925474099312345"},"contractStatus":"Reserved","expectedOutput":{"tokenId":"wrap.near","decimals":24,"atomicAmount":"900719925474099312345"},"recipientAddress":"recipient.near","destinationChainId":"near:testnet","executionReference":null,"settlementEvidenceReference":null},"discoveryEvent":{"networkId":"near:testnet","contractId":"disburse.testnet","transactionHash":"jobs-53d64532-6e0c-4a24-a4bd-cf0525349803-lease-boundary-d1933ab4-8539-44f7-9c28-0e844e7725ba-tx","blockHash":"jobs-53d64532-6e0c-4a24-a4bd-cf0525349803-lease-boundary-d1933ab4-8539-44f7-9c28-0e844e7725ba-block","receiptId":"jobs-53d64532-6e0c-4a24-a4bd-cf0525349803-lease-boundary-d1933ab4-8539-44f7-9c28-0e844e7725ba-receipt","eventIndex":0,"blockHeight":"123456"},"state":"Leased","version":2,"createdAtMs":1795091515884,"updatedAtMs":1795091515918,"lease":{"workerId":"boundary-A","fencingToken":"1","stateVersion":2,"expiresAtMs":1795091516419},"attempts":[]}}
+✔ legacy zero-row release cannot increment version (1044.236087ms)
+ℹ {"expectedLease":{"workerId":"boundary-A","fencingToken":"1","stateVersion":2,"expiresAtMs":1795091517449},"initialVersion":2,"outcome":{"accepted":false,"error":"Worker lease expired during transition","timing":{"blocked":true,"waitMs":907.8720979999998,"rowCount":0,"databaseTime":"2026-11-19T12:31:57.925Z"}},"after":{"jobId":"33","idempotencyKey":"jobs-53d64532-6e0c-4a24-a4bd-cf0525349803-lease-boundary-ac36178f-c9f5-4dec-8114-e4d3cada4802-idem","snapshotDigest":"835a646fca7ee033da45a91336b262c418e619509c859aeb875089fd436019f6","fencingCounter":"1","attemptCount":0,"nextEligibleAtMs":1795091516897,"failure":null,"key":{"networkId":"near:testnet","contractId":"disburse.testnet","payoutId":"1795294895694020372"},"payout":{"payoutId":"1795294895694020372","campaignId":"7","inputAmount":{"tokenId":"near","decimals":24,"atomicAmount":"900719925474099312345"},"contractStatus":"Reserved","expectedOutput":{"tokenId":"wrap.near","decimals":24,"atomicAmount":"900719925474099312345"},"recipientAddress":"recipient.near","destinationChainId":"near:testnet","executionReference":null,"settlementEvidenceReference":null},"discoveryEvent":{"networkId":"near:testnet","contractId":"disburse.testnet","transactionHash":"jobs-53d64532-6e0c-4a24-a4bd-cf0525349803-lease-boundary-ac36178f-c9f5-4dec-8114-e4d3cada4802-tx","blockHash":"jobs-53d64532-6e0c-4a24-a4bd-cf0525349803-lease-boundary-ac36178f-c9f5-4dec-8114-e4d3cada4802-block","receiptId":"jobs-53d64532-6e0c-4a24-a4bd-cf0525349803-lease-boundary-ac36178f-c9f5-4dec-8114-e4d3cada4802-receipt","eventIndex":0,"blockHeight":"123456"},"state":"Leased","version":2,"createdAtMs":1795091516897,"updatedAtMs":1795091516948,"lease":{"workerId":"boundary-A","fencingToken":"1","stateVersion":2,"expiresAtMs":1795091517449},"attempts":[]}}
+✔ legacy validation rechecks fresh time after waiting for the lease row (994.621257ms)
+✔ legacy current worker can transition after bounded contention (1017.901489ms)
+✔ legacy wrong worker, fence and version cannot transition or release (144.149777ms)
+✔ legacy reclaimed owner defeats stale transition and release including concurrent completion (193.406534ms)
+✔ legacy valid release increments once and duplicate release changes nothing (49.688521ms)
+✔ legacy concurrent release and transition have exactly one version winner (47.91917ms)
+✔ legacy failure after successful lease deletion rolls deletion and version back (34.368563ms)
+✔ legacy expired cleanup remains available without stale worker authority (183.910493ms)
+✔ legacy renewal rolls back expiry during its later write (955.450997ms)
+✔ legacy attempt rolls back expiry during its later write (1001.224597ms)
+✔ legacy failure rolls back expiry during its later write (980.258861ms)
+✔ legacy terminal rolls back expiry during its later write (928.92123ms)
+✔ wrong owner and fence reject without changing current owner's ability to complete (241.435195ms)
+(node:14390) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ expiry during evidence-claim lock wait rolls back observations and decision (1004.912876ms)
+✔ concurrent enqueue/claims have one immutable attempt and one lease (296.972304ms)
+(node:14391) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ expired fences cannot persist; transaction rollback leaves no partial observation (183.368427ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12060.591671

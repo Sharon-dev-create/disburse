@@ -1,0 +1,24 @@
+✔ consumption before expiry records a valid single consumption (26.795131ms)
+✔ expired before consumption rejects despite a stale caller clock (1027.111561ms)
+✔ consumption rejects expiry during row-lock wait (2045.364675ms)
+ℹ {"result":{"blocked":true,"releasedAt":"2026-11-18T18:41:01.171Z","accepted":false,"error":"Error: Authorization has expired"},"lifecycle":"Expired","consumedAt":null,"expiresAt":"2026-11-18T18:41:01.146Z"}
+✔ valid short lock wait samples consumption time after acquiring the lock (33.030262ms)
+✔ expiry immediately before the protected database decision rejects (1025.911688ms)
+✔ two current consumers have one winner (9.050509ms)
+✔ revocation during consumption lock contention wins without consumption (18.236985ms)
+✔ already consumed authorization rejects without changing stored state (13.859181ms)
+✔ failed transaction rolls a successful consumption update back (11.465507ms)
+✔ consumption persists across pool and repository restart (15.182956ms)
+✔ exclusive expiry boundary with controlled database decision clock offset -1 microseconds (8.786688ms)
+✔ exclusive expiry boundary with controlled database decision clock offset 0 microseconds (8.737335ms)
+✔ exclusive expiry boundary with controlled database decision clock offset 1 microseconds (7.506556ms)
+✔ approval after expiry during row-lock wait becomes Expired (2032.030089ms)
+✔ revocation after expiry during row-lock wait preserves expiry lifecycle (2025.079731ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8530.281494

@@ -152,7 +152,7 @@ void test("PostgreSQL conditional lifecycle updates admit one concurrent consume
   assert.match(database.statements.join("\n"), /lifecycle = 'Consumed'/);
   assert.match(
     database.statements.join("\n"),
-    /authorization_expires_at > statement_timestamp\(\)/,
+    /authorization_expires_at > authorization_decision\.decided_at/,
   );
 });
 
@@ -289,10 +289,10 @@ class MockPostgres {
     this.statements.push(statement);
     if (statement.includes("INSERT INTO execution_authorizations"))
       return this.insertAuthorization(statement, parameters);
-    if (statement.includes("FROM execution_authorizations"))
-      return this.selectAuthorization(statement, parameters);
     if (statement.includes("UPDATE execution_authorizations"))
       return this.updateAuthorization(statement, parameters);
+    if (statement.includes("FROM execution_authorizations"))
+      return this.selectAuthorization(statement, parameters);
     if (statement.includes("INSERT INTO payout_refund_policies"))
       return this.insertRefundPolicy(parameters);
     if (statement.includes("FROM payout_refund_policies"))
