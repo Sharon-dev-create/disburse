@@ -1,0 +1,7 @@
+# M5-F.1E sandbox regression results
+
+PASS: complete supported harness exited zero and wrote a fresh reproduction-result.json. Command from isolated /tmp/m5f1e-sandbox: DISBURSE_TEST_DATABASE_URL=postgresql://disburse_test@127.0.0.1:19557/disburse_test python3 tests/sandbox/run_reconciliation.py.
+
+All20 historical receipt groups executed:10 principal payout scenarios,7 fault scenarios,2 migration scenarios (historical→candidate and old-B→candidate),1 callback/observer race. Individual logs also contain extra PASS assertions (authentication, stale callbacks and restart model); raw PASS-line totals are not the group count. Fresh logs and fixtures are preserved under evidence/milestone-5/m5f1e/receipts, including fresh-receipt-suite/sandbox-main.log, sandbox-faults.log, sandbox-b-migration.log and callback-observer-race.log.
+
+Successful transfer accounting, storage rejection, token failure, duplicate/concurrent execution, gas/headroom, private callback restriction, pause after dispatch, scheduling rollback, callback panic/OOG, incompatible callback upgrade, unexpected result ManualReview, insufficient funds and migration orphan-lock retention passed. The observer persisted evidence only and did not transfer or settle. Restart/uncertain-response scenario is a model; PostgreSQL process restart has separate integration coverage. Synthetic token testing does not prove all live token compatibility. Nodes stopped in harness finally blocks. No Testnet transaction or live worker was used.

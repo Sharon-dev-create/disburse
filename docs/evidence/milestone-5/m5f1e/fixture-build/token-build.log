@@ -1,0 +1,36 @@
+• Collecting cargo project metadata...
+• done
+
+• Checking rustc version...
+INFO: contract's near-sdk targets protocol version 85; rustc 1.100.0 accepted (bulk-memory opcodes supported by nearcore VM)
+• done
+
+• Checking the host environment...
+• done
+
+• Generating ABI
+ │     Finished `dev` profile [unoptimized] target(s) in 0.20s
+• Extracting ABI...
+• done
+
+• Compressing ABI to be embedded..
+• done
+
+• Building contract
+ │    Compiling m5c-sandbox-token v0.1.0 (/tmp/m5f1e-sandbox/tests/sandbox/token)
+ │     Finished `release` profile [optimized] target(s) in 1.61s
+
+• Running an optimize for size post-step with wasm-opt --enable-nontrapping-float-to-int --enable-bulk-memory...
+    Finished wasm-opt -O in 859ms
+• done
+
+✓ Contract successfully built! (in CARGO_NEAR_BUILD_ENVIRONMENT=host)
+     -                Binary: /tmp/disburse-m5c-artifacts/token/m5c_sandbox_token.wasm
+     -                  Size: 151.8 KB (151800 bytes)
+     - SHA-256 checksum hex : e0ea36257f831f4d3b9290500dfdf3427ef00af29a23dcec1694988d03149b2e
+     - SHA-256 checksum bs58: G8yTof2rssXpxW3UyPzwHyHXs9Uht7H8tKaYe1E56qWu
+     -                   ABI: /tmp/disburse-m5c-artifacts/token/m5c_sandbox_token_abi.json
+     -          Embedded ABI: /tmp/disburse-m5c-artifacts/token/m5c_sandbox_token_abi.zst
+    Finished cargo near build in 3s
+Here is the console command if you ever need to re-run it again:
+cargo near build non-reproducible-wasm --locked --out-dir /tmp/disburse-m5c-artifacts/token --manifest-path /tmp/m5f1e-sandbox/tests/sandbox/token/Cargo.toml

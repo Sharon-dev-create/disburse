@@ -1,0 +1,55 @@
+$ tsc --noEmit
+$ eslint
+$ vitest run
+
+ RUN  v5.1.0 /home/topg/disburse/frontend
+
+
+ Test Files  4 passed (4)
+      Tests  19 passed (19)
+   Start at  16:12:36
+   Duration  554ms (import 43%, tests 36%, transform 15%, worker 6%)
+
+$ next build
+▲ Next.js 16.4.5 (Turbopack)
+- Environments: .env.local
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /home/topg/disburse/pnpm-lock.yaml as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * /home/topg/disburse/frontend/pnpm-lock.yaml
+
+✓ Running next.config.ts took 89ms
+- Cache Components enabled
+- Partial Prefetching enabled
+
+  Creating an optimized production build ...
+Turbopack build encountered 2 warnings:
+[next]/internal/font/google/geist_a71539c9.module.css
+Warning: Error while requesting resource
+There was an issue establishing a connection while requesting https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap
+
+
+[next]/internal/font/google/geist_mono_8d43a2aa.module.css
+Warning: Error while requesting resource
+There was an issue establishing a connection while requesting https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&display=swap
+
+
+
+> Build error occurred
+Error: Turbopack build failed with 2 errors:
+[next]/internal/font/google/geist_a71539c9.module.css
+Error: next/font: error:
+Failed to fetch Geist from Google Fonts.
+If you are offline or behind a proxy, self-host the font with next/font/local, or set HTTP_PROXY/HTTPS_PROXY so Next.js can reach fonts.googleapis.com.
+
+
+[next]/internal/font/google/geist_mono_8d43a2aa.module.css
+Error: next/font: error:
+Failed to fetch Geist Mono from Google Fonts.
+If you are offline or behind a proxy, self-host the font with next/font/local, or set HTTP_PROXY/HTTPS_PROXY so Next.js can reach fonts.googleapis.com.
+
+
+    at ignore-listed frames
+[ELIFECYCLE] Command failed with exit code 1.

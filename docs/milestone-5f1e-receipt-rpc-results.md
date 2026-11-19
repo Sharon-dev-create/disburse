@@ -1,0 +1,3 @@
+# M5-F.1E receipt rpc results
+
+PASS:8 tests,8 passed,0 failed/skipped; duration2151.75ms. Actual command, run by the supported reconciliation harness: node --experimental-strip-types --test tests/integration/native-live.test.ts. Fresh evidence in evidence/milestone-5/m5f1e/receipts/live-read-only-tests.log. Uses finalized receipts from the fresh synthetic chain, not historical replay alone. Assertions cover graph evidence, callback outcomes, pending/manual-review cases, bounded discovery and unavailable-receipt containment. General malformed JSON/resource-bound unit assertions are in the service suite; do not infer all such coverage from these eight tests. Two aliases reach one local validator, not independent public providers.
